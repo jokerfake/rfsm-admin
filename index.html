@@ -25,6 +25,46 @@
   --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
   --accent-dim:#12615C;
   --radius:14px;
+  /* Theme system: these three plus --accent-rgb are the only accent-derived
+     values any component should hardcode a hex for — everything else should
+     reference var(--accent) etc directly so switching [data-theme] on <html>
+     re-skins the whole app instantly. --accent-2 = darker gradient partner
+     for --accent, --accent-ink = text color placed ON TOP of an --accent
+     background (needs to stay readable), --accent-hover = lighter hover
+     shade, --accent-rgb = raw "r,g,b" of --accent for building rgba(...) at
+     arbitrary opacity. */
+  --accent-2:#0E8F86; --accent-ink:#04211F; --accent-hover:#3EE4D8; --accent-rgb:34,211,199;
+}
+/* ===== THEMES =====
+   Five selectable skins, set via document.documentElement.dataset.theme
+   (see setTheme() near the bottom of the script). "midnight" is the
+   original look and needs no override block. Risk colors (--risk-*) are
+   deliberately left the same across every theme — they carry safety
+   meaning (low/mid/high/critical) and shouldn't shift with a cosmetic
+   preference. */
+html[data-theme="ocean"]{
+  --bg:#070B14; --panel:#0E1626; --panel-2:#0A0F1C; --border:#1E2C42; --border-soft:#16202F;
+  --text:#E8EEF9; --text-dim:#8CA0C2; --text-faint:#57698A;
+  --accent:#3B9EFF; --accent-2:#1C5FBF; --accent-ink:#041226; --accent-hover:#6FBBFF; --accent-rgb:59,158,255;
+  --accent-dim:#1B3B66;
+}
+html[data-theme="forest"]{
+  --bg:#0A120D; --panel:#111C15; --panel-2:#0D1712; --border:#233428; --border-soft:#1A281F;
+  --text:#E7F2EA; --text-dim:#8FAE9B; --text-faint:#5C7768;
+  --accent:#D9A441; --accent-2:#8F6A1F; --accent-ink:#241906; --accent-hover:#F0C36B; --accent-rgb:217,164,65;
+  --accent-dim:#5C4A1E;
+}
+html[data-theme="sunset"]{
+  --bg:#150B0C; --panel:#211215; --panel-2:#190D10; --border:#3A2126; --border-soft:#2A171B;
+  --text:#F7EAE8; --text-dim:#B98F86; --text-faint:#7A5850;
+  --accent:#F5588F; --accent-2:#A32E5D; --accent-ink:#2B0A16; --accent-hover:#FF8FB3; --accent-rgb:245,88,143;
+  --accent-dim:#5C2440;
+}
+html[data-theme="paper"]{
+  --bg:#F4F6FA; --panel:#FFFFFF; --panel-2:#F0F2F7; --border:#DDE3ED; --border-soft:#E7EBF2;
+  --text:#111827; --text-dim:#5B6472; --text-faint:#8C97A8;
+  --accent:#009688; --accent-2:#00695F; --accent-ink:#FFFFFF; --accent-hover:#14B8B3; --accent-rgb:0,150,136;
+  --accent-dim:#B7E4E0;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overscroll-behavior:none;}
@@ -41,7 +81,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);overflo
   color:var(--text);cursor:pointer;font-family:var(--font-body);display:flex;flex-direction:column;align-items:center;gap:8px;
   transition:.15s;
 }
-#roleGate .rg-btn:hover{border-color:var(--accent);background:rgba(34,211,199,.08);}
+#roleGate .rg-btn:hover{border-color:var(--accent);background:rgba(var(--accent-rgb),.08);}
 #roleGate .rg-btn .rg-ic{font-size:32px;}
 #roleGate .rg-btn .rg-t{font-family:var(--font-display);font-weight:600;font-size:15px;}
 #roleGate .rg-btn .rg-s{font-size:11.5px;color:var(--text-faint);}
@@ -83,10 +123,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);overflo
 #driverApp .veh-meta .n1{font-family:var(--font-display);font-size:17px;font-weight:600;}
 #driverApp .veh-meta .n2{font-size:12.5px;color:var(--text-faint);margin-top:2px;}
 #driverApp .cta{
-  width:100%;padding:18px;border-radius:18px;background:linear-gradient(135deg,var(--accent),#0E8F86);
-  color:#04211F;font-family:var(--font-display);font-weight:700;font-size:17px;
+  width:100%;padding:18px;border-radius:18px;background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  color:var(--accent-ink);font-family:var(--font-display);font-weight:700;font-size:17px;
   display:flex;align-items:center;justify-content:center;gap:10px;
-  box-shadow:0 12px 30px -8px rgba(34,211,199,.45);margin-bottom:14px;
+  box-shadow:0 12px 30px -8px rgba(var(--accent-rgb),.45);margin-bottom:14px;
 }
 #driverApp .cta:active{transform:scale(.98);}
 #driverApp .cta:disabled{opacity:.4;filter:grayscale(.4);box-shadow:none;pointer-events:none;}
@@ -120,9 +160,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);overflo
   background:var(--panel-2);border:2px solid var(--border-soft);border-radius:16px;padding:14px 10px;
   display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;
   width:100%;font:inherit;-webkit-appearance:none;appearance:none;cursor:pointer;
-  -webkit-tap-highlight-color:rgba(34,211,199,.25);touch-action:manipulation;
+  -webkit-tap-highlight-color:rgba(var(--accent-rgb),.25);touch-action:manipulation;
 }
-#driverApp .pick-item.selected{border-color:var(--accent);background:rgba(34,211,199,.08);}
+#driverApp .pick-item.selected{border-color:var(--accent);background:rgba(var(--accent-rgb),.08);}
 #driverApp .pick-item .ic{font-size:26px;}
 #driverApp .pick-item .lb{font-size:12.5px;font-weight:500;}
 #driverApp /* ===== SCREEN NAV (moved from a bottom bar to a sticky bar right
@@ -161,7 +201,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);overflo
 #driverApp .dest-suggest.show{display:block;}
 #driverApp .dest-suggest-item{padding:10px 12px;font-size:12.5px;color:var(--text-dim);border-bottom:1px solid var(--border-soft);cursor:pointer;}
 #driverApp .dest-suggest-item:last-child{border:none;}
-#driverApp .dest-suggest-item:hover, #driverApp .dest-suggest-item.hl{background:rgba(34,211,199,.08);color:var(--text);}
+#driverApp .dest-suggest-item:hover, #driverApp .dest-suggest-item.hl{background:rgba(var(--accent-rgb),.08);color:var(--text);}
 #driverApp .dest-suggest-loading{padding:10px 12px;font-size:12px;color:var(--text-faint);}
 #driverApp .trip-topbar{
   position:absolute;top:0;left:0;right:0;padding:calc(var(--safe-top) + 10px) 16px 10px;
@@ -179,7 +219,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);overflo
 #driverApp .alert-banner.high{background:rgba(251,146,60,.15);border:1px solid rgba(251,146,60,.4);}
 #driverApp .alert-banner.mid{background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.4);}
 #driverApp .alert-banner.low{background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.4);}
-#driverApp .alert-banner.info{background:rgba(34,211,199,.15);border:1px solid rgba(34,211,199,.4);}
+#driverApp .alert-banner.info{background:rgba(var(--accent-rgb),.15);border:1px solid rgba(var(--accent-rgb),.4);}
 #driverApp .sev-sound-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border-soft);}
 #driverApp .sev-sound-row:last-child{border:none;}
 #driverApp .sev-dot{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-weight:700;font-size:13px;flex-shrink:0;}
@@ -254,11 +294,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);overflo
 }
 #adminApp .rail-logo{
   width:38px;height:38px;border-radius:10px;
-  background:linear-gradient(155deg,var(--accent),#0E8F86);
+  background:linear-gradient(155deg,var(--accent),var(--accent-2));
   display:flex;align-items:center;justify-content:center;
-  font-family:var(--font-display);font-weight:700;color:#04211F;
+  font-family:var(--font-display);font-weight:700;color:var(--accent-ink);
   font-size:15px;margin-bottom:18px;letter-spacing:-0.5px;
-  box-shadow:0 0 0 1px rgba(34,211,199,.25), 0 6px 18px -6px rgba(34,211,199,.5);
+  box-shadow:0 0 0 1px rgba(var(--accent-rgb),.25), 0 6px 18px -6px rgba(var(--accent-rgb),.5);
 }
 #adminApp .rail-btn{
   width:46px;height:46px;border:none;background:transparent;border-radius:11px;
@@ -267,7 +307,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);overflo
 }
 #adminApp .rail-btn svg{width:20px;height:20px;}
 #adminApp .rail-btn:hover{color:var(--text);background:rgba(255,255,255,.04);}
-#adminApp .rail-btn.active{color:var(--accent);background:rgba(34,211,199,.09);}
+#adminApp .rail-btn.active{color:var(--accent);background:rgba(var(--accent-rgb),.09);}
 #adminApp .rail-btn.active::before{
   content:'';position:absolute;left:-16px;top:50%;transform:translateY(-50%);
   width:3px;height:20px;background:var(--accent);border-radius:0 3px 3px 0;
@@ -374,8 +414,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);overflo
   transition:.15s;
 }
 #adminApp .btn:hover{border-color:var(--accent);color:var(--accent);}
-#adminApp .btn.primary{background:var(--accent);color:#04211F;border-color:var(--accent);font-weight:600;}
-#adminApp .btn.primary:hover{background:#3EE4D8;color:#04211F;}
+#adminApp .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600;}
+#adminApp .btn.primary:hover{background:var(--accent-hover);color:var(--accent-ink);}
 #adminApp .btn.danger:hover{border-color:var(--risk-crit);color:var(--risk-crit);}
 #adminApp .btn.sm{padding:6px 11px;font-size:12px;}
 #adminApp .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:24px;}
@@ -405,7 +445,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);overflo
 #adminApp .badge.high{background:rgba(251,146,60,.12);color:var(--risk-high);}
 #adminApp .badge.crit{background:rgba(240,71,90,.12);color:var(--risk-crit);}
 #adminApp .badge.gray{background:rgba(140,154,181,.12);color:var(--text-dim);}
-#adminApp .badge.accentb{background:rgba(34,211,199,.12);color:var(--accent);}
+#adminApp .badge.accentb{background:rgba(var(--accent-rgb),.12);color:var(--accent);}
 #adminApp .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;}
 #adminApp .progress{height:6px;background:var(--panel-2);border-radius:6px;overflow:hidden;border:1px solid var(--border-soft);}
 #adminApp .progress i{display:block;height:100%;border-radius:6px;}
@@ -460,7 +500,59 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);overflo
 #adminApp .admin-list-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-bottom:1px solid var(--border-soft);font-size:13px;}
 #adminApp .admin-list-item .aif{flex:1;color:var(--text-dim);}
 #adminApp .admin-list-item b{color:var(--text);font-weight:500;}
+/* ===== THEME SWATCH PICKER (shared by driver + admin settings) ===== */
+.theme-swatch-row{display:flex;gap:10px;flex-wrap:wrap;}
+.theme-swatch-btn{
+  display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 8px;width:76px;
+  background:var(--panel-2);border:1.5px solid var(--border-soft);border-radius:14px;cursor:pointer;
+  font:inherit;color:var(--text-dim);transition:.15s;
+}
+.theme-swatch-btn:hover{border-color:var(--border);}
+.theme-swatch-btn.active{border-color:var(--accent);color:var(--text);}
+.theme-swatch-dot{
+  width:34px;height:34px;border-radius:50%;border:2px solid;display:flex;align-items:center;justify-content:center;
+}
+.theme-swatch-dot span{width:16px;height:16px;border-radius:50%;display:block;}
+.theme-swatch-lb{font-size:11px;font-weight:600;}
 </style>
+<script>
+/* Apply the saved theme (if any) before first paint, so switching themes
+   earlier doesn't cause a flash of the default "midnight" look on the next
+   load. Lives outside both app IIFEs (defined on window) since both the
+   driver and admin screens need to call it, and it must run immediately. */
+(function(){
+  try{
+    const t = localStorage.getItem('rfsm_theme');
+    if(t && t!=='midnight') document.documentElement.setAttribute('data-theme', t);
+  }catch(e){}
+})();
+const THEME_LIST = [
+  {id:'midnight', label:'Midnight', swatch:'#22D3C7', bg:'#0A0F1C'},
+  {id:'ocean',    label:'Ocean',    swatch:'#3B9EFF', bg:'#070B14'},
+  {id:'forest',   label:'Forest',   swatch:'#D9A441', bg:'#0A120D'},
+  {id:'sunset',   label:'Sunset',   swatch:'#F5588F', bg:'#150B0C'},
+  {id:'paper',    label:'Paper',    swatch:'#009688', bg:'#F4F6FA'},
+];
+function setTheme(id){
+  if(!THEME_LIST.find(t=>t.id===id)) id='midnight';
+  if(id==='midnight') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', id);
+  try{ localStorage.setItem('rfsm_theme', id); }catch(e){}
+  document.querySelectorAll('.theme-swatch-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.theme===id);
+  });
+}
+function getTheme(){
+  try{ return localStorage.getItem('rfsm_theme') || 'midnight'; }catch(e){ return 'midnight'; }
+}
+function themeSwatchesHtml(){
+  return THEME_LIST.map(t=>`
+    <button type="button" class="theme-swatch-btn${getTheme()===t.id?' active':''}" data-theme="${t.id}" onclick="setTheme('${t.id}')" title="${t.label}">
+      <span class="theme-swatch-dot" style="background:${t.bg};border-color:${t.swatch};"><span style="background:${t.swatch};"></span></span>
+      <span class="theme-swatch-lb">${t.label}</span>
+    </button>`).join('');
+}
+</script>
 </head>
 <body>
 
@@ -760,6 +852,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);overflo
       </div>
     </div>
     <button class="cta logout-btn" onclick="doLogout()">🚪 ออกจากระบบ / เปลี่ยนคนขับ</button>
+    <div class="card">
+      <h3>🎨 ธีมสี</h3>
+      <p style="font-size:12px;color:var(--text-faint);margin:-4px 0 10px;">เปลี่ยนหน้าตาแอปได้ตามใจ เผื่อเบื่อธีมเดิม</p>
+      <div class="theme-swatch-row" id="driverThemeSwatches"></div>
+    </div>
     <div class="card">
       <h3>การตั้งค่าความปลอดภัย</h3>
       <div class="list-item">
@@ -1341,6 +1438,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);overflo
       <div class="section-hd">
         <div><h2>⚙️ Admin / Settings</h2><p>จัดการจุดต่าง ๆ กำหนดระดับความเสี่ยง และผู้ใช้งานระบบ</p></div>
       </div>
+      <div class="card">
+        <h3>🎨 ธีมสี</h3>
+        <p style="font-size:12.5px;color:var(--text-faint);margin-bottom:10px;">เปลี่ยนหน้าตาแดชบอร์ดได้ตามใจ เผื่อเบื่อธีมเดิม (มีผลเฉพาะเบราว์เซอร์นี้)</p>
+        <div class="theme-swatch-row" id="adminThemeSwatches"></div>
+      </div>
       <div class="grid-2">
         <div class="card">
           <h3>เกณฑ์ระดับความเสี่ยง (Risk Threshold)</h3>
@@ -1566,6 +1668,14 @@ window.__supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
    Standalone client app; seeds demo fleet data locally (IndexedDB).
    In production, replace seedIfEmpty()/idb calls with real API sync.
    ============================================================== */
+// Reads a live CSS custom property off <html> (e.g. '--accent') so any spot
+// that needs a literal color string (Leaflet layer options, etc — places
+// CSS var() can't reach) still follows whichever theme is active, instead
+// of being hardcoded to one theme's color.
+function cssVar(name, fallback){
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v || fallback;
+}
 const DB_NAME='rfsm_db', DB_VER=4;
 let dbP = new Promise((resolve,reject)=>{
   const req = indexedDB.open(DB_NAME, DB_VER);
@@ -2700,12 +2810,12 @@ function initTripMap(route){
   tripMap.on('dragstart', ()=>{ followMyPosition = false; });
   let bounds;
   if(route.roadPath && route.roadPath.length>1){
-    const line = L.polyline(route.roadPath,{color:'#22D3C7',weight:4,opacity:.85}).addTo(tripLayer);
+    const line = L.polyline(route.roadPath,{color:cssVar('--accent','#22D3C7'),weight:4,opacity:.85}).addTo(tripLayer);
     L.marker(route.waypoints[0],{icon:dotIcon('#34D399',18,'A')}).addTo(tripLayer).bindPopup('จุดเริ่มต้น');
     L.marker(route.waypoints[1],{icon:dotIcon('#F0475A',18,'B')}).addTo(tripLayer).bindPopup(route.destLabel||'ปลายทาง');
     bounds = line.getBounds();
   } else if(route.waypoints.length>1){
-    const line = L.polyline(route.waypoints,{color:'#22D3C7',weight:4,opacity:.85,dashArray:'6,8'}).addTo(tripLayer);
+    const line = L.polyline(route.waypoints,{color:cssVar('--accent','#22D3C7'),weight:4,opacity:.85,dashArray:'6,8'}).addTo(tripLayer);
     L.marker(route.waypoints[0],{icon:dotIcon('#34D399',18,'A')}).addTo(tripLayer).bindPopup('จุดเริ่มต้น');
     L.marker(route.waypoints[1],{icon:dotIcon('#F0475A',18,'B')}).addTo(tripLayer).bindPopup(route.destLabel||'ปลายทาง');
     bounds = line.getBounds();
@@ -2720,7 +2830,7 @@ function initTripMap(route){
   });
   const nearPois = [...STATE.pois].map(p=>({p,d:haversineKm(route.waypoints[0],[p.lat,p.lng])})).sort((a,b)=>a.d-b.d).slice(0,15);
   nearPois.forEach(({p})=>{
-    L.circleMarker([p.lat,p.lng],{radius:6,color:'#22D3C7',fillColor:'#22D3C7',fillOpacity:.8}).addTo(tripLayer).bindPopup(POI_META[p.type].icon+' '+p.name);
+    L.circleMarker([p.lat,p.lng],{radius:6,color:cssVar('--accent','#22D3C7'),fillColor:cssVar('--accent','#22D3C7'),fillOpacity:.8}).addTo(tripLayer).bindPopup(POI_META[p.type].icon+' '+p.name);
   });
   if(bounds) tripMap.fitBounds(bounds,{padding:[30,30]});
 }
@@ -2922,6 +3032,8 @@ function renderProfileScreen(){
   document.getElementById('profVeh').textContent = veh?veh.plate+' · '+VEH_META[veh.type].label:'–';
   document.getElementById('netStatusText').textContent = navigator.onLine? 'ออนไลน์' : 'ออฟไลน์ — ข้อมูลจะซิงค์เมื่อกลับมามีสัญญาณ';
   document.getElementById('syncStatusText').textContent = STATE.reports.filter(r=>!r.synced).length+' รายการ';
+  const swEl = document.getElementById('driverThemeSwatches');
+  if(swEl) swEl.innerHTML = themeSwatchesHtml();
 }
 function saveDriverPrefs(){
   driverPrefs.voice = document.getElementById('setVoiceAlert').checked;
@@ -2964,6 +3076,27 @@ function applyHelperModeUI(){
 /* ---------- Sync simulation: mark reports synced when back online ---------- */
 window.addEventListener('online', async ()=>{
   toast('กลับมาออนไลน์แล้ว — กำลังส่งข้อมูลที่ค้างไว้');
+  // Bug fix: pull this phone's own vehicle row fresh from the server BEFORE
+  // resuming any local push. 'vehicles' isn't realtime-subscribed here (see
+  // startSharedPolling — dropped for egress reasons) and is otherwise only
+  // caught up every 10 minutes, so after a stretch offline this device's
+  // cached vehicle object can be missing admin-side changes made in the
+  // meantime — most visibly a fleet-group assignment (groupId). Without
+  // this, the next GPS/status push does a full-object upsert of the stale
+  // local copy and silently wipes that out, which is exactly the "vehicle
+  // drops out of its fleet group after coming back online" symptom.
+  if(session && session.vehicleId){
+    try{
+      const { data: freshRows, error: freshErr } = await window.__supa
+        .from('fleet_sync').select('data').eq('store','vehicles').eq('id', session.vehicleId).limit(1);
+      if(!freshErr && freshRows && freshRows[0] && freshRows[0].data){
+        const fresh = freshRows[0].data;
+        const idx = STATE.vehicles.findIndex(v=>v.id===session.vehicleId);
+        if(idx>-1) STATE.vehicles[idx] = fresh; else STATE.vehicles.push(fresh);
+        await idbPutLocal('vehicles', fresh);
+      }
+    }catch(e){ console.warn('vehicle refresh on reconnect failed', e); }
+  }
   for(const r of STATE.reports.filter(x=>!x.synced)){ r.synced=true; await idbPut('driverReports',r); }
   if(document.getElementById('screenProfile').classList.contains('active')) renderProfileScreen();
 });
@@ -3008,6 +3141,29 @@ async function boot(){
   const saved = localStorage.getItem('rfsm_session');
   if(saved){
     session = JSON.parse(saved);
+    // Bug fix: 'vehicles' isn't in this app's realtime subscription (see
+    // startSharedPolling — dropped for egress reasons) and is otherwise only
+    // refreshed every 10 minutes by the safety-net poll. That meant a phone
+    // reopening/reconnecting after being offline would boot from a STALE
+    // local copy of its own vehicle row, then the very next GPS/status push
+    // (pushVehicleLiveState etc.) does a full-object upsert — overwriting
+    // the server row wholesale and silently wiping out any admin-side change
+    // made in the meantime, most visibly the fleet-group assignment
+    // (groupId). Fix: pull this one vehicle row fresh from the server right
+    // now, before any local mutation/push can clobber it. Single-row fetch,
+    // so the egress cost is negligible.
+    if(session.vehicleId){
+      try{
+        const { data: freshRows, error: freshErr } = await window.__supa
+          .from('fleet_sync').select('data').eq('store','vehicles').eq('id', session.vehicleId).limit(1);
+        if(!freshErr && freshRows && freshRows[0] && freshRows[0].data){
+          const fresh = freshRows[0].data;
+          const idx = STATE.vehicles.findIndex(v=>v.id===session.vehicleId);
+          if(idx>-1) STATE.vehicles[idx] = fresh; else STATE.vehicles.push(fresh);
+          await idbPutLocal('vehicles', fresh);
+        }
+      }catch(e){ console.warn('vehicle refresh on reconnect failed', e); }
+    }
     if(STATE.users.find(u=>u.id===session.driverId) && STATE.vehicles.find(v=>v.id===session.vehicleId)){
       document.getElementById('screenLogin').classList.remove('active');
       showScreen('screenHome');
@@ -3127,6 +3283,15 @@ Object.assign(window, {
    ROUTE & FLEET SAFETY MAP — prototype application
    IndexedDB-backed data layer + Leaflet map + risk engine
    ============================================================ */
+
+// Reads a live CSS custom property off <html> (e.g. '--accent') so any spot
+// that needs a literal color string (Leaflet layer options, status-color
+// maps, etc — places CSS var() can't reach) still follows whichever theme
+// is active, instead of being hardcoded to one theme's color.
+function cssVar(name, fallback){
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v || fallback;
+}
 
 /* ---------- IndexedDB helper ---------- */
 const DB_NAME='rfsm_db', DB_VER=4;
@@ -3450,7 +3615,7 @@ async function seedPointRulesIfEmpty(){
   if(STATE.pointRules.length) return;
   for(const r of DEFAULT_POINT_RULES){ await idbPut('pointRules', r); STATE.pointRules.push(r); }
 }
-const DRIVER_REPORT_META = {sos:{label:'SOS ฉุกเฉิน',icon:'🆘',color:'#F0475A'}, rest_log:{label:'สรุปเวลาพักรถ',icon:'⏱️',color:'#22D3C7'}};
+const DRIVER_REPORT_META = {sos:{label:'SOS ฉุกเฉิน',icon:'🆘',color:'#F0475A'}, rest_log:{label:'สรุปเวลาพักรถ',icon:'⏱️',color:cssVar('--accent','#22D3C7')}};
 const HAZ_META = {
   curve:{label:'ทางโค้ง',icon:'↩️',color:'#FBBF24'},
   hill:{label:'ขึ้น/ลงเขา',icon:'⛰️',color:'#FB923C'},
@@ -3463,7 +3628,7 @@ const HAZ_META = {
   traffic:{label:'จราจรติดขัด',icon:'🚦',color:'#F0475A'},
 };
 const POI_META = {
-  rest:{label:'จุดพักกรมทางหลวง',icon:'🅿️',color:'#22D3C7'},
+  rest:{label:'จุดพักกรมทางหลวง',icon:'🅿️',color:cssVar('--accent','#22D3C7')},
   fuel:{label:'ปั๊มน้ำมัน',icon:'⛽',color:'#34D399'},
   other:{label:'จุดอื่นๆ',icon:'📍',color:'#8C9AB5'},
   truckstop:{label:'Truck Stop',icon:'🚛',color:'#5B8DEF'},
@@ -3716,7 +3881,7 @@ function dotIcon(color, size=14, glyph=''){
 function vehIcon(v){
   const status = vehDisplayStatus(v);
   const online = status!=='offline';
-  const c = STATUS_META[status]?.color.replace('var(--risk-low)','#34D399').replace('var(--accent)','#22D3C7').replace('var(--text-faint)','#5C6B87').replace('var(--risk-high)','#FB923C') || '#8C9AB5';
+  const c = STATUS_META[status]?.color.replace('var(--risk-low)','#34D399').replace('var(--accent)',cssVar('--accent','#22D3C7')).replace('var(--text-faint)','#5C6B87').replace('var(--risk-high)','#FB923C') || '#8C9AB5';
   return L.divIcon({
     className:'',
     html:`<div style="display:flex;flex-direction:column;align-items:center;opacity:${online?1:.55};width:100px;">
@@ -3765,7 +3930,7 @@ function gDotIconUrl(color, size, glyph){
 function gVehIconUrl(v){
   const status = vehDisplayStatus(v);
   const online = status!=='offline';
-  const cmap = {moving:'#34D399',resting:'#22D3C7',idle:'#5C6B87',maintenance:'#FB923C',offline:'#4A5568'};
+  const cmap = {moving:'#34D399',resting:cssVar('--accent','#22D3C7'),idle:'#5C6B87',maintenance:'#FB923C',offline:'#4A5568'};
   const c = cmap[status]||'#8C9AB5';
   const plate = v.plate;
   const w = Math.max(64, plate.length*7.5+16);
@@ -5802,6 +5967,8 @@ async function boot(){
   renderRestPoiTable(); renderRestSettingsBox(); renderDriveSettings();
   renderMaintView(); renderReportView(); renderThresholdBox(); renderPoiList(); renderUserList(); renderRouteListBox();
   document.getElementById('setGmapKey').value = STATE.settings.gmapApiKey || '';
+  const adminSwEl = document.getElementById('adminThemeSwatches');
+  if(adminSwEl) adminSwEl.innerHTML = themeSwatchesHtml();
 
   renderLiveReportsFeed();
   renderAlertLogsView();
