@@ -1059,6 +1059,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);overflo
           <span id="terrain3dHudPlate" style="color:var(--accent);font-weight:600;">–</span>
         </div>
         <div style="margin-top:4px;">ความเร็ว: <span id="terrain3dHudSpeed">–</span></div>
+        <div>ตำแหน่ง: <span id="terrain3dHudLocation">–</span></div>
         <div>ระดับความสูง: <span id="terrain3dHudElev">–</span></div>
         <div>ความชันพื้นที่ (ประมาณ): <span id="terrain3dHudSlope">–</span></div>
         <div>ความเสี่ยงน้ำท่วม/ฝน: <span id="terrain3dHudFlood">–</span></div>
@@ -1627,20 +1628,24 @@ window.__supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
    Standalone client app; seeds demo fleet data locally (IndexedDB).
    In production, replace seedIfEmpty()/idb calls with real API sync.
    ============================================================== */
-const DB_NAME='rfsm_db', DB_VER=4;
+const DB_NAME='rfsm_db', DB_VER=5;
 let dbP = new Promise((resolve,reject)=>{
   const req = indexedDB.open(DB_NAME, DB_VER);
   req.onupgradeneeded = e=>{
     const db=e.target.result;
-    /* DB_VER bumped 3→4: both the driver script and the admin script open
+    /* DB_VER bumped 4→5: both the driver script and the admin script open
        the SAME IndexedDB (rfsm_db) in the SAME page. Whichever script's
        open() runs first is the one whose store list actually gets created
        for a given version — the other connection just attaches without
-       upgrading. The two lists had drifted (admin had 'pointRules', driver
-       didn't), so depending on load order 'pointRules' sometimes never got
-       created, causing NotFoundError on admin login. Fix: keep this list
-       identical (superset) in both scripts from now on. */
-    ['vehicles','pois','hazards','maintenance','routes','settings','users','driverReports','driverTrips','alertLogs','fleetGroups','pointEvents','pointRules'].forEach(store=>{
+       upgrading. The two lists had drifted before (admin had 'pointRules',
+       driver didn't), so depending on load order 'pointRules' sometimes
+       never got created, causing NotFoundError on admin login. Fix: keep
+       this list identical (superset) in both scripts from now on.
+       'geoBoundaryCache' added for the admin-only offline province/district
+       boundary cache (see loadThaiGeoLayer) — the driver script never
+       writes to it, but the store must exist here too or admin-first load
+       order would skip creating it. */
+    ['vehicles','pois','hazards','maintenance','routes','settings','users','driverReports','driverTrips','alertLogs','fleetGroups','pointEvents','pointRules','geoBoundaryCache'].forEach(store=>{
       if(!db.objectStoreNames.contains(store)) db.createObjectStore(store,{keyPath:'id'});
     });
   };
@@ -3204,15 +3209,19 @@ Object.assign(window, {
    ============================================================ */
 
 /* ---------- IndexedDB helper ---------- */
-const DB_NAME='rfsm_db', DB_VER=4;
+const DB_NAME='rfsm_db', DB_VER=5;
 let dbP = new Promise((resolve,reject)=>{
   const req = indexedDB.open(DB_NAME, DB_VER);
   req.onupgradeneeded = e=>{
     const db=e.target.result;
-    /* DB_VER bumped 3→4: keep this list identical (superset) to the driver
+    /* DB_VER bumped 4→5: keep this list identical (superset) to the driver
        script's list above — see note there for why the mismatch broke
-       'pointRules' creation depending on script load order. */
-    ['vehicles','pois','hazards','maintenance','routes','settings','users','driverReports','driverTrips','alertLogs','fleetGroups','pointEvents','pointRules'].forEach(store=>{
+       'pointRules' creation depending on script load order.
+       'geoBoundaryCache' — admin-only cache of the province/district
+       boundary polygons (see loadThaiGeoLayer), so the offline
+       reverse-geocode still works after the first successful fetch even
+       with no network. */
+    ['vehicles','pois','hazards','maintenance','routes','settings','users','driverReports','driverTrips','alertLogs','fleetGroups','pointEvents','pointRules','geoBoundaryCache'].forEach(store=>{
       if(!db.objectStoreNames.contains(store)) db.createObjectStore(store,{keyPath:'id'});
     });
   };
@@ -3932,6 +3941,7 @@ function populateTerrain3DVehSelect(){
 
 async function onEnterTerrain3DView(){
   populateTerrain3DVehSelect();
+  ensureThaiGeoLoaded(); // fire-and-forget: cached after first successful load, so this stays offline/free from then on
   try{
     await loadMapLibre();
   }catch(err){ toast(err.message||'โหลด MapLibre ไม่สำเร็จ'); return; }
@@ -3987,6 +3997,108 @@ async function refreshTerrain3DElevation(vehId, lat, lng){
   if(cache.elev!=null && movedM>5) slopePct = ((elev-cache.elev)/movedM)*100;
   const next = { elev, slopePct, lat, lng, ts: now };
   terrain3dElevCache[vehId] = next;
+  return next;
+}
+
+/* ---------- Offline reverse geocoding (province/district) ----------
+   Real Thailand province + district boundary polygons, loaded once from a
+   free public CDN mirror (jsDelivr → chingchai/OpenGISData-Thailand, open
+   data, no API key, no per-request cost) and cached in IndexedDB. Every
+   load after the first works fully offline — point-in-polygon runs locally
+   in the browser, no server round-trip per vehicle (unlike Nominatim).
+   Admin-only: the polygon files are too heavy to justify loading them in
+   the driver mobile app, which never calls any of this. */
+const THAI_GEO_URLS = {
+  province: 'https://cdn.jsdelivr.net/gh/chingchai/OpenGISData-Thailand/provinces.geojson',
+  district: 'https://cdn.jsdelivr.net/gh/chingchai/OpenGISData-Thailand/districts.geojson',
+};
+let THAI_GEO = { province: null, district: null };
+let thaiGeoLoadPromise = null;
+async function loadThaiGeoLayer(kind){
+  const cached = await idbAll('geoBoundaryCache').catch(()=>[]);
+  const hit = cached.find(r=>r.id===kind);
+  if(hit && hit.geojson && hit.geojson.features && hit.geojson.features.length) return hit.geojson;
+  const res = await fetch(THAI_GEO_URLS[kind]);
+  if(!res.ok) throw new Error('โหลดขอบเขต'+kind+'ไม่สำเร็จ');
+  const geojson = await res.json();
+  idbPutLocal('geoBoundaryCache', { id: kind, geojson, cachedAt: Date.now() }).catch(()=>{});
+  return geojson;
+}
+function ensureThaiGeoLoaded(){
+  if(!thaiGeoLoadPromise){
+    thaiGeoLoadPromise = Promise.all([
+      loadThaiGeoLayer('province').then(g=>{ THAI_GEO.province = g; }),
+      loadThaiGeoLayer('district').then(g=>{ THAI_GEO.district = g; }),
+    ]).catch(err=>{ console.warn('Thai geo boundary load failed', err); thaiGeoLoadPromise = null; });
+  }
+  return thaiGeoLoadPromise;
+}
+/* Standard ray-casting point-in-polygon. GeoJSON coordinates are [lng,lat];
+   supports both Polygon and MultiPolygon, honoring interior (hole) rings. */
+function pointInRing(lng, lat, ring){
+  let inside = false;
+  for(let i=0, j=ring.length-1; i<ring.length; j=i++){
+    const xi=ring[i][0], yi=ring[i][1], xj=ring[j][0], yj=ring[j][1];
+    const intersect = ((yi>lat)!==(yj>lat)) && (lng < (xj-xi)*(lat-yi)/(yj-yi)+xi);
+    if(intersect) inside = !inside;
+  }
+  return inside;
+}
+function pointInGeometry(lng, lat, geometry){
+  if(!geometry) return false;
+  const testPoly = poly=>{
+    if(!pointInRing(lng,lat,poly[0])) return false;
+    for(let i=1;i<poly.length;i++){ if(pointInRing(lng,lat,poly[i])) return false; }
+    return true;
+  };
+  if(geometry.type==='Polygon') return testPoly(geometry.coordinates);
+  if(geometry.type==='MultiPolygon') return geometry.coordinates.some(testPoly);
+  return false;
+}
+function findFeatureContaining(lat, lng, layer){
+  if(!layer || !layer.features) return null;
+  return layer.features.find(f=>pointInGeometry(lng,lat,f.geometry)) || null;
+}
+/* Returns {province, district} in Thai, or nulls if the boundaries haven't
+   finished loading yet, or the point falls outside every polygon (e.g. just
+   offshore / across the border). Call ensureThaiGeoLoaded() first. */
+function resolveProvinceDistrict(lat, lng){
+  if(lat==null || lng==null) return { province:null, district:null };
+  const provF = findFeatureContaining(lat, lng, THAI_GEO.province);
+  const distF = findFeatureContaining(lat, lng, THAI_GEO.district);
+  return {
+    province: provF ? provF.properties.pro_th : null,
+    district: distF ? distF.properties.amp_th : null,
+  };
+}
+
+/* ---------- Point weather (independent of any route) ----------
+   Same Open-Meteo current-conditions call fetchRouteWeatherLive() already
+   uses, but sampled at the vehicle's own live position instead of a route
+   midpoint — so "is it raining right now, right where this truck is" still
+   shows up even when the vehicle has no active route/trip selected. Cached
+   and throttled the same way as elevation above, so it stays cheap. */
+const terrain3dWeatherCache = {};
+async function fetchWeatherAtPoint(lat,lng){
+  try{
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=precipitation,weathercode&timezone=auto`;
+    const res = await fetch(url);
+    if(!res.ok) return null;
+    const data = await res.json();
+    const cur = data.current;
+    if(!cur) return null;
+    return { weather: weathercodeToCategory(cur.weathercode, cur.precipitation), precipMm: cur.precipitation };
+  }catch(e){ return null; }
+}
+async function refreshTerrain3DWeather(vehId, lat, lng){
+  const cache = terrain3dWeatherCache[vehId] || {};
+  const now = Date.now();
+  const movedM = (cache.lat!=null) ? haversineMeters(cache.lat,cache.lng,lat,lng) : Infinity;
+  if(cache.ts && (now-cache.ts)<WEATHER_TTL_MS && movedM<2000) return cache;
+  const w = await fetchWeatherAtPoint(lat,lng);
+  if(!w) return cache;
+  const next = { weather: w.weather, precipMm: w.precipMm, lat, lng, ts: now };
+  terrain3dWeatherCache[vehId] = next;
   return next;
 }
 
@@ -4189,13 +4301,36 @@ async function applyTerrain3DVehicle(isInitialFocus){
     if(liveRisk.weather && liveRisk.weather!=='clear') bits.push('สภาพอากาศ: '+(WEATHER_LABEL[liveRisk.weather]||liveRisk.weather));
     if(liveRisk.trafficLabel) bits.push('จราจร: '+liveRisk.trafficLabel);
     riskDetail.textContent = bits.join(' · ');
-    floodEl.textContent = WEATHER_LABEL[liveRisk.weather||'clear'] + (liveRisk.weather==='flood' ? ' ⚠️' : '');
   } else {
     riskBadge.className = 'badge';
     riskBadge.textContent = 'ไม่มีเส้นทาง active';
     riskDetail.textContent = 'รถคันนี้ยังไม่ได้เริ่มทริป/เลือกเส้นทาง';
-    floodEl.textContent = '– (ไม่มีเส้นทาง active ให้อ้างอิงสภาพอากาศ)';
   }
+
+  // Location (จังหวัด/อำเภอ) — resolved offline via local point-in-polygon
+  // once the boundary layers finish loading; re-checked on every refresh so
+  // it stays right as the vehicle crosses into a new district/province.
+  const vehIdForGeo = v.id;
+  const locEl = document.getElementById('terrain3dHudLocation');
+  locEl.textContent = 'กำลังค้นหา...';
+  ensureThaiGeoLoaded().then(()=>{
+    if(terrain3dSelectedVehId!==vehIdForGeo) return;
+    const { province, district } = resolveProvinceDistrict(v.lat, v.lng);
+    locEl.textContent = (province || district)
+      ? [district?'อ.'+district:null, province?'จ.'+province:null].filter(Boolean).join(' ')
+      : '– (นอกขอบเขตข้อมูล หรือโหลดไม่สำเร็จ)';
+  });
+
+  // Weather at the vehicle's own position — shown regardless of whether it
+  // has an active route, so "is it raining right now" is always answered.
+  floodEl.textContent = 'กำลังตรวจสอบ...';
+  const vehIdForWeather = v.id;
+  refreshTerrain3DWeather(vehIdForWeather, v.lat, v.lng).then(w=>{
+    if(terrain3dSelectedVehId!==vehIdForWeather) return;
+    if(!w || !w.weather){ floodEl.textContent = '– (ดึงข้อมูลสภาพอากาศไม่สำเร็จ)'; return; }
+    floodEl.textContent = WEATHER_LABEL[w.weather] + (w.weather==='flood' ? ' ⚠️' : '') +
+      (w.precipMm!=null ? ` (ฝน ${w.precipMm} มม./ชม.)` : '');
+  });
 
   // Elevation/slope — fetched async so it never blocks the marker/risk
   // update above; only apply the result if this is still the vehicle
