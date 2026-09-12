@@ -3481,7 +3481,19 @@ async function seedIfEmpty(){
   //    single biggest source of the Egress overage.
   const localRoutesAlready = await idbAll('routes');
   if(localRoutesAlready.length){
-    for(const store of ['routes','pois','hazards','maintenance','vehicles','users']){
+    // 'fleetGroups' added here (was missing): without it, this delta top-up
+    // only ever refreshed vehicles/routes/etc. from the server, never the
+    // fleet-group definitions themselves. Since STATE.fleetGroups.push()
+    // writes still hit local IDB fine on the device that created them, the
+    // bug only showed up on a *different* browser/device, or after this
+    // browser's IndexedDB got cleared/evicted overnight — that session's
+    // idbAll('fleetGroups') at boot below would come back empty, and
+    // renderFleetView() falls back to treating literally every vehicle as
+    // "ยังไม่ได้จัดกลุ่ม" once STATE.fleetGroups is empty (it can't tell any
+    // v.groupId is valid), even though the vehicles' own groupId field on
+    // the server was never touched. Fleet groups now hydrate from the
+    // server the same way every other admin-managed store already does.
+    for(const store of ['routes','pois','hazards','maintenance','vehicles','users','fleetGroups']){
       const current = await idbAll(store);
       const { items, changed } = await syncLoadStoreDelta(store, current);
       if(changed) for(const item of items) await idbPutLocal(store, item);
@@ -3494,7 +3506,7 @@ async function seedIfEmpty(){
   // 1) If the driver app (or another admin session) already published shared data, adopt it.
   const sharedRoutes = await syncLoadStore('routes');
   if(sharedRoutes.length){
-    for(const store of ['routes','pois','hazards','maintenance','vehicles','users']){
+    for(const store of ['routes','pois','hazards','maintenance','vehicles','users','fleetGroups']){
       const items = await syncLoadStore(store);
       for(const item of items) await idbPutLocal(store, item);
     }
@@ -3505,7 +3517,7 @@ async function seedIfEmpty(){
   // 2) No shared data yet — if this device already has local data from before, publish it to shared storage.
   const localRoutes = await idbAll('routes');
   if(localRoutes.length){
-    for(const store of ['routes','pois','hazards','maintenance','vehicles','users']){
+    for(const store of ['routes','pois','hazards','maintenance','vehicles','users','fleetGroups']){
       const items = await idbAll(store);
       for(const item of items) syncPush(store, item);
     }
@@ -4055,6 +4067,21 @@ function focusVehicleOnMap(id){
   else if(typeof gMap!=='undefined' && gMap){ gMap.panTo({lat:v.lat,lng:v.lng}); gMap.setZoom(12); }
 }
 
+/* Shared by both map providers below: builds the extra "แจ้งโดย" (reported
+   by) + photo-thumbnail lines for a POI that was promoted from a driver
+   report (see promoteReportToPoi). Manually-added POIs have no driverId/
+   vehicleId/photo, so this returns '' for those and the popup looks exactly
+   as it did before. */
+function poiReporterPopupHtml(p){
+  const drv = p.driverId ? STATE.users.find(u=>u.id===p.driverId) : null;
+  const veh = p.vehicleId ? STATE.vehicles.find(v=>v.id===p.vehicleId) : null;
+  const reporterRow = (drv || veh)
+    ? `<div class="pop-row">แจ้งโดย: ${drv?drv.name:'ไม่ทราบคนขับ'}${veh?(' · รถ '+veh.plate):''}</div>` : '';
+  const photoRow = p.photo
+    ? `<img src="${p.photoThumb||p.photo}" style="width:100%;max-width:220px;border-radius:8px;margin-top:6px;cursor:pointer;display:block;" onclick="viewPoiPhoto('${p.id}')" alt="รูปประกอบ">`
+    : '';
+  return reporterRow + photoRow;
+}
 function drawFleetMapLeaflet(){
   routeLayer.clearLayers(); hazardLayerGroup.clearLayers(); poiLayerGroup.clearLayers(); vehicleLayerGroup.clearLayers();
 
@@ -4069,7 +4096,7 @@ function drawFleetMapLeaflet(){
     if(MAP_FILTERS.poi[p.type]===false) return;
     const meta = POI_META[p.type];
     L.marker([p.lat,p.lng],{icon:dotIcon(meta.color,18,meta.icon)}).addTo(poiLayerGroup)
-      .bindPopup(`<div class="pop-title">${meta.icon} ${p.name}</div><div class="pop-row">${meta.label}</div><div class="pop-row">${p.notes}</div>`);
+      .bindPopup(`<div class="pop-title">${meta.icon} ${p.name}</div><div class="pop-row">${meta.label}</div><div class="pop-row">${p.notes}</div>${poiReporterPopupHtml(p)}`);
   });
 
   const bounds = [];
@@ -4118,7 +4145,7 @@ function drawFleetMapGoogle(){
     if(MAP_FILTERS.poi[p.type]===false) return;
     const meta = POI_META[p.type];
     mk({lat:p.lat,lng:p.lng}, gDotIconUrl(meta.color,20,meta.icon), p.name,
-      `<div style="color:#111"><b>${meta.icon} ${p.name}</b><br>${meta.label}<br>${p.notes}</div>`);
+      `<div style="color:#111"><b>${meta.icon} ${p.name}</b><br>${meta.label}<br>${p.notes}${poiReporterPopupHtml(p)}</div>`);
   });
 
   const bounds = new google.maps.LatLngBounds();
@@ -4471,6 +4498,11 @@ function promoteReportToPoi(id){
         notes:document.getElementById('fPromotePoiNote').value,
         photo: r.photo || null,
         photoThumb: r.photoThumb || null,
+        // Carried over from the source report so the map popup can show
+        // who sent this location in — see drawFleetMapLeaflet/Google below.
+        driverId: r.driverId || null,
+        vehicleId: r.vehicleId || null,
+        reportedAt: r.ts || null,
       };
       await idbPut('pois',p); STATE.pois.push(p);
       /* Same as promoteReportToHazard: archive with status 'approved'
@@ -5990,7 +6022,7 @@ async function boot(){
      Needs the same one-time Supabase dashboard setup noted in the driver
      app's startSharedPolling(): enable Realtime on `fleet_sync` and set
      REPLICA IDENTITY FULL on it. */
-  const ADMIN_LIVE_STORES = { vehicles:'vehicles', driverReports:'reports', alertLogs:'alertLogs', pointEvents:'pointEvents', pointRules:'pointRules' };
+  const ADMIN_LIVE_STORES = { vehicles:'vehicles', driverReports:'reports', alertLogs:'alertLogs', pointEvents:'pointEvents', pointRules:'pointRules', fleetGroups:'fleetGroups' };
   function applyAdminRealtimeRow(store, obj, deleted){
     if(!obj) return;
     const key = ADMIN_LIVE_STORES[store];
@@ -6001,10 +6033,16 @@ async function boot(){
       if(idx>-1) STATE[key].splice(idx,1);
     } else {
       if(idx>-1) STATE[key][idx] = obj; else STATE[key].push(obj);
-      if(store==='vehicles') idbPutLocal('vehicles', obj);
+      if(store==='vehicles' || store==='fleetGroups') idbPutLocal(store, obj);
     }
     if(store==='vehicles'){
       if(document.getElementById('mapview').classList.contains('active')) drawFleetMap();
+      if(document.getElementById('fleetview').classList.contains('active')) renderFleetView();
+    } else if(store==='fleetGroups'){
+      // Keeps a second open admin tab (or a reconnect after a dropped
+      // websocket) from showing stale/empty groups without a full reload —
+      // same class of bug as the boot-time hydration fix above, just for
+      // the "already open" case instead of the "just loaded" case.
       if(document.getElementById('fleetview').classList.contains('active')) renderFleetView();
     } else if(store==='driverReports'){
       renderLiveReportsFeed();
@@ -6016,7 +6054,7 @@ async function boot(){
     }
   }
   window.__supa.channel('fleet_sync_admin')
-    .on('postgres_changes', {event:'*', schema:'public', table:'fleet_sync', filter:'store=in.(vehicles,driverReports,alertLogs,pointEvents,pointRules)'}, payload=>{
+    .on('postgres_changes', {event:'*', schema:'public', table:'fleet_sync', filter:'store=in.(vehicles,driverReports,alertLogs,pointEvents,pointRules,fleetGroups)'}, payload=>{
       const row = payload.eventType==='DELETE' ? payload.old : payload.new;
       if(!row || !ADMIN_LIVE_STORES[row.store]) return;
       applyAdminRealtimeRow(row.store, row.data, payload.eventType==='DELETE');
@@ -6036,6 +6074,15 @@ async function boot(){
       STATE.vehicles = rv.items;
       for(const v of rv.items) await idbPutLocal('vehicles', v);
       if(document.getElementById('mapview').classList.contains('active')) drawFleetMap();
+      if(document.getElementById('fleetview').classList.contains('active')) renderFleetView();
+    }
+    // Same safety net as 'vehicles' above, now covering fleet-group
+    // definitions too — catches a missed/dropped realtime event without
+    // needing a full page reload to see the correct groups again.
+    const rg = await syncLoadStoreDelta('fleetGroups', STATE.fleetGroups);
+    if(rg.changed){
+      STATE.fleetGroups = rg.items;
+      for(const g of rg.items) await idbPutLocal('fleetGroups', g);
       if(document.getElementById('fleetview').classList.contains('active')) renderFleetView();
     }
     const rr = await syncLoadStoreDelta('driverReports', STATE.reports);
