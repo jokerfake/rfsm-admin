@@ -1257,6 +1257,7 @@ function themeSwatchesHtml(){
         <button class="btn sm provider-btn" id="btnProviderGoogle" onclick="switchMapProvider('google')">🌍 Google Maps</button>
         <button class="btn sm" title="จัดกึ่งกลางกองรถ" onclick="recenterFleetMap()">🎯 จัดกึ่งกลาง</button>
         <button class="btn sm" id="btnRoadNet" title="แนวถนนที่กองรถเราใช้ซ้ำ สร้างจากรอยรถจริง" onclick="toggleRoadNetwork()">🛣️ ถนนที่กองเราใช้</button>
+        <button class="btn sm" id="btnTrafficFlow" title="ซ้อนทับเส้นทางรถติดปัจจุบันจาก TomTom — กดอีกครั้งเพื่อซ่อน ไม่รีเฟรชอัตโนมัติ" onclick="toggleTrafficFlow()">🚦 จราจรสด</button>
       </div>
 
       <div class="map-panel" id="hazardFocusBar" style="display:none;top:62px;left:50%;transform:translateX(-50%);z-index:951;padding:7px 12px;align-items:center;gap:10px;">
@@ -1753,6 +1754,14 @@ function themeSwatchesHtml(){
           <div class="field" style="grid-column:1/-1;"><label>Google Maps API Key</label><input id="setGmapKey" placeholder="AIza..."></div>
         </div>
         <button class="btn primary" style="margin-top:14px;" onclick="saveGmapKey()">บันทึก API Key</button>
+      </div>
+      <div class="card">
+        <h3>การเชื่อมต่อ TomTom (ข้อมูลจราจรจริง)</h3>
+        <p style="font-size:12.5px;color:var(--text-faint);margin-bottom:12px;">ใส่ TomTom API Key เพื่อดึงข้อมูลจราจรจริง (เทียบเวลาเดินทางตอนรถติดกับตอนถนนโล่ง) มาคำนวณ Network Risk Score แบบเรียลไทม์ในหน้า Risk Management — สมัครฟรีได้ที่ <a href="https://developer.tomtom.com/user/register" target="_blank" rel="noopener" style="color:var(--accent);">developer.tomtom.com</a> ไม่ต้องผูกบัตรเครดิต (โควต้าฟรี 20,000 ครั้ง/เดือน) กุญแจจะถูกเก็บไว้ในเบราว์เซอร์นี้เท่านั้น — ข้อมูลสภาพอากาศดึงมาแบบอัตโนมัติโดยไม่ต้องใช้กุญแจอยู่แล้ว</p>
+        <div class="form-grid">
+          <div class="field" style="grid-column:1/-1;"><label>TomTom API Key</label><input id="setTomtomKey" placeholder="เช่น AbCdEfGh12345..."></div>
+        </div>
+        <button class="btn primary" style="margin-top:14px;" onclick="saveTomtomKey()">บันทึก API Key</button>
       </div>
       <div class="card">
         <h3>🅿️ การตรวจจับจุดจอดผิดปกติ</h3>
@@ -2643,7 +2652,7 @@ async function seedIfEmpty(){
     {id:uid('veh'), plate:'70-1187 กทม.', type:'tanker', driver:'วีระ ศรีสุข', status:'idle', lat:13.7563, lng:100.5018, routeId:null, mileage:241800},
   ];
   for(const v of vehicles) await idbPut('vehicles',v);
-  await idbPut('settings',{id:'config', thresholds:{low:30,mid:60,high:85}, maxRestKm:150, maxDriveHr:4, gmapApiKey:''});
+  await idbPut('settings',{id:'config', thresholds:{low:30,mid:60,high:85}, maxRestKm:150, maxDriveHr:4, gmapApiKey:'', tomtomApiKey:''});
   const users=[
     {id:uid('usr'), name:'สมชาย ใจดี', role:'Driver', username:'driver01', password:'1234', vehicleId:vehicles[0].id},
     {id:uid('usr'), name:'ประสิทธิ์ แสงทอง', role:'Driver', username:'driver02', password:'1234', vehicleId:vehicles[1].id},
@@ -5077,7 +5086,7 @@ async function seedIfEmpty(){
   }));
   for(const m of maint) await idbPut('maintenance',m);
 
-  await idbPut('settings',{id:'config', thresholds:{low:30,mid:60,high:85}, maxRestKm:150, maxDriveHr:4, gmapApiKey:''});
+  await idbPut('settings',{id:'config', thresholds:{low:30,mid:60,high:85}, maxRestKm:150, maxDriveHr:4, gmapApiKey:'', tomtomApiKey:''});
 
   const users=[
     {id:uid('usr'), name:'ผู้ดูแลระบบหลัก', role:'Admin', username:'admin01', password:'admin1234'},
@@ -5640,27 +5649,52 @@ async function fetchRouteWeatherLive(route){
     return { weather: weathercodeToCategory(cur.weathercode, cur.precipitation), precipMm: cur.precipitation };
   }catch(e){ return null; }
 }
+/* ---------- Live traffic via TomTom Routing API ----------
+   สลับมาจาก Google Distance Matrix เพราะ Google Maps Platform ทุก API
+   (รวม Distance Matrix) ต้องผูก billing account เสมอ ไม่มีข้อยกเว้น —
+   TomTom Routing API ให้โควต้าฟรี 20,000 ครั้ง/เดือน โดยไม่ต้องผูกบัตรเครดิต
+   ใช้กุญแจคนละตัวกับ Google Maps key (เก็บแยกที่ STATE.settings.tomtomApiKey
+   ตั้งค่าได้ที่หน้า Admin/Settings การ์ด "การเชื่อมต่อ TomTom")
+
+   วิธีเทียบความติดขัด: เรียก Calculate Route แบบ traffic=true +
+   computeTravelTimeFor=all แล้วเทียบ summary.travelTimeInSeconds (มีจราจรจริง)
+   กับ summary.noTrafficTravelTimeInSeconds (ถนนโล่ง) — สูตรเดียวกับที่เคยใช้
+   กับ Google (duration_in_traffic / duration) ค่า ratio/label ที่คืนออกไปจึง
+   มีหน้าตาเหมือนเดิมทุกอย่าง โค้ดที่เรียกใช้ (refreshLiveRiskData,
+   calcRouteRiskLive) ไม่ต้องแก้อะไรเลย
+
+   TRAFFIC_FETCH_ERR เก็บข้อความ error ล่าสุดต่อเส้นทาง ไว้ให้
+   renderRiskLiveNote() แสดงสาเหตุจริงแทนคำว่า "กำลังดึงข้อมูลจราจร..."
+   ที่ค้างตลอดไปแบบเดิม (ปัญหาที่ตรวจเจอตอนดีบัก Google Distance Matrix) */
+const TRAFFIC_FETCH_ERR = {};
 async function fetchRouteTrafficLive(route){
-  const key = STATE.settings && STATE.settings.gmapApiKey;
+  const key = STATE.settings && STATE.settings.tomtomApiKey;
   if(!key || !route.waypoints || route.waypoints.length<2) return null;
   try{
-    await loadGoogleMaps(key);
-    if(!(window.google && google.maps && google.maps.DistanceMatrixService)) return null;
-    const svc = new google.maps.DistanceMatrixService();
     const origin = route.waypoints[0], dest = route.waypoints[route.waypoints.length-1];
-    const result = await new Promise((resolve,reject)=>{
-      svc.getDistanceMatrix({
-        origins:[{lat:origin[0],lng:origin[1]}], destinations:[{lat:dest[0],lng:dest[1]}],
-        travelMode: google.maps.TravelMode.DRIVING,
-        drivingOptions:{ departureTime: new Date(), trafficModel: google.maps.TrafficModel.BEST_GUESS },
-      }, (res,status)=> status==='OK' ? resolve(res) : reject(new Error(status)));
-    });
-    const el = result.rows[0] && result.rows[0].elements[0];
-    if(!el || el.status!=='OK' || !el.duration || !el.duration_in_traffic) return null;
-    const ratio = el.duration_in_traffic.value / el.duration.value;
+    const url = `https://api.tomtom.com/routing/1/calculateRoute/${origin[0]},${origin[1]}:${dest[0]},${dest[1]}/json`
+      + `?key=${encodeURIComponent(key)}&traffic=true&computeTravelTimeFor=all`;
+    const res = await fetch(url);
+    if(!res.ok){
+      const body = await res.json().catch(()=>null);
+      const msg = (body && body.detailedError && (body.detailedError.message || body.detailedError.code))
+        || (body && body.error && body.error.description)
+        || ('HTTP ' + res.status);
+      throw new Error(msg);
+    }
+    const data = await res.json();
+    const sum = data.routes && data.routes[0] && data.routes[0].summary;
+    if(!sum || !sum.travelTimeInSeconds || !sum.noTrafficTravelTimeInSeconds){
+      throw new Error('ไม่พบข้อมูลเวลาเดินทางในผลลัพธ์ (ตรวจสอบว่าเส้นทางมีพิกัดถูกต้อง)');
+    }
+    const ratio = sum.travelTimeInSeconds / sum.noTrafficTravelTimeInSeconds;
     const label = ratio>=1.5?'ติดขัดหนัก':ratio>=1.15?'ติดขัด':'คล่องตัว';
+    TRAFFIC_FETCH_ERR[route.id] = null;
     return { ratio, label };
-  }catch(e){ return null; }
+  }catch(e){
+    TRAFFIC_FETCH_ERR[route.id] = (e && e.message) ? e.message : String(e);
+    return null;
+  }
 }
 async function refreshLiveRiskData(){
   const now = Date.now();
@@ -5852,6 +5886,66 @@ async function toggleRoadNetwork(){
         + `${Math.round(roadNetData.reduce((s,r)=>s+(r.km||0),0))} กม.`);
 }
 window.toggleRoadNetwork = toggleRoadNetwork;
+
+/* ---------- Live traffic flow overlay (TomTom, on-demand) ----------
+   ต่างจากหน้า Risk Management ที่ดึงข้อมูลจราจรทุก 5 นาทีเพื่อคำนวณคะแนน —
+   ตัวนี้คือภาพ "เส้นทางรถติดสด ณ ตอนนี้" ซ้อนบนแผนที่หลัก แบบเดียวกับปุ่ม
+   "🛣️ ถนนที่กองเราใช้" ด้านบน: กดเปิดถึงจะโหลด กดปิดก็เลิกโหลดทันที
+   ไม่มี setInterval ดึงซ้ำเองเลย เพราะ tile layer ของ Leaflet/Google จะขอเฉพาะ
+   ช่องแผนที่ (tile) ที่มองเห็นอยู่ตอนเลื่อน/ซูมเท่านั้น ไม่ใช่ยิงรัวๆ ทุกไม่กี่วินาที
+   เหมือนหน้า Risk Management — ใช้กุญแจ TomTom เดียวกับที่ตั้งไว้แล้ว */
+let trafficFlowOn = false;
+let trafficFlowLeafletLayer = null;
+let trafficFlowGoogleType = null;
+const trafficTileUrl = (key, z, x, y) =>
+  `https://api.tomtom.com/traffic/map/4/tile/flow/relative0-dark/${z}/${x}/${y}.png?key=${encodeURIComponent(key)}`;
+
+function addTrafficFlowLayer(){
+  const key = STATE.settings && STATE.settings.tomtomApiKey;
+  if(!key) return false;
+  if(mapProvider === 'leaflet'){
+    if(!map) return false;
+    trafficFlowLeafletLayer = L.tileLayer(trafficTileUrl(key, '{z}', '{x}', '{y}'), {
+      opacity: 0.75, maxZoom: 22, minZoom: 0,
+    }).addTo(map);
+  } else {
+    if(!gMap || !window.google) return false;
+    trafficFlowGoogleType = new google.maps.ImageMapType({
+      getTileUrl: (coord, zoom) => trafficTileUrl(key, zoom, coord.x, coord.y),
+      tileSize: new google.maps.Size(256,256), opacity: 0.75, name: 'TomTom Traffic',
+    });
+    gMap.overlayMapTypes.push(trafficFlowGoogleType);
+  }
+  return true;
+}
+function removeTrafficFlowLayer(){
+  if(trafficFlowLeafletLayer && map && map.hasLayer(trafficFlowLeafletLayer)){
+    map.removeLayer(trafficFlowLeafletLayer);
+  }
+  trafficFlowLeafletLayer = null;
+  if(trafficFlowGoogleType && gMap){
+    const idx = gMap.overlayMapTypes.getArray().indexOf(trafficFlowGoogleType);
+    if(idx > -1) gMap.overlayMapTypes.removeAt(idx);
+  }
+  trafficFlowGoogleType = null;
+}
+function toggleTrafficFlow(){
+  const btn = document.getElementById('btnTrafficFlow');
+  if(trafficFlowOn){
+    trafficFlowOn = false;
+    removeTrafficFlowLayer();
+    if(btn){ btn.style.borderColor=''; btn.style.color=''; }
+    return;
+  }
+  const key = STATE.settings && STATE.settings.tomtomApiKey;
+  if(!key){ toast('กรุณาใส่ TomTom API Key ที่หน้า Admin / Settings ก่อน (การ์ด "การเชื่อมต่อ TomTom")'); return; }
+  const ok = addTrafficFlowLayer();
+  if(!ok){ toast('แสดงชั้นจราจรไม่สำเร็จ ลองใหม่อีกครั้ง'); return; }
+  trafficFlowOn = true;
+  if(btn){ btn.style.borderColor = '#F59E0B'; btn.style.color = '#F59E0B'; }
+  toast('แสดงเส้นทางรถติดปัจจุบันแล้ว (เขียว=โล่ง ส้ม/แดง=ติดขัด) — กดปุ่มนี้อีกครั้งเพื่อซ่อน');
+}
+window.toggleTrafficFlow = toggleTrafficFlow;
 let gMap = null, gLoading = null, gOverlays = [];
 let leafletFleetFitted = false, googleFleetFitted = false;
 
@@ -5944,6 +6038,9 @@ function gVehIconUrl(v){
 
 async function switchMapProvider(provider){
   if(provider===mapProvider) return;
+  // ชั้นจราจรสดผูกกับ map object ของ provider เดิม สลับแผนที่ทีต้องปิดก่อน
+  // กันไม่ให้มันค้างโหลดเงียบๆ อยู่เบื้องหลังฝั่งที่มองไม่เห็นแล้ว
+  if(trafficFlowOn){ toggleTrafficFlow(); toast('ปิดชั้นจราจรสดแล้ว (สลับแผนที่) — กดปุ่ม 🚦 จราจรสด อีกครั้งเพื่อดูต่อ'); }
   if(provider==='google'){
     const key = STATE.settings.gmapApiKey;
     if(!key){ toast('กรุณาใส่ Google Maps API Key ที่หน้า Admin / Settings ก่อน'); return; }
@@ -6980,7 +7077,7 @@ function renderRiskLiveNote(){
   if(!live){ note.innerHTML = ''; return; }
   const routeId = document.getElementById('riskRouteSelect').value;
   const lr = STATE.liveRisk[routeId];
-  const hasKey = !!(STATE.settings && STATE.settings.gmapApiKey);
+  const hasKey = !!(STATE.settings && STATE.settings.tomtomApiKey);
   const parts = [];
   if(lr && lr.updatedTs){
     const mins = Math.max(0, Math.round((Date.now()-lr.updatedTs)/60000));
@@ -6989,9 +7086,12 @@ function renderRiskLiveNote(){
     parts.push('กำลังดึงข้อมูลสภาพอากาศ...');
   }
   if(hasKey){
-    parts.push(lr && lr.trafficLabel ? `จราจร: ${lr.trafficLabel}` : 'กำลังดึงข้อมูลจราจร...');
+    const err = TRAFFIC_FETCH_ERR[routeId];
+    if(lr && lr.trafficLabel) parts.push(`จราจร: ${lr.trafficLabel}`);
+    else if(err) parts.push(`⚠️ ดึงข้อมูลจราจรไม่สำเร็จ: ${err}`);
+    else parts.push('กำลังดึงข้อมูลจราจร...');
   } else {
-    parts.push('⚠️ ยังไม่ได้ตั้งค่า Google Maps API Key ในหน้า Settings — จะใช้เฉพาะข้อมูลสภาพอากาศ ไม่รวมข้อมูลจราจรจริง');
+    parts.push('⚠️ ยังไม่ได้ตั้งค่า TomTom API Key ในหน้า Settings — จะใช้เฉพาะข้อมูลสภาพอากาศ ไม่รวมข้อมูลจราจรจริง');
   }
   note.textContent = parts.join(' · ');
 }
@@ -10202,7 +10302,7 @@ async function saveGmapKey(){
   const input = document.getElementById('setGmapKey');
   const key = (input?input.value:'').trim();
   if(!key){ toast('กรุณากรอก Google Maps API Key ก่อนบันทึก'); return; }
-  if(!STATE.settings) STATE.settings = {id:'config', thresholds:{low:30,mid:60,high:85}, maxRestKm:150, maxDriveHr:4, gmapApiKey:''};
+  if(!STATE.settings) STATE.settings = {id:'config', thresholds:{low:30,mid:60,high:85}, maxRestKm:150, maxDriveHr:4, gmapApiKey:'', tomtomApiKey:''};
   STATE.settings.gmapApiKey = key;
   try{
     await idbPut('settings', STATE.settings);
@@ -10210,6 +10310,26 @@ async function saveGmapKey(){
     Object.keys(STATE.liveRisk).forEach(id=>{ STATE.liveRisk[id].trafficTs = null; }); // force a fresh traffic fetch with the new key
     refreshLiveRiskData();
     renderRestMiniMap(); // มีคีย์แล้ว โหลดแผนที่ตัวอย่างจุดพักที่เคยขึ้นข้อความขอคีย์ค้างไว้ทันที
+  }catch(err){
+    toast('บันทึกไม่สำเร็จ: '+(err&&err.message?err.message:'เกิดข้อผิดพลาดไม่ทราบสาเหตุ'));
+  }
+}
+
+/* TomTom key คนละตัวกับ Google Maps key ข้างบน — ใช้เฉพาะดึงข้อมูลจราจรจริง
+   (fetchRouteTrafficLive) ไม่เกี่ยวกับการแสดงผลแผนที่เลย เลือกใช้ TomTom เพราะ
+   ไม่ต้องผูกบัตรเครดิต ต่างจาก Google Distance Matrix ที่ต้องผูก billing account
+   เสมอ (ดูรายละเอียดที่คุยกันไว้) */
+async function saveTomtomKey(){
+  const input = document.getElementById('setTomtomKey');
+  const key = (input?input.value:'').trim();
+  if(!key){ toast('กรุณากรอก TomTom API Key ก่อนบันทึก'); return; }
+  if(!STATE.settings) STATE.settings = {id:'config', thresholds:{low:30,mid:60,high:85}, maxRestKm:150, maxDriveHr:4, gmapApiKey:'', tomtomApiKey:''};
+  STATE.settings.tomtomApiKey = key;
+  try{
+    await idbPut('settings', STATE.settings);
+    toast('บันทึก TomTom API Key แล้ว — กำลังดึงข้อมูลจราจรใหม่...');
+    Object.keys(STATE.liveRisk).forEach(id=>{ STATE.liveRisk[id].trafficTs = null; }); // force a fresh traffic fetch with the new key
+    refreshLiveRiskData();
   }catch(err){
     toast('บันทึกไม่สำเร็จ: '+(err&&err.message?err.message:'เกิดข้อผิดพลาดไม่ทราบสาเหตุ'));
   }
@@ -10322,6 +10442,7 @@ async function boot(){
   /* จุดจอดที่ตรวจพบ เก็บใน fleet_sync โดยตรง (ไม่ผ่าน IndexedDB) — ดูเหตุผลที่บล็อก v23 */
   loadStopEvents();
   document.getElementById('setGmapKey').value = STATE.settings.gmapApiKey || '';
+  document.getElementById('setTomtomKey').value = STATE.settings.tomtomApiKey || '';
   const adminSwEl = document.getElementById('adminThemeSwatches');
   if(adminSwEl) adminSwEl.innerHTML = themeSwatchesHtml();
 
@@ -10859,7 +10980,7 @@ Object.assign(window, {
   computeRestPlan, focusRestMiniMap, rematchPoiRoutes, saveThresholds, exportCSV, deletePoi, openHazardModal, openHazardEditModal, openVehicleModal,
   openPoiModal, openPoiEditModal, openUserModal, openEditUserModal, deleteUser, saveDriveSettings, addProvinceToBuilder,
   moveProvinceInBuilder, removeProvinceFromBuilder, openRouteBuilderModal, openRouteEditModal, refreshRouteRoadPath, compactRouteRoadPaths, deleteRoute,
-  saveGmapKey, switchMapProvider, recenterFleetMap, doAdminLogin, adminLogout,
+  saveGmapKey, saveTomtomKey, switchMapProvider, recenterFleetMap, doAdminLogin, adminLogout,
   showRouteHazardsOnMap, showHazardOnMap, clearHazardFocus,
   listMore, listToggleGroup, hazardCollapseAll, userCollapseAll, setStopEventRange,
   toggleStopDetect, fillPoiProvinces, mergeDuplicateStopEvents,
