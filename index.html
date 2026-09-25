@@ -235,6 +235,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);overflo
 #driverApp #tripMap{position:relative;z-index:1;}
 #driverApp #tripMap{width:100%;height:100%;}
 #driverApp .leaflet-layer.dark-tiles, #adminApp #mapLeaflet{position:relative;z-index:1;}
+#adminApp .leaflet-layer.dark-tiles{filter:invert(1) hue-rotate(200deg) brightness(.85) contrast(.92) saturate(.55);}
 #driverApp .leaflet-control-attribution, #adminApp .leaflet-control-attribution{background:rgba(10,15,28,.55) !important;color:var(--text-faint) !important;font-size:9px !important;padding:1px 5px !important;}
 #driverApp .leaflet-control-attribution a{color:var(--text-dim) !important;}
 #driverApp .dest-suggest{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--panel);border:1px solid var(--border-soft);border-radius:10px;overflow:hidden;z-index:20;max-height:220px;overflow-y:auto;display:none;}
@@ -480,9 +481,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);overflo
 #adminApp .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
 @media(max-width:1000px){#adminApp .grid-2, #adminApp .grid-3{grid-template-columns:1fr;}}
 #adminApp table{width:100%;border-collapse:collapse;font-size:13px;}
-/* v29 — แถวจุดเสี่ยงกดได้ (เด้งไปดูบนแผนที่) ทำให้เห็นชัดว่ากดได้ */
-#adminApp tr.hazard-item-row:hover td{background:rgba(var(--accent-rgb),.07);}
-#adminApp tr.hazard-group-row:hover td{background:rgba(var(--accent-rgb),.05);}
 #adminApp th{text-align:left;color:var(--text-faint);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.5px;padding:8px 10px;border-bottom:1px solid var(--border);}
 #adminApp td{padding:10px 10px;border-bottom:1px solid var(--border-soft);color:var(--text-dim);}
 #adminApp tr:hover td{background:rgba(255,255,255,.02);color:var(--text);}
@@ -671,7 +669,7 @@ function themeSwatchesHtml(){
     <div class="statusbar">
       <span class="time" id="clockTime">--:--</span>
       <span class="chip"><span class="dot" id="gpsDot"></span> <span id="gpsLabel">กำลังตรวจสอบกล่อง</span></span>
-      <span class="chip" id="appVerChip" style="font-family:var(--font-mono);font-size:10.5px;">v35 · 2026-09-21</span>
+      <span class="chip" id="appVerChip" style="font-family:var(--font-mono);font-size:10.5px;">v12 · 2026-09-17</span>
     </div>
     <div class="hero">
       <h1 id="greetName">สวัสดีครับ</h1>
@@ -1018,7 +1016,7 @@ function themeSwatchesHtml(){
         <div class="list-meta"><div class="t1">การขับของฉัน</div><div class="t2">คะแนน ความเร็วที่เกิน และครั้งล่าสุด</div></div>
         <span style="color:var(--text-faint);">›</span>
       </div>
-      <div class="list-item"><div class="list-ic">🏷️</div><div class="list-meta"><div class="t1">เวอร์ชันแอป</div><div class="t2" style="font-family:var(--font-mono);">v35 · 2026-09-21</div></div></div>
+      <div class="list-item"><div class="list-ic">🏷️</div><div class="list-meta"><div class="t1">เวอร์ชันแอป</div><div class="t2" style="font-family:var(--font-mono);">v12 · 2026-09-17</div></div></div>
       <div class="list-item"><div class="list-ic">📶</div><div class="list-meta"><div class="t1">สถานะอินเทอร์เน็ต</div><div class="t2" id="netStatusText">กำลังตรวจสอบ...</div></div></div>
       <div class="list-item"><div class="list-ic">☁️</div><div class="list-meta"><div class="t1">รายงานรอซิงค์</div><div class="t2" id="syncStatusText">0 รายการ</div></div></div>
     </div>
@@ -1248,11 +1246,7 @@ function themeSwatchesHtml(){
         <button class="btn sm provider-btn" id="btnProviderGoogle" onclick="switchMapProvider('google')">🌍 Google Maps</button>
         <button class="btn sm" title="จัดกึ่งกลางกองรถ" onclick="recenterFleetMap()">🎯 จัดกึ่งกลาง</button>
         <button class="btn sm" id="btnRoadNet" title="แนวถนนที่กองรถเราใช้ซ้ำ สร้างจากรอยรถจริง" onclick="toggleRoadNetwork()">🛣️ ถนนที่กองเราใช้</button>
-      </div>
-
-      <div class="map-panel" id="hazardFocusBar" style="display:none;top:62px;left:50%;transform:translateX(-50%);z-index:951;padding:7px 12px;align-items:center;gap:10px;">
-        <span id="hazardFocusText" style="font-size:12.5px;"></span>
-        <button class="btn sm" onclick="clearHazardFocus()">✕ แสดงทั้งหมด</button>
+        <button class="btn sm" id="btnTrafficFlow" title="ซ้อนทับเส้นทางรถติดปัจจุบันจาก TomTom — กดอีกครั้งเพื่อซ่อน ไม่รีเฟรชอัตโนมัติ" onclick="toggleTrafficFlow()">🚦 จราจรสด</button>
       </div>
 
       <div class="map-panel panel-topleft" id="fleetOverviewPanel">
@@ -1314,15 +1308,6 @@ function themeSwatchesHtml(){
       <div class="grid-3" id="hazardKpis"></div>
       <div class="card">
         <h3>รายการ Hazard <small id="hazardCount"></small></h3>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
-          <input type="text" id="hazardSearch" placeholder="🔎 ค้นหาชื่อจุด / ประเภท / เส้นทาง..." oninput="renderHazardView()" style="flex:1;min-width:220px;">
-          <select id="hazardSevFilter" onchange="renderHazardView()" style="background:var(--panel-2);border:1px solid var(--border);color:var(--text);padding:9px 10px;border-radius:10px;font-size:13px;">
-            <option value="">ทุกระดับความรุนแรง</option>
-            <option value="4">เฉพาะ 4/4 (วิกฤต)</option>
-            <option value="3">เฉพาะ 3/4 ขึ้นไป</option>
-          </select>
-          <button class="btn sm" onclick="hazardCollapseAll()">▸ ยุบทุกกลุ่ม</button>
-        </div>
         <table>
           <thead><tr><th>ประเภท</th><th>เส้นทาง</th><th>ความรุนแรง</th><th>ตำแหน่ง</th><th>รายงานล่าสุด</th><th></th></tr></thead>
           <tbody id="hazardTable"></tbody>
@@ -1331,40 +1316,8 @@ function themeSwatchesHtml(){
       <div class="card">
         <h3>📩 รายงานจากคนขับ (รอตรวจสอบ) <small id="driverReportQueueCount"></small></h3>
         <table>
-          <thead><tr><th>ประเภท</th><th>คนขับ</th><th>รถ</th><th>ตำแหน่ง</th><th>รายละเอียด</th><th>ที่ตั้ง (จังหวัด/ตำบล)</th><th>รูปภาพ</th><th>เวลา</th><th></th></tr></thead>
+          <thead><tr><th>ประเภท</th><th>คนขับ</th><th>รถ</th><th>ตำแหน่ง</th><th>รายละเอียด</th><th>รูปภาพ</th><th>เวลา</th><th></th></tr></thead>
           <tbody id="driverReportQueue"></tbody>
-        </table>
-      </div>
-      <div class="card">
-        <h3>🅿️ จุดจอดที่ระบบตรวจพบเอง (รอตรวจสอบ) <small id="stopEventCount"></small></h3>
-        <p style="font-size:12px;color:var(--text-dim);margin:-6px 0 10px;">ระบบเฝ้าดูสัญญาณ GPS เอง ถ้ารถจอดนิ่งนานเกินที่กำหนดในจุดที่<b>ไม่ใช่ปั๊ม/จุดพักที่ปักหมุดไว้</b> จะถูกบันทึกมารอที่นี่ — กด <b>🗺️ ดูใน Google Maps</b> เพื่อตรวจว่าตรงนั้นคืออะไร แล้วจึงตัดสินใจ (จอดที่ปั๊มที่ปักหมุดไว้แล้ว และจอดที่ต้นทาง/ปลายทาง จะไม่ถูกแจ้ง)</p>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
-          <select id="stopEventFilter" onchange="renderStopEventQueue()" style="background:var(--panel-2);border:1px solid var(--border);color:var(--text);padding:9px 10px;border-radius:10px;font-size:13px;">
-            <option value="open">ที่ยังไม่จบ (รอตรวจสอบ + รอถามคนขับ)</option>
-            <option value="">ทั้งหมด</option>
-            <option value="pending">รอตรวจสอบ</option>
-            <option value="ask">รอถามคนขับ</option>
-            <option value="approved">อนุมัติเป็นจุดพักแล้ว</option>
-            <option value="nostop">จุดห้ามจอด</option>
-            <option value="ignored">ไม่เกี่ยว / ตัดทิ้ง</option>
-          </select>
-          <input type="text" id="stopEventSearch" placeholder="🔎 ค้นหาทะเบียน / คนขับ / สถานที่..." oninput="renderStopEventQueue()" style="flex:1;min-width:210px;">
-          <span style="color:var(--text-dim);font-size:12px;">ตั้งแต่</span>
-          <input type="date" id="stopEventFrom" onchange="renderStopEventQueue()" style="background:var(--panel-2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:10px;font-size:13px;">
-          <span style="color:var(--text-dim);font-size:12px;">ถึง</span>
-          <input type="date" id="stopEventTo" onchange="renderStopEventQueue()" style="background:var(--panel-2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:10px;font-size:13px;">
-          <button class="btn sm" onclick="setStopEventRange('day')">วันนี้</button>
-          <button class="btn sm" onclick="setStopEventRange('month')">เดือนนี้</button>
-          <button class="btn sm" onclick="setStopEventRange('')">ทั้งหมด</button>
-        </div>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
-          <button class="btn sm" id="stopDetectToggleBtn" onclick="toggleStopDetect()"></button>
-          <button class="btn sm" onclick="mergeDuplicateStopEvents()" title="รวมรายการของรถคันเดียวกันที่จุดเดียวกันและเวลาต่อเนื่องกัน ให้เหลือรายการเดียว">🧩 รวมรายการซ้ำ</button>
-          <span id="stopDetectStatus" style="font-size:12px;color:var(--text-faint);"></span>
-        </div>
-        <table>
-          <thead><tr><th>รถ / คนขับ</th><th>เริ่มจอด</th><th>นาน</th><th>ที่ตั้ง (จังหวัด/ตำบล)</th><th>เส้นทาง</th><th>สถานะ</th><th>หมายเหตุ</th><th></th></tr></thead>
-          <tbody id="stopEventTable"></tbody>
         </table>
       </div>
       <div class="card">
@@ -1494,11 +1447,6 @@ function themeSwatchesHtml(){
         <p style="font-size:12px;color:var(--text-dim);margin:-4px 0 10px;">ประวัติทุกรายการถูกเก็บถาวรไว้ถาวร ค้นหาย้อนหลังได้ตามวัน เดือน หรือปี</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
           <input type="text" class="gps-veh-search" id="alertLogSearch" placeholder="ค้นหาทะเบียนรถ / คนขับ..." oninput="renderAlertLogsView()" style="max-width:260px;">
-          <select id="alertLogGroupBy" onchange="renderAlertLogsView()" title="เลือกว่าจะรวมรายการเป็นกลุ่มระดับไหน" style="background:var(--panel-2);border:1px solid var(--border);color:var(--text);padding:9px 10px;border-radius:10px;font-size:13px;">
-            <option value="day">จัดกลุ่มเป็นรายวัน</option>
-            <option value="month">จัดกลุ่มเป็นรายเดือน</option>
-            <option value="year">จัดกลุ่มเป็นรายปี</option>
-          </select>
           <select id="alertLogSevFilter" onchange="renderAlertLogsView()" style="background:var(--panel-2);border:1px solid var(--border);color:var(--text);padding:9px 10px;border-radius:10px;font-size:13px;">
             <option value="">ทุกระดับความรุนแรง</option>
             <option value="1">ระดับ 1 (เบา)</option>
@@ -1543,8 +1491,6 @@ function themeSwatchesHtml(){
         <div class="card">
           <h3>เงื่อนไขปัจจุบัน <small>จาก Admin / Settings</small></h3>
           <div id="restSettingsBox"></div>
-          <div style="font-size:12px;color:var(--text-faint);margin:16px 0 8px;">🗺️ ตัวอย่างจุดพักบนเส้นทางที่เลือก — กดจุดในแผนด้านซ้ายเพื่อดูตำแหน่ง</div>
-          <div id="restMiniMap" style="height:230px;border-radius:12px;overflow:hidden;border:1px solid var(--border-soft);"></div>
         </div>
       </div>
       <div class="card">
@@ -1739,45 +1685,24 @@ function themeSwatchesHtml(){
       </div>
       <div class="card">
         <h3>การเชื่อมต่อ Google Maps</h3>
-        <p style="font-size:12.5px;color:var(--text-faint);margin-bottom:12px;">ใส่ Google Maps JavaScript API Key ของคุณเพื่อสลับแผนที่หลักเป็น Google Maps (ต้องเปิดใช้งาน Maps JavaScript API ในโปรเจกต์ Google Cloud ของคุณเอง) กุญแจจะถูกเก็บไว้ในเบราว์เซอร์นี้เท่านั้น เมื่อตั้งค่าแล้ว ระบบจะใช้กุญแจเดียวกันนี้ดึงข้อมูลจราจรจริง (ต้องเปิดใช้งาน Distance Matrix API เพิ่มเติม) มาคำนวณ Network Risk Score แบบเรียลไทม์ในหน้า Risk Management ด้วย — ข้อมูลสภาพอากาศดึงมาแบบอัตโนมัติโดยไม่ต้องใช้กุญแจ</p>
+        <p style="font-size:12.5px;color:var(--text-faint);margin-bottom:12px;">ใส่ Google Maps JavaScript API Key ของคุณเพื่อสลับแผนที่หลักเป็น Google Maps (ต้องเปิดใช้งาน Maps JavaScript API ในโปรเจกต์ Google Cloud ของคุณเอง) กุญแจจะถูกเก็บไว้ในเบราว์เซอร์นี้เท่านั้น — ใช้สำหรับแสดงแผนที่เท่านั้น ไม่เกี่ยวกับข้อมูลจราจร (ดูหัวข้อ "การเชื่อมต่อ TomTom" ด้านล่าง)</p>
         <div class="form-grid">
           <div class="field" style="grid-column:1/-1;"><label>Google Maps API Key</label><input id="setGmapKey" placeholder="AIza..."></div>
         </div>
         <button class="btn primary" style="margin-top:14px;" onclick="saveGmapKey()">บันทึก API Key</button>
       </div>
       <div class="card">
-        <h3>🅿️ การตรวจจับจุดจอดผิดปกติ</h3>
-        <p style="font-size:12.5px;color:var(--text-faint);margin-bottom:12px;">ระบบเฝ้าดูสัญญาณ GPS ของรถทุกคัน ถ้าจอดนิ่งนานเกินค่าที่ตั้งไว้ในจุดที่ไม่ใช่ปั๊ม/จุดพักที่ปักหมุดไว้ จะบันทึกไว้ให้แอดมินตรวจสอบที่หน้า <b>Route Hazard</b> — จอดที่ปั๊มที่ปักหมุดแล้ว และจอดที่ต้นทาง/ปลายทางของเส้นทาง จะไม่ถูกแจ้ง</p>
+        <h3>การเชื่อมต่อ TomTom (ข้อมูลจราจรจริง)</h3>
+        <p style="font-size:12.5px;color:var(--text-faint);margin-bottom:12px;">ใส่ TomTom API Key เพื่อดึงข้อมูลจราจรจริง (เทียบเวลาเดินทางตอนรถติดกับตอนถนนโล่ง) มาคำนวณ Network Risk Score แบบเรียลไทม์ในหน้า Risk Management — สมัครฟรีได้ที่ <a href="https://developer.tomtom.com/user/register" target="_blank" rel="noopener" style="color:var(--accent);">developer.tomtom.com</a> ไม่ต้องผูกบัตรเครดิต (โควต้าฟรี 20,000 ครั้ง/เดือน) กุญแจจะถูกเก็บไว้ในเบราว์เซอร์นี้เท่านั้น — ข้อมูลสภาพอากาศดึงมาแบบอัตโนมัติโดยไม่ต้องใช้กุญแจอยู่แล้ว</p>
         <div class="form-grid">
-          <div class="field"><label>เริ่มเก็บข้อมูลเมื่อจอดเกิน (นาที)</label><input id="setStopMinMin" type="number" min="1" max="120" step="1"></div>
-          <div class="field"><label>ถือว่าจอดนานผิดปกติเมื่อเกิน (นาที)</label><input id="setStopLongMin" type="number" min="5" max="600" step="5"></div>
-          <div class="field"><label>รัศมีที่ถือว่า "ถึงปั๊ม/จุดพักแล้ว" (เมตร)</label><input id="setStopNearPoiM" type="number" min="50" max="2000" step="50"></div>
-          <div class="field"><label>รัศมีต้นทาง/ปลายทางที่ไม่ต้องแจ้ง (กม.)</label><input id="setStopDepotKm" type="number" min="0" max="20" step="0.5"></div>
-          <div class="field"><label>รัศมีที่ยังถือว่าเป็นการจอดครั้งเดิม (เมตร)</label><input id="setStopSameSpotM" type="number" min="100" max="3000" step="50">
-            <div style="font-size:11.5px;color:var(--text-faint);margin-top:6px;">รถขยับในลานจอด ถอยเข้าช่อง หรือพิกัดแกว่ง จะไม่ถูกนับเป็นการจอดครั้งใหม่ ถ้ายังอยู่ในรัศมีนี้</div>
-          </div>
-          <div class="field"><label>ห่างกันไม่เกินกี่นาที ถือเป็นการจอดครั้งเดียวกัน</label><input id="setStopMergeGapMin" type="number" min="5" max="600" step="5"></div>
-          <div class="field" style="grid-column:1/-1;"><label>กล่อง GPS ดับหลังรถจอดนิ่งครบกี่นาที (ตามสเปกผู้ให้บริการ)</label><input id="setStopBoxSleepMin" type="number" min="1" max="180" step="1">
-            <div style="font-size:11.5px;color:var(--text-faint);margin-top:6px;">สำคัญต่อความแม่นยำ — ถ้ากล่องยังส่งสัญญาณอยู่กับที่จนครบเวลานี้แล้วค่อยเงียบ ระบบจะถือว่า "กล่องดับเพราะรถจอด" (ไม่ใช่สัญญาณหาย) แล้วนับเวลาจอดต่อไปได้ ทำให้จับการจอดยาวเกินเกณฑ์ได้แม้กล่องจะดับไปแล้ว</div>
-          </div>
+          <div class="field" style="grid-column:1/-1;"><label>TomTom API Key</label><input id="setTomtomKey" placeholder="เช่น AbCdEfGh12345..."></div>
         </div>
-        <button class="btn primary" style="margin-top:14px;" onclick="saveStopSettings()">บันทึกการตั้งค่า</button>
-      </div>
-      <div class="card" style="border-color:rgba(245,166,35,.3);background:rgba(245,166,35,.04);">
-        <h3>📌 รอทำตอนอัปเดตไฟล์ APK (อย่าลืม)</h3>
-        <p style="font-size:12.5px;color:var(--text-faint);margin-bottom:12px;">รายการนี้ต้องแก้ฝั่งแอปมือถือ จึงทำไม่ได้จนกว่าจะ build APK ใหม่ — จดไว้กันลืม</p>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <div class="list-item"><div class="list-ic">🔊</div><div class="list-meta"><div class="t1">เสียงพูด/แจ้งเตือนคนขับเมื่อเข้าใกล้ "จุดห้ามจอด"</div><div class="t2">ตอนนี้จุดห้ามจอดถูกบันทึกและแสดงในระบบแอดมินแล้ว แต่ยังไม่ได้เตือนคนขับระหว่างขับ</div></div></div>
-          <div class="list-item"><div class="list-ic">💬</div><div class="list-meta"><div class="t1">ให้แอปถามคนขับเองว่า "จอดที่ไหน"</div><div class="t2">แทนที่แอดมินต้องโทรไปถามทีละคน — ให้แอปเด้งถามตอนออกรถ แล้วส่งคำตอบกลับมาเติมในช่องหมายเหตุอัตโนมัติ</div></div></div>
-          <div class="list-item"><div class="list-ic">🖥️</div><div class="list-meta"><div class="t1">ย้ายตัวตรวจจับไปไว้ที่ live_push.py (เครื่องออฟฟิศ)</div><div class="t2">ตอนนี้ตรวจจับจากหน้าแอดมิน ทำงานเฉพาะตอนเปิดหน้านี้ค้างไว้ — ถ้าย้ายไปฝั่ง Python จะจับได้ครบ 24 ชม. แม้ปิดจอ</div></div></div>
-        </div>
+        <button class="btn primary" style="margin-top:14px;" onclick="saveTomtomKey()">บันทึก API Key</button>
       </div>
       <div class="card">
         <h3>จัดการเส้นทาง (Routes) <small id="routeCount"></small></h3>
         <p style="font-size:12.5px;color:var(--text-faint);margin-bottom:10px;">สร้างเส้นทางใหม่โดยเลือกลำดับจังหวัดที่ต้องการผ่าน รองรับทั้ง 77 จังหวัดทั่วประเทศ</p>
         <button class="btn sm" style="margin-bottom:10px;" onclick="openRouteBuilderModal()">+ สร้างเส้นทางใหม่</button>
-        <button class="btn sm" style="margin-bottom:10px;" title="ตัดจุดพิกัดที่ละเอียดเกินจำเป็นออกจากเส้นถนนที่เก็บไว้ รูปเส้นเหมือนเดิมแต่ข้อมูลเล็กลงมาก" onclick="compactRouteRoadPaths()">🗜️ บีบอัดเส้นถนน (ลด Egress)</button>
-        <input type="text" id="routeSearch" placeholder="🔎 ค้นหาชื่อเส้นทาง / จังหวัด..." oninput="renderRouteListBox()" style="width:100%;margin-bottom:10px;">
         <div id="routeListBox"></div>
       </div>
       <div class="card">
@@ -1795,28 +1720,17 @@ function themeSwatchesHtml(){
           <button class="btn sm" onclick="openPoiModal()">+ เพิ่มจุด</button>
           <button class="btn sm" onclick="triggerPoiImport()" title="นำเข้าจาก Excel (.xlsx) หรือ CSV เข้าหมวดที่เลือกอยู่">📥 นำเข้า Excel/CSV</button>
           <button class="btn sm" onclick="exportPoiExcel()" title="ส่งออกจุดในหมวดที่เลือกอยู่เป็น Excel">📤 ส่งออก Excel</button>
-          <button class="btn sm" onclick="rematchPoiRoutes()" title="แก้จุดที่เคยถูกตั้ง 'เส้นทาง' ผิดตอนอนุมัติจากรายงานคนขับ โดยจับคู่ใหม่ตามพิกัดจริงที่ใกล้เส้นทางไหนที่สุด">🧭 จับคู่เส้นทางใหม่ทั้งหมด</button>
         </div>
         <div id="poiListBox"></div>
       </div>
       <div class="card">
-        <h3>จัดการผู้ใช้งาน <small id="userCount"></small></h3>
+        <h3>จัดการผู้ใช้งาน</h3>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
           <input type="file" id="userImportInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleUserImportFile(event)">
           <button class="btn sm" onclick="openUserModal()">+ เพิ่มผู้ใช้งาน</button>
           <button class="btn sm" onclick="triggerUserImport()" title="นำเข้ารายชื่อผู้ใช้งานจาก Excel (.xlsx) หรือ CSV">📥 นำเข้า Excel/CSV</button>
           <button class="btn sm" onclick="exportUsersExcel()" title="ส่งออกรายชื่อผู้ใช้งานทั้งหมดเป็น Excel">📤 ส่งออก Excel</button>
           <button class="btn sm" onclick="downloadUserTemplate()" title="ดาวน์โหลดไฟล์เทมเพลตสำหรับกรอกข้อมูลผู้ใช้งาน">📄 เทมเพลต</button>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
-          <input type="text" id="userSearch" placeholder="🔎 ค้นหาชื่อ / username / ทะเบียนรถ..." oninput="renderUserList()" style="flex:1;min-width:230px;">
-          <select id="userRoleFilter" onchange="renderUserList()" style="background:var(--panel-2);border:1px solid var(--border);color:var(--text);padding:9px 10px;border-radius:10px;font-size:13px;">
-            <option value="">ทุกตำแหน่ง</option>
-            <option value="Driver">เฉพาะคนขับ</option>
-            <option value="Admin">เฉพาะแอดมิน</option>
-          </select>
-          <button class="btn sm" onclick="userCollapseAll(true)">▾ กางทุกฟลีท</button>
-          <button class="btn sm" onclick="userCollapseAll(false)">▸ ยุบทุกฟลีท</button>
         </div>
         <div id="userListBox"></div>
       </div>
@@ -2631,7 +2545,7 @@ async function seedIfEmpty(){
     {id:uid('veh'), plate:'70-1187 กทม.', type:'tanker', driver:'วีระ ศรีสุข', status:'idle', lat:13.7563, lng:100.5018, routeId:null, mileage:241800},
   ];
   for(const v of vehicles) await idbPut('vehicles',v);
-  await idbPut('settings',{id:'config', thresholds:{low:30,mid:60,high:85}, maxRestKm:150, maxDriveHr:4, gmapApiKey:''});
+  await idbPut('settings',{id:'config', thresholds:{low:30,mid:60,high:85}, maxRestKm:150, maxDriveHr:4, gmapApiKey:'', tomtomApiKey:''});
   const users=[
     {id:uid('usr'), name:'สมชาย ใจดี', role:'Driver', username:'driver01', password:'1234', vehicleId:vehicles[0].id},
     {id:uid('usr'), name:'ประสิทธิ์ แสงทอง', role:'Driver', username:'driver02', password:'1234', vehicleId:vehicles[1].id},
@@ -4092,9 +4006,9 @@ function updateTripStats(pos){
 function initTripMap(route){
   if(tripMap){ tripMap.remove(); tripMap=null; }
   tripMap = L.map('tripMap',{zoomControl:false,attributionControl:true}).setView(route.waypoints[0],route.waypoints.length>1?7:12);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
-    maxZoom:20, className:'dark-tiles', subdomains:'abcd',
-    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    maxZoom:19, className:'dark-tiles', subdomains:'abc',
+    attribution:'&copy; OpenStreetMap contributors'
   }).addTo(tripMap);
   tripLayer = L.layerGroup().addTo(tripMap);
   tripMap.on('dragstart', ()=>{ followMyPosition = false; });
@@ -4781,28 +4695,7 @@ async function syncDelete(store, id){
   try{
     const { error } = await window.__supa.from('fleet_sync').delete().eq('store', store).eq('id', id);
     if(error) throw error;
-    /* v20 — จุดสำคัญ: ปัญหา "ลบแล้วเด้งกลับมาอีก" ที่ยังเกิดซ้ำหลัง v18 คือ
-       Supabase/PostgREST เวลา DELETE โดน RLS policy บล็อก มันจะ "ไม่โยน error"
-       ให้เลย — แค่ลบได้ 0 แถวเงียบๆ แล้วรายงานว่าสำเร็จ (error เป็น null)
-       เพราะ RLS กรองแถวที่ role นี้ "มองไม่เห็น/แตะไม่ได้" ออกไปตั้งแต่ต้น
-       ไม่ใช่ error ทางสิทธิ์ตรงๆ — v18 เช็คแค่ error เลยจับเคสนี้ไม่ได้ ทำให้
-       เข้าใจผิดว่าลบสำเร็จ ทั้งที่จริงแถวยังอยู่ในฐานข้อมูลกลาง แล้วมันจะถูก
-       ดึงกลับมาใหม่แน่นอนตอน sync/seedIfEmpty ครั้งถัดไป — จุดนี้เช็คซ้ำให้ชัวร์
-       ด้วยการอ่านกลับมาดูว่าแถวยังอยู่จริงไหม แทนที่จะเชื่อแค่ "ไม่มี error" */
-    const { data: stillThere, error: checkErr } = await window.__supa.from('fleet_sync').select('id').eq('store', store).eq('id', id).limit(1);
-    if(!checkErr && stillThere && stillThere.length){
-      console.warn('ลบออกจากฐานข้อมูลกลางไม่สำเร็จจริง (ไม่มี error แต่แถวยังอยู่ — น่าจะโดน RLS policy บล็อกแบบเงียบ):', store, id);
-      toast('⚠️ ลบออกจากเครื่องนี้แล้ว แต่ฐานข้อมูลกลาง (Supabase) "ไม่ยอมลบจริง" แม้จะไม่ฟ้อง error ก็ตาม — สาเหตุที่พบบ่อยที่สุดคือตาราง fleet_sync ยังไม่มี RLS Policy อนุญาต DELETE เลย ทำให้เส้นทาง/ข้อมูลนี้จะเด้งกลับมาใหม่แน่นอนตอน sync ครั้งถัดไป ต้องไปเพิ่ม Policy อนุญาต DELETE ในหน้า Supabase → Authentication → Policies ของตาราง fleet_sync ก่อน (ดูคำแนะนำ SQL ที่แชทแอดมิน)');
-    }
-  }catch(e){
-    /* เดิมกลืน error เงียบๆ ตรงนี้ — ถ้าลบออกจากฐานข้อมูลกลาง (Supabase)
-       ไม่สำเร็จ (เช่น RLS policy ยังไม่เปิดสิทธิ์ DELETE ให้ตาราง fleet_sync)
-       ของที่ลบจะหายแค่ในเครื่องนี้ชั่วคราว แล้ว sync ครั้งถัดไปจะดึงกลับมา
-       ใหม่จากฐานข้อมูลกลาง ดูเหมือน "ลบไม่ออก" ทั้งที่จริงๆ ลบสำเร็จแค่ฝั่ง
-       เครื่องนี้ — เตือนแอดมินให้เห็นทันทีแทนที่จะกลืนเงียบๆ แบบเดิม */
-    console.warn('ลบออกจากฐานข้อมูลกลาง (Supabase) ไม่สำเร็จ:', store, id, e);
-    toast('⚠️ ลบออกจากเครื่องนี้แล้ว แต่ลบออกจากฐานข้อมูลกลางไม่สำเร็จ ('+(e&&e.message?e.message:'ไม่ทราบสาเหตุ')+') — อาจกลับมาใหม่ตอน sync ครั้งถัดไป ลองตรวจสอบสิทธิ์ DELETE ในตาราง fleet_sync ที่ Supabase');
-  }
+  }catch(e){}
 }
 /* ---------- Egress fix: delta loader ----------
    syncLoadStore() pulls the full `data` for EVERY row of a store on every
@@ -4992,7 +4885,7 @@ async function seedIfEmpty(){
   }));
   for(const m of maint) await idbPut('maintenance',m);
 
-  await idbPut('settings',{id:'config', thresholds:{low:30,mid:60,high:85}, maxRestKm:150, maxDriveHr:4, gmapApiKey:''});
+  await idbPut('settings',{id:'config', thresholds:{low:30,mid:60,high:85}, maxRestKm:150, maxDriveHr:4, gmapApiKey:'', tomtomApiKey:''});
 
   const users=[
     {id:uid('usr'), name:'ผู้ดูแลระบบหลัก', role:'Admin', username:'admin01', password:'admin1234'},
@@ -5166,46 +5059,19 @@ function statusColor(key){
    ========================================================================== */
 const GPSBOX = {
   table: 'vehicle_live',
-  /* ---------- v31 — แบ่งคอลัมน์เป็นชั้นตามหน้าที่เปิดอยู่ (ลด Egress) ----------
-     เดิมดึงครบทุกคอลัมน์ทุก 30 วินาที = ~40 KB ต่อรอบ (รถ 50 คัน) หรือ ~112 MB
-     ต่อวันต่อแท็บที่เปิดค้างไว้ ทั้งที่คอลัมน์ข้อความยาวๆ อย่าง risk_why กับ
-     hazard_label ถูกใช้แค่ในหน้า Risk Management หน้าเดียวเท่านั้น
-       core = ขาดไม่ได้ ใช้ทุกหน้า และตัวตรวจจับจุดจอดต้องใช้ตลอดแม้เปิดหน้าอื่นอยู่
-       loc  = ชื่อถนน ใช้ใน popup รถบนแผนที่
-       riskLite = คะแนนรวม ใช้วาดวงแหวน Risk บนแผนที่ + KPI หน้ารายงาน
-       riskFull = รายละเอียดคะแนน ใช้เฉพาะหน้า Risk Management
-     hazard_ahead ถูกตัดถาวร — ดึงมาตั้งแต่แรกแต่ไม่เคยเอาไปแสดงที่ไหนเลย */
-  coreColumns: 'plate_norm,lat,lng,speed,status,gps_time,updated_at',
-  locColumn:   'location',
+  columns: 'plate_norm,lat,lng,speed,status,location,gps_time,updated_at',
+  // คะแนนความเสี่ยงที่เครื่องออฟฟิศคำนวณแล้วส่งมาให้ (ดู risk.py)
   // ต้องรัน step3_risk_columns.sql ใน Supabase ก่อนถึงจะมีคอลัมน์พวกนี้
   // ถ้ายังไม่ได้รัน โค้ดจะถอยไปดึงเฉพาะตำแหน่งเอง ไม่พังทั้งหน้า
-  riskLiteColumns: 'risk_total',
-  riskFullColumns: 'risk_tier,risk_road,risk_behaviour,risk_why,hazard_km,hazard_label',
+  riskColumns: 'risk_total,risk_road,risk_behaviour,risk_tier,risk_why,'
+             + 'hazard_ahead,hazard_km,hazard_label',
   refreshSeconds: 30,      // ความถี่ในการดึงข้อมูล
   offlineAfterMinutes: 30, // เงียบเกินเท่านี้ = ออฟไลน์
 };
-/* หน้าไหนต้องใช้คอลัมน์ชุดไหน */
-function liveColumnMode(){
-  const act = id=>!!document.getElementById(id)?.classList.contains('active');
-  if(act('riskview')) return 'risk';
-  if(act('mapview') || act('reportview')) return 'map';
-  return 'core';
-}
-const LIVE_MODE_RANK = { core:0, map:1, risk:2 };
-function liveColumnsFor(mode){
-  let cols = GPSBOX.coreColumns;
-  if(mode==='map' || mode==='risk'){
-    cols += ',' + GPSBOX.locColumn;
-    if(riskColumnsOk) cols += ',' + GPSBOX.riskLiteColumns;
-  }
-  if(mode==='risk' && riskColumnsOk) cols += ',' + GPSBOX.riskFullColumns;
-  return cols;
-}
 
 const LIVE = new Map();   // plate_norm -> แถวล่าสุดจากกล่อง
 let riskColumnsOk = true; // ยังดึงคอลัมน์คะแนนได้อยู่หรือไม่
 let liveSince = null;     // updated_at ล่าสุดที่ดึงมาแล้ว (ใช้ดึงแบบ delta)
-let liveColMode = 'core'; // ชุดคอลัมน์ที่ดึงอยู่รอบล่าสุด (core / map / risk)
 let liveSinceMs = 0;
 const liveStats = { polls:0, rows:0, lastOk:null, lastError:null };
 
@@ -5332,8 +5198,7 @@ function riskOf(v){
     behaviour: r.risk_behaviour || 0,
     tier: r.risk_tier || 'low',
     why: r.risk_why || '',
-    /* v31 — ตัด ahead ทิ้ง: เคยดึงคอลัมน์ hazard_ahead มาทุก 30 วินาที
-       แต่ไม่มีหน้าไหนเอาไปแสดงเลยสักที่ (เสียเปล่าประมาณ 3 MB/วัน) */
+    ahead: r.hazard_ahead || 0,
     hazardKm: (typeof r.hazard_km === 'number') ? r.hazard_km : null,
     hazardLabel: r.hazard_label || '',
   };
@@ -5360,13 +5225,6 @@ function livePopupRows(v, br){
 
 /* วาดหน้าจอใหม่เท่าที่จำเป็น — ทำงานในเครื่อง ไม่มีการโหลดข้อมูลเพิ่ม */
 function redrawLiveViews(){
-  /* ตรวจจับจุดจอดผิดปกติทุกครั้งที่ได้ข้อมูลสดรอบใหม่ (ทุก ~30 วิ)
-     วางไว้นอก try ของการวาดหน้าจอ เพราะการเฝ้าดูต้องทำงานแม้อยู่หน้าอื่น */
-  try{ stopDetectTick(); }catch(e){ console.warn('ตรวจจับจุดจอดล้มเหลว:', e); }
-  try{
-    const hv = document.getElementById('hazardview');
-    if(hv && hv.classList.contains('active')) renderStopEventQueue();
-  }catch(e){}
   try{
     const mv = document.getElementById('mapview');
     const fv = document.getElementById('fleetview');
@@ -5382,14 +5240,7 @@ async function pollGpsBox(force){
   if(!window.__supa) return;
   if(!force && document.hidden) return;   // ไม่เปิดดูอยู่ ก็ไม่ต้องโหลด
   try{
-    /* ชุดคอลัมน์ "กว้างขึ้น" กว่ารอบก่อน = ต้องดึงใหม่ทั้งหมดรอบเดียว
-       เพราะ delta ดึงเฉพาะแถวที่ updated_at ขยับ ถ้าไม่รีเซ็ตตัวชี้ รถที่จอดนิ่ง
-       จะไม่มีคอลัมน์ชุดใหม่ติดมาเลย (เช่น เปิดหน้า Risk แล้วคะแนนว่างเป็นแถบ)
-       ส่วนตอน "แคบลง" ไม่ต้องรีเซ็ต เพราะข้อมูลชุดกว้างยังอยู่ใน LIVE อยู่แล้ว */
-    const mode = liveColumnMode();
-    if(LIVE_MODE_RANK[mode] > LIVE_MODE_RANK[liveColMode]){ liveSince = null; liveSinceMs = 0; }
-    liveColMode = mode;
-    const cols = liveColumnsFor(mode);
+    const cols = GPSBOX.columns + (riskColumnsOk ? ',' + GPSBOX.riskColumns : '');
     let q = window.__supa.from(GPSBOX.table).select(cols);
     if(liveSince) q = q.gt('updated_at', liveSince);
     const { data, error } = await q;
@@ -5410,10 +5261,7 @@ async function pollGpsBox(force){
       liveStats.rows += data.length;
       data.forEach(r=>{
         if(!r.plate_norm) return;
-        /* ผสานทับของเดิม ไม่ใช่แทนที่ทั้งก้อน — รอบที่ดึงเฉพาะคอลัมน์ core
-           จะได้ไม่ไปล้างคะแนน/ชื่อถนนที่ดึงมาแล้วก่อนหน้านี้ทิ้ง */
-        const prev = LIVE.get(r.plate_norm);
-        LIVE.set(r.plate_norm, prev ? Object.assign({}, prev, r) : r);
+        LIVE.set(r.plate_norm, r);
         const ms = Date.parse(r.updated_at);
         if(!isNaN(ms) && ms > liveSinceMs){ liveSinceMs = ms; liveSince = r.updated_at; }
       });
@@ -5430,24 +5278,10 @@ async function pollGpsBox(force){
 }
 
 let liveTimer = null;
-/* v30 — ปรับความถี่ตามหน้าที่เปิดอยู่ (ลด Egress)
-   การดึงตำแหน่งรถทุก 30 วินาทีคือค่าใช้จ่ายต่อเนื่องก้อนใหญ่ที่สุดของระบบ
-   (รถ 50 คัน x 16 คอลัมน์ x 2,880 รอบต่อวัน ต่อแท็บแอดมินที่เปิดค้างไว้)
-   แต่ความสดของตำแหน่งจำเป็นเฉพาะตอนดูหน้าแผนที่/รายการรถ/ความเสี่ยงเท่านั้น
-   อยู่หน้าตั้งค่า/รายงาน/วางแผนพักรถ ไม่มีอะไรบนจอที่ใช้ตำแหน่งสดเลย */
-function gpsPollDelayMs(){
-  const liveViews = ['mapview','fleetview','riskview'];
-  const onLiveView = liveViews.some(id=>document.getElementById(id)?.classList.contains('active'));
-  const base = Math.max(10, GPSBOX.refreshSeconds);
-  return (onLiveView ? base : base * 4) * 1000;   // หน้าอื่น = ช้าลง 4 เท่า
-}
-function scheduleGpsPoll(){
-  if(liveTimer) clearTimeout(liveTimer);
-  liveTimer = setTimeout(async ()=>{ await pollGpsBox(); scheduleGpsPoll(); }, gpsPollDelayMs());
-}
 async function startGpsBoxLive(){
   await pollGpsBox(true);
-  scheduleGpsPoll();
+  if(liveTimer) clearInterval(liveTimer);
+  liveTimer = setInterval(pollGpsBox, Math.max(10, GPSBOX.refreshSeconds) * 1000);
   document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) pollGpsBox(true); });
 
   /* เปิด Console แล้วพิมพ์ gpsBoxStatus() เพื่อดูว่าสัญญาณเข้ามาครบหรือไม่
@@ -5555,27 +5389,52 @@ async function fetchRouteWeatherLive(route){
     return { weather: weathercodeToCategory(cur.weathercode, cur.precipitation), precipMm: cur.precipitation };
   }catch(e){ return null; }
 }
+/* ---------- Live traffic via TomTom Routing API ----------
+   สลับมาจาก Google Distance Matrix เพราะ Google Maps Platform ทุก API
+   (รวม Distance Matrix) ต้องผูก billing account เสมอ ไม่มีข้อยกเว้น —
+   TomTom Routing API ให้โควต้าฟรี 20,000 ครั้ง/เดือน โดยไม่ต้องผูกบัตรเครดิต
+   ใช้กุญแจคนละตัวกับ Google Maps key (เก็บแยกที่ STATE.settings.tomtomApiKey
+   ตั้งค่าได้ที่หน้า Admin/Settings การ์ด "การเชื่อมต่อ TomTom")
+
+   วิธีเทียบความติดขัด: เรียก Calculate Route แบบ traffic=true +
+   computeTravelTimeFor=all แล้วเทียบ summary.travelTimeInSeconds (มีจราจรจริง)
+   กับ summary.noTrafficTravelTimeInSeconds (ถนนโล่ง) — สูตรเดียวกับที่เคยใช้
+   กับ Google (duration_in_traffic / duration) ค่า ratio/label ที่คืนออกไปจึง
+   มีหน้าตาเหมือนเดิมทุกอย่าง โค้ดที่เรียกใช้ (refreshLiveRiskData,
+   calcRouteRiskLive) ไม่ต้องแก้อะไรเลย
+
+   TRAFFIC_FETCH_ERR เก็บข้อความ error ล่าสุดต่อเส้นทาง ไว้ให้
+   renderRiskLiveNote() แสดงสาเหตุจริงแทนคำว่า "กำลังดึงข้อมูลจราจร..."
+   ที่ค้างตลอดไปแบบเดิม (ปัญหาที่ตรวจเจอตอนดีบัก Google Distance Matrix) */
+const TRAFFIC_FETCH_ERR = {};
 async function fetchRouteTrafficLive(route){
-  const key = STATE.settings && STATE.settings.gmapApiKey;
+  const key = STATE.settings && STATE.settings.tomtomApiKey;
   if(!key || !route.waypoints || route.waypoints.length<2) return null;
   try{
-    await loadGoogleMaps(key);
-    if(!(window.google && google.maps && google.maps.DistanceMatrixService)) return null;
-    const svc = new google.maps.DistanceMatrixService();
     const origin = route.waypoints[0], dest = route.waypoints[route.waypoints.length-1];
-    const result = await new Promise((resolve,reject)=>{
-      svc.getDistanceMatrix({
-        origins:[{lat:origin[0],lng:origin[1]}], destinations:[{lat:dest[0],lng:dest[1]}],
-        travelMode: google.maps.TravelMode.DRIVING,
-        drivingOptions:{ departureTime: new Date(), trafficModel: google.maps.TrafficModel.BEST_GUESS },
-      }, (res,status)=> status==='OK' ? resolve(res) : reject(new Error(status)));
-    });
-    const el = result.rows[0] && result.rows[0].elements[0];
-    if(!el || el.status!=='OK' || !el.duration || !el.duration_in_traffic) return null;
-    const ratio = el.duration_in_traffic.value / el.duration.value;
+    const url = `https://api.tomtom.com/routing/1/calculateRoute/${origin[0]},${origin[1]}:${dest[0]},${dest[1]}/json`
+      + `?key=${encodeURIComponent(key)}&traffic=true&computeTravelTimeFor=all`;
+    const res = await fetch(url);
+    if(!res.ok){
+      const body = await res.json().catch(()=>null);
+      const msg = (body && body.detailedError && (body.detailedError.message || body.detailedError.code))
+        || (body && body.error && body.error.description)
+        || ('HTTP ' + res.status);
+      throw new Error(msg);
+    }
+    const data = await res.json();
+    const sum = data.routes && data.routes[0] && data.routes[0].summary;
+    if(!sum || !sum.travelTimeInSeconds || !sum.noTrafficTravelTimeInSeconds){
+      throw new Error('ไม่พบข้อมูลเวลาเดินทางในผลลัพธ์ (ตรวจสอบว่าเส้นทางมีพิกัดถูกต้อง)');
+    }
+    const ratio = sum.travelTimeInSeconds / sum.noTrafficTravelTimeInSeconds;
     const label = ratio>=1.5?'ติดขัดหนัก':ratio>=1.15?'ติดขัด':'คล่องตัว';
+    TRAFFIC_FETCH_ERR[route.id] = null;
     return { ratio, label };
-  }catch(e){ return null; }
+  }catch(e){
+    TRAFFIC_FETCH_ERR[route.id] = (e && e.message) ? e.message : String(e);
+    return null;
+  }
 }
 async function refreshLiveRiskData(){
   const now = Date.now();
@@ -5622,9 +5481,6 @@ document.querySelectorAll('.rail-btn[data-view]').forEach(btn=>{
     const view = document.getElementById(btn.dataset.view);
     view.classList.add('active');
     document.getElementById('viewTitle').textContent = btn.querySelector('.tip').textContent;
-    /* v31 — เข้าหน้าที่ต้องใช้คอลัมน์เพิ่ม (แผนที่/Risk/รายงาน) ให้ดึงทันที
-       ไม่ต้องรอรอบถัดไป ไม่งั้นคะแนน/ชื่อถนนจะว่างอยู่ถึง 30 วินาที */
-    if(LIVE_MODE_RANK[liveColumnMode()] > LIVE_MODE_RANK[liveColMode]) pollGpsBox(true);
     if(btn.dataset.view==='alertsview') renderAlertLogsView();
     if(btn.dataset.view==='pointsview') renderPointsView();
     if(btn.dataset.view==='speedview') openSpeedView();
@@ -5633,9 +5489,6 @@ document.querySelectorAll('.rail-btn[data-view]').forEach(btn=>{
         if(mapProvider==='leaflet' && window.__leafletMap) window.__leafletMap.invalidateSize();
         if(mapProvider==='google' && gMap) google.maps.event.trigger(gMap,'resize');
       },50);
-    }
-    if(btn.dataset.view==='restview'){
-      setTimeout(()=>{ renderRestMiniMap(); },50);
     }
   });
 });
@@ -5767,15 +5620,75 @@ async function toggleRoadNetwork(){
         + `${Math.round(roadNetData.reduce((s,r)=>s+(r.km||0),0))} กม.`);
 }
 window.toggleRoadNetwork = toggleRoadNetwork;
+
+/* ---------- Live traffic flow overlay (TomTom, on-demand) ----------
+   ต่างจากหน้า Risk Management ที่ดึงข้อมูลจราจรทุก 5 นาทีเพื่อคำนวณคะแนน —
+   ตัวนี้คือภาพ "เส้นทางรถติดสด ณ ตอนนี้" ซ้อนบนแผนที่หลัก แบบเดียวกับปุ่ม
+   "🛣️ ถนนที่กองเราใช้" ด้านบน: กดเปิดถึงจะโหลด กดปิดก็เลิกโหลดทันที
+   ไม่มี setInterval ดึงซ้ำเองเลย เพราะ tile layer ของ Leaflet/Google จะขอเฉพาะ
+   ช่องแผนที่ (tile) ที่มองเห็นอยู่ตอนเลื่อน/ซูมเท่านั้น ไม่ใช่ยิงรัวๆ ทุกไม่กี่วินาที
+   เหมือนหน้า Risk Management — ใช้กุญแจ TomTom เดียวกับที่ตั้งไว้แล้ว */
+let trafficFlowOn = false;
+let trafficFlowLeafletLayer = null;
+let trafficFlowGoogleType = null;
+const trafficTileUrl = (key, z, x, y) =>
+  `https://api.tomtom.com/traffic/map/4/tile/flow/relative0-dark/${z}/${x}/${y}.png?key=${encodeURIComponent(key)}`;
+
+function addTrafficFlowLayer(){
+  const key = STATE.settings && STATE.settings.tomtomApiKey;
+  if(!key) return false;
+  if(mapProvider === 'leaflet'){
+    if(!map) return false;
+    trafficFlowLeafletLayer = L.tileLayer(trafficTileUrl(key, '{z}', '{x}', '{y}'), {
+      opacity: 0.75, maxZoom: 22, minZoom: 0,
+    }).addTo(map);
+  } else {
+    if(!gMap || !window.google) return false;
+    trafficFlowGoogleType = new google.maps.ImageMapType({
+      getTileUrl: (coord, zoom) => trafficTileUrl(key, zoom, coord.x, coord.y),
+      tileSize: new google.maps.Size(256,256), opacity: 0.75, name: 'TomTom Traffic',
+    });
+    gMap.overlayMapTypes.push(trafficFlowGoogleType);
+  }
+  return true;
+}
+function removeTrafficFlowLayer(){
+  if(trafficFlowLeafletLayer && map && map.hasLayer(trafficFlowLeafletLayer)){
+    map.removeLayer(trafficFlowLeafletLayer);
+  }
+  trafficFlowLeafletLayer = null;
+  if(trafficFlowGoogleType && gMap){
+    const idx = gMap.overlayMapTypes.getArray().indexOf(trafficFlowGoogleType);
+    if(idx > -1) gMap.overlayMapTypes.removeAt(idx);
+  }
+  trafficFlowGoogleType = null;
+}
+function toggleTrafficFlow(){
+  const btn = document.getElementById('btnTrafficFlow');
+  if(trafficFlowOn){
+    trafficFlowOn = false;
+    removeTrafficFlowLayer();
+    if(btn){ btn.style.borderColor=''; btn.style.color=''; }
+    return;
+  }
+  const key = STATE.settings && STATE.settings.tomtomApiKey;
+  if(!key){ toast('กรุณาใส่ TomTom API Key ที่หน้า Admin / Settings ก่อน (การ์ด "การเชื่อมต่อ TomTom")'); return; }
+  const ok = addTrafficFlowLayer();
+  if(!ok){ toast('แสดงชั้นจราจรไม่สำเร็จ ลองใหม่อีกครั้ง'); return; }
+  trafficFlowOn = true;
+  if(btn){ btn.style.borderColor = '#F59E0B'; btn.style.color = '#F59E0B'; }
+  toast('แสดงเส้นทางรถติดปัจจุบันแล้ว (เขียว=โล่ง ส้ม/แดง=ติดขัด) — กดปุ่มนี้อีกครั้งเพื่อซ่อน');
+}
+window.toggleTrafficFlow = toggleTrafficFlow;
 let gMap = null, gLoading = null, gOverlays = [];
 let leafletFleetFitted = false, googleFleetFitted = false;
 
 function initMap(){
   map = L.map('mapLeaflet',{zoomControl:false,attributionControl:true}).setView([15.5,100.6],6.4);
   L.control.zoom({position:'bottomleft'}).addTo(map);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
-    maxZoom:20, className:'dark-tiles', subdomains:'abcd',
-    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    maxZoom:19, className:'dark-tiles', subdomains:'abc',
+    attribution:'&copy; OpenStreetMap contributors'
   }).addTo(map);
   routeLayer = L.layerGroup().addTo(map);
   hazardLayerGroup = L.layerGroup().addTo(map);
@@ -5859,6 +5772,9 @@ function gVehIconUrl(v){
 
 async function switchMapProvider(provider){
   if(provider===mapProvider) return;
+  // ชั้นจราจรสดผูกกับ map object ของ provider เดิม สลับแผนที่ทีต้องปิดก่อน
+  // กันไม่ให้มันค้างโหลดเงียบๆ อยู่เบื้องหลังฝั่งที่มองไม่เห็นแล้ว
+  if(trafficFlowOn){ toggleTrafficFlow(); toast('ปิดชั้นจราจรสดแล้ว (สลับแผนที่) — กดปุ่ม 🚦 จราจรสด อีกครั้งเพื่อดูต่อ'); }
   if(provider==='google'){
     const key = STATE.settings.gmapApiKey;
     if(!key){ toast('กรุณาใส่ Google Maps API Key ที่หน้า Admin / Settings ก่อน'); return; }
@@ -5978,41 +5894,12 @@ function focusVehicleOnMap(id){
    report (see promoteReportToPoi). Manually-added POIs have no driverId/
    vehicleId/photo, so this returns '' for those and the popup looks exactly
    as it did before. */
-/* ---------- v28 — ที่มาของจุด: ทะเบียนรถ / คนขับ / จอดเมื่อไร / นานเท่าไร ----------
-   จุดที่คนขับถ่ายรูปส่งมา มี driverId/vehicleId ติดมาตั้งแต่ตอนอนุมัติอยู่แล้ว
-   แต่จุดที่ระบบตรวจจับเองจาก GPS (ไม่มีรูป) เก็บไว้แค่ fromStopEventId เฉยๆ
-   ป๊อปอัปเลยว่างเปล่า ไม่บอกว่ารถคันไหนไปจอด จอดตอนไหน — ตรงนี้รวมสองทางไว้ที่เดียว
-   และย้อนอ่านจาก stopEvents ให้ด้วย จุดที่อนุมัติไปแล้วก่อนหน้านี้จึงแสดงผลได้ทันที */
-function poiStopOrigin(p){
-  if(!p) return null;
-  const drv = p.driverId ? (STATE.users||[]).find(u=>u.id===p.driverId) : null;
-  const veh = p.vehicleId ? (STATE.vehicles||[]).find(v=>v.id===p.vehicleId) : null;
-  const ev  = p.fromStopEventId ? (STATE.stopEvents||[]).find(e=>e.id===p.fromStopEventId) : null;
-  const plate       = p.plate || (veh && veh.plate) || (ev && ev.plate) || '';
-  const driverName  = p.stopDriverName || (drv && drv.name) || (ev && ev.driver) || reporterNameOf(p) || '';
-  const ts          = p.stopTs || p.reportedAt || (ev && ev.startTs) || null;
-  const durationMin = (p.stopDurationMin!=null) ? p.stopDurationMin
-                    : (ev ? stopEffectiveMin(ev) : null);
-  if(!plate && !driverName && !ts) return null;
-  return { plate, driverName, ts, durationMin, auto: !!(ev || p.stopTs) };
-}
-function poiOriginRowsHtml(p){
-  const o = poiStopOrigin(p);
-  if(!o) return '';
-  const fmtMin = m=>(m>=60 ? Math.floor(m/60)+' ชม. '+(m%60)+' นาที' : m+' นาที');
-  const when = o.ts ? new Date(o.ts).toLocaleString('th-TH',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
-  const dur  = (o.durationMin!=null && o.durationMin>0) ? ' · จอดนาน '+fmtMin(o.durationMin) : '';
-  let html = '';
-  if(o.plate || o.driverName){
-    const who = [o.plate ? '🚛 ทะเบียน '+o.plate : '', o.driverName].filter(Boolean).join(' · ');
-    html += `<div class="pop-row">${o.auto?'รถที่จอดจุดนี้':'แจ้งโดย'}: ${who}</div>`;
-  }
-  if(when) html += `<div class="pop-row">🕒 ${o.auto?'จอดเมื่อ':'แจ้งเมื่อ'}: ${when}${dur}</div>`;
-  return html;
-}
 function poiReporterPopupHtml(p){
-  const reporterRow = poiOriginRowsHtml(p);
-  const photos = objPhotosWithFallback(p);
+  const drv = p.driverId ? STATE.users.find(u=>u.id===p.driverId) : null;
+  const veh = p.vehicleId ? STATE.vehicles.find(v=>v.id===p.vehicleId) : null;
+  const reporterRow = (drv || veh)
+    ? `<div class="pop-row">แจ้งโดย: ${drv?drv.name:'ไม่ทราบคนขับ'}${veh?(' · รถ '+veh.plate):''}</div>` : '';
+  const photos = reportPhotos(p);
   const photoRow = photos.length
     ? `<div style="position:relative;display:inline-block;margin-top:6px;cursor:pointer;" onclick="viewPoiPhoto('${p.id}')">
          <img src="${photos[0].thumb||photos[0].full}" style="width:100%;max-width:220px;border-radius:8px;display:block;" alt="รูปประกอบ">
@@ -6021,95 +5908,19 @@ function poiReporterPopupHtml(p){
     : '';
   return reporterRow + photoRow;
 }
-/* ---------- v29 — กดจากตาราง Hazard แล้วเด้งไปดูบนแผนที่ ----------
-   hazardFocus = null            → แสดงทุกอย่างตามปกติ
-                 {routeId}       → แสดงเฉพาะจุดเสี่ยงของเส้นทางนั้น (กดจากหัวข้อกลุ่ม)
-                 {hazardId}      → แสดงจุดนั้นจุดเดียว พร้อมเปิดป้ายข้อมูลให้เลย
-   ระหว่างโฟกัส จะซ่อนจุดพัก (POI) ออกด้วยเพื่อไม่ให้รก แต่ยังเห็นรถของกองอยู่
-   เพราะการรู้ว่าตอนนี้มีรถคันไหนวิ่งเข้าใกล้จุดเสี่ยงนั้นคือสาระสำคัญของหน้านี้ */
-let hazardFocus = null;
-/* ซูม/เปิดป้ายข้อมูล เฉพาะตอนที่เพิ่งกดมาจากตารางเท่านั้น — ไม่ใช่ทุกครั้งที่วาดใหม่
-   เพราะหน้าแผนที่วาดซ้ำทุก 30 วิตามข้อมูล GPS สด ถ้าซูมทุกรอบจะกระตุกและ
-   ดึงมุมมองที่แอดมินเลื่อนเองกลับไปเรื่อยๆ */
-let hazardFocusPending = false;
-function hazardFocusList(){
-  if(!hazardFocus) return null;
-  if(hazardFocus.hazardId) return STATE.hazards.filter(h=>h.id===hazardFocus.hazardId);
-  if(hazardFocus.routeId==='__none__')
-    return STATE.hazards.filter(h=>!h.routeId || !STATE.routes.some(r=>r.id===h.routeId));
-  return STATE.hazards.filter(h=>h.routeId===hazardFocus.routeId);
-}
-function hazardVisible(h){
-  const list = hazardFocusList();
-  if(list) return list.some(x=>x.id===h.id);
-  return MAP_FILTERS.haz[h.type]!==false;
-}
-function renderHazardFocusBar(){
-  const bar = document.getElementById('hazardFocusBar');
-  const txt = document.getElementById('hazardFocusText');
-  if(!bar || !txt) return;
-  const list = hazardFocusList();
-  if(!list){ bar.style.display='none'; return; }
-  bar.style.display = 'flex';
-  if(hazardFocus.hazardId){
-    const h = list[0];
-    const meta = h ? (HAZ_META[h.type]||{icon:'⚠️',label:h.type}) : null;
-    txt.innerHTML = h
-      ? `🔎 กำลังดูจุดเดียว: <b>${meta.icon} ${h.label||meta.label}</b> · ความรุนแรง ${h.severity}/4`
-      : '🔎 ไม่พบจุดเสี่ยงนี้แล้ว (อาจถูกลบไป)';
-  } else {
-    const route = STATE.routes.find(r=>r.id===hazardFocus.routeId);
-    txt.innerHTML = `🛣️ จุดเสี่ยงของเส้นทาง <b>${route?route.name:'ไม่ระบุเส้นทาง'}</b> · ${list.length} จุด`;
-  }
-}
-function goToMapView(){
-  const btn = document.querySelector('.rail-btn[data-view="mapview"]');
-  if(btn) btn.click();
-}
-function showRouteHazardsOnMap(routeId){
-  hazardFocus = { routeId }; hazardFocusPending = true;
-  goToMapView();
-  /* รอให้หน้าแผนที่ active + invalidateSize ทำงานก่อน ค่อยวาดและซูม
-     ไม่งั้น fitBounds จะคำนวณจากกล่องที่ยังขนาด 0 แล้วซูมผิด */
-  setTimeout(()=>{ renderHazardFocusBar(); drawFleetMap(); }, 120);
-}
-function showHazardOnMap(hazardId){
-  hazardFocus = { hazardId }; hazardFocusPending = true;
-  goToMapView();
-  setTimeout(()=>{ renderHazardFocusBar(); drawFleetMap(); }, 120);
-}
-function clearHazardFocus(){
-  hazardFocus = null; hazardFocusPending = false;
-  renderHazardFocusBar();
-  drawFleetMap();
-}
 function drawFleetMapLeaflet(){
   routeLayer.clearLayers(); hazardLayerGroup.clearLayers(); poiLayerGroup.clearLayers(); vehicleLayerGroup.clearLayers();
-  const focusList = hazardFocusList();
-  const focusBounds = [];
-  let focusMarkerLeaflet = null;
 
   STATE.hazards.forEach(h=>{
-    if(!hazardVisible(h)) return;
+    if(MAP_FILTERS.haz[h.type]===false) return;
     const meta = HAZ_META[h.type];
-    /* v27 — ใส่รูปที่คนขับถ่ายส่งมา + ชื่อผู้แจ้ง ลงในป๊อปอัปด้วย (เดิมไม่มีทั้งคู่) */
-    const hzPhotos = objPhotosWithFallback(h);
-    const hzWho = reporterLineText(h);
-    const hzPhotoRow = hzPhotos.length
-      ? `<div class="pop-row" style="margin-top:6px;"><img src="${hzPhotos[0].thumb||hzPhotos[0].full}" onclick="viewHazardPhoto('${h.id}')" style="width:100%;max-width:190px;border-radius:8px;cursor:pointer;display:block;" alt="รูปจากคนขับ"><span style="font-size:11px;color:var(--text-faint)">กดที่รูปเพื่อดูเต็ม${hzPhotos.length>1?' ('+hzPhotos.length+' รูป)':''}</span></div>`
-      : '';
-    const hzMarker = L.marker([h.lat,h.lng],{icon:dotIcon(meta.color,20,meta.icon)}).addTo(hazardLayerGroup)
-      .bindPopup(`<div class="pop-title">${meta.icon} ${h.label}</div><div class="pop-row">ความรุนแรง: ${'★'.repeat(h.severity)}${'☆'.repeat(4-h.severity)}</div><div class="pop-row">${h.notes}</div>${hzPhotoRow}${hzWho?`<div class="pop-row" style="color:var(--text-faint)">📷 ${hzWho}</div>`:''}<div class="pop-row" style="margin-top:4px;color:var(--text-faint)">รายงานล่าสุด: ${h.date}</div>`);
-    if(focusList){
-      focusBounds.push([h.lat,h.lng]);
-      if(hazardFocus.hazardId===h.id) focusMarkerLeaflet = hzMarker;
-    }
+    L.marker([h.lat,h.lng],{icon:dotIcon(meta.color,20,meta.icon)}).addTo(hazardLayerGroup)
+      .bindPopup(`<div class="pop-title">${meta.icon} ${h.label}</div><div class="pop-row">ความรุนแรง: ${'★'.repeat(h.severity)}${'☆'.repeat(4-h.severity)}</div><div class="pop-row">${h.notes}</div><div class="pop-row" style="margin-top:4px;color:var(--text-faint)">รายงานล่าสุด: ${h.date}</div>`);
   });
 
-  /* ระหว่างโฟกัสจุดเสี่ยง ซ่อนจุดพักไว้ก่อน ไม่งั้นหมุดเต็มจอจนหาจุดที่ต้องการดูไม่เจอ */
-  if(!focusList) STATE.pois.forEach(p=>{
+  STATE.pois.forEach(p=>{
     if(MAP_FILTERS.poi[p.type]===false) return;
-    const meta = poiDisplayMeta(p);
+    const meta = POI_META[p.type];
     L.marker([p.lat,p.lng],{icon:dotIcon(meta.color,18,meta.icon)}).addTo(poiLayerGroup)
       .bindPopup(`<div class="pop-title">${meta.icon} ${p.name}</div><div class="pop-row">${meta.label}</div><div class="pop-row">${p.notes}</div>${poiReporterPopupHtml(p)}`);
   });
@@ -6125,16 +5936,7 @@ function drawFleetMapLeaflet(){
   /* Only auto-fit the view the very first time we have vehicles to show —
      re-fitting on every periodic refresh was yanking the admin's zoom/pan
      back out whenever they tried to inspect something on the map. */
-  if(bounds.length && !leafletFleetFitted && !focusList){ map.fitBounds(bounds,{padding:[80,80],maxZoom:9}); leafletFleetFitted = true; }
-
-  /* ตอนโฟกัสต้องซูมไปหาจุดที่กดมาเสมอ (ไม่ใช่ครั้งเดียวแบบ auto-fit ของกองรถ)
-     เพราะแอดมินเพิ่งกดมาจากตาราง = ตั้งใจจะให้เลื่อนไปดูตรงนั้นแน่ๆ */
-  if(focusList && focusBounds.length && hazardFocusPending){
-    hazardFocusPending = false;
-    if(focusBounds.length===1) map.setView(focusBounds[0], 14);
-    else map.fitBounds(focusBounds, {padding:[90,90], maxZoom:12});
-    if(focusMarkerLeaflet) setTimeout(()=>{ try{ focusMarkerLeaflet.openPopup(); }catch(e){} }, 250);
-  }
+  if(bounds.length && !leafletFleetFitted){ map.fitBounds(bounds,{padding:[80,80],maxZoom:9}); leafletFleetFitted = true; }
 }
 function recenterFleetMap(){
   if(mapProvider==='leaflet'){
@@ -6156,34 +5958,18 @@ function drawFleetMapGoogle(){
     const iw = new google.maps.InfoWindow({content:html});
     m.addListener('click',()=>iw.open(gMap,m));
     gOverlays.push(m);
-    return {m, iw};
   };
-  const focusList = hazardFocusList();
-  const gFocusBounds = new google.maps.LatLngBounds();
-  let gFocusCount = 0, gFocusOne = null, gFocusPos = null;
 
   STATE.hazards.forEach(h=>{
-    if(!hazardVisible(h)) return;
+    if(MAP_FILTERS.haz[h.type]===false) return;
     const meta = HAZ_META[h.type];
-    /* v27 — ป๊อปอัปฝั่ง Google Maps ก็ต้องเห็นรูป + ชื่อผู้แจ้งเหมือนกัน */
-    const gPhotos = objPhotosWithFallback(h);
-    const gWho = reporterLineText(h);
-    const gPhotoRow = gPhotos.length
-      ? `<img src="${gPhotos[0].thumb||gPhotos[0].full}" onclick="viewHazardPhoto('${h.id}')" style="width:190px;border-radius:8px;cursor:pointer;display:block;margin:6px 0 2px;" alt="รูปจากคนขับ"><small style="color:#555">กดที่รูปเพื่อดูเต็ม${gPhotos.length>1?' ('+gPhotos.length+' รูป)':''}</small><br>`
-      : '';
-    const gh = mk({lat:h.lat,lng:h.lng}, gDotIconUrl(meta.color,24,meta.icon), h.label,
-      `<div style="color:#111"><b>${meta.icon} ${h.label}</b><br>ความรุนแรง ${h.severity}/4<br>${h.notes}<br>${gPhotoRow}${gWho?'<small>📷 '+gWho+'</small><br>':''}<small>รายงานล่าสุด: ${h.date}</small></div>`);
-    if(focusList){
-      gFocusBounds.extend({lat:h.lat,lng:h.lng}); gFocusCount++;
-      gFocusPos = {lat:h.lat,lng:h.lng};
-      if(hazardFocus.hazardId===h.id) gFocusOne = gh;
-    }
+    mk({lat:h.lat,lng:h.lng}, gDotIconUrl(meta.color,24,meta.icon), h.label,
+      `<div style="color:#111"><b>${meta.icon} ${h.label}</b><br>ความรุนแรง ${h.severity}/4<br>${h.notes}<br><small>รายงานล่าสุด: ${h.date}</small></div>`);
   });
 
-  /* ระหว่างโฟกัสจุดเสี่ยง ซ่อนจุดพักไว้ก่อน เหมือนฝั่ง Leaflet */
-  if(!focusList) STATE.pois.forEach(p=>{
+  STATE.pois.forEach(p=>{
     if(MAP_FILTERS.poi[p.type]===false) return;
-    const meta = poiDisplayMeta(p);
+    const meta = POI_META[p.type];
     mk({lat:p.lat,lng:p.lng}, gDotIconUrl(meta.color,20,meta.icon), p.name,
       `<div style="color:#111"><b>${meta.icon} ${p.name}</b><br>${meta.label}<br>${p.notes}${poiReporterPopupHtml(p)}</div>`);
   });
@@ -6198,14 +5984,7 @@ function drawFleetMapGoogle(){
 
   /* Same fix as the Leaflet path — only auto-fit once, otherwise every
      periodic refresh yanks the admin's zoom/pan back out. */
-  if(STATE.vehicles.length && !googleFleetFitted && !focusList){ gMap.fitBounds(bounds, 80); googleFleetFitted = true; }
-
-  if(focusList && gFocusCount && hazardFocusPending){
-    hazardFocusPending = false;
-    if(gFocusCount===1 && gFocusPos){ gMap.setCenter(gFocusPos); gMap.setZoom(14); }
-    else gMap.fitBounds(gFocusBounds, 90);
-    if(gFocusOne) setTimeout(()=>{ try{ gFocusOne.iw.open(gMap, gFocusOne.m); }catch(e){} }, 250);
-  }
+  if(STATE.vehicles.length && !googleFleetFitted){ gMap.fitBounds(bounds, 80); googleFleetFitted = true; }
 }
 
 function paintRiskRing(score){
@@ -6245,109 +6024,6 @@ function populateRouteSelects(){
 }
 
 /* ---------- HAZARD VIEW ---------- */
-/* ================= v32 — ระบบย่อรายการยาว ใช้ร่วมกันทั้งเว็บ =================
-   ปัญหาเดิม: ทุกตารางพ่นแถวออกมารวดเดียวทั้งหมด (Hazard 903 แถว, ประวัติรายงาน
-   140 แถว, จุดจอด 40 แถว, ผู้ใช้/เส้นทาง/แจ้งเตือนอีกเพียบ) หน้าเลยยาวจน
-   ต้องเลื่อนหาตาลาย
-   หลักการใหม่ ใช้แบบเดียวกันหมดทุกหน้า เพื่อให้เรียนรู้ครั้งเดียวใช้ได้ทั้งเว็บ:
-     1) จัดกลุ่มตามสิ่งที่คนใช้มองหาจริง — เวลา (วัน) / ฟลีท / เส้นทาง
-     2) ยุบทุกกลุ่มไว้ก่อน แล้วเปิดกลุ่มแรกให้อัตโนมัติ (ปกติคือวันล่าสุด)
-     3) ในแต่ละกลุ่มแสดงทีละ LIST_PAGE_STEP แถว มีปุ่ม "ดูเพิ่ม" ต่อท้าย
-     4) มีช่องค้นหาที่พิมพ์แล้วกรองทันที เหมือนกันทุกหน้า
-   เก็บสถานะไว้ในหน่วยความจำอย่างเดียว ไม่แตะฐานข้อมูล ไม่กิน Egress เพิ่ม */
-const LIST_PAGE_STEP = 15;
-const LIST_SHOWN = {};   // คีย์กลุ่ม -> ตอนนี้กางอยู่กี่แถว
-const LIST_OPEN  = {};   // คีย์กลุ่ม -> เปิดอยู่ไหม
-function listShown(key){ return LIST_SHOWN[key] || LIST_PAGE_STEP; }
-function listMore(key, renderFn, step){
-  LIST_SHOWN[key] = listShown(key) + (step || LIST_PAGE_STEP);
-  if(typeof window[renderFn] === 'function') window[renderFn]();
-}
-function listToggleGroup(key, renderFn){
-  LIST_OPEN[key] = !LIST_OPEN[key];
-  if(typeof window[renderFn] === 'function') window[renderFn]();
-}
-/* แถว "ดูเพิ่ม" ท้ายกลุ่ม — คืนค่าว่างถ้าแสดงครบแล้ว */
-function listMoreRow(key, total, shown, renderFn, colspan){
-  if(total <= shown) return '';
-  const rest = total - shown;
-  const next = Math.min(LIST_PAGE_STEP, rest);
-  return `<tr><td colspan="${colspan}" style="text-align:center;padding:9px;background:var(--panel-2);">
-    <button class="btn sm" onclick="listMore('${key}','${renderFn}')">▾ ดูเพิ่ม ${next} รายการ</button>
-    ${rest>LIST_PAGE_STEP ? `<button class="btn sm" style="margin-left:6px;" onclick="listMore('${key}','${renderFn}',${rest})">แสดงทั้งหมด (${rest})</button>` : ''}
-    <span style="margin-left:8px;font-size:11.5px;color:var(--text-faint);">แสดง ${shown} จาก ${total}</span>
-  </td></tr>`;
-}
-/* แบบเดียวกันแต่ใช้กับรายการที่เป็น div ไม่ใช่ตาราง (ผู้ใช้/เส้นทาง) */
-function listMoreBox(key, total, shown, renderFn){
-  if(total <= shown) return '';
-  const rest = total - shown;
-  const next = Math.min(LIST_PAGE_STEP, rest);
-  return `<div style="text-align:center;padding:8px;">
-    <button class="btn sm" onclick="listMore('${key}','${renderFn}')">▾ ดูเพิ่ม ${next} รายการ</button>
-    ${rest>LIST_PAGE_STEP ? `<button class="btn sm" style="margin-left:6px;" onclick="listMore('${key}','${renderFn}',${rest})">แสดงทั้งหมด (${rest})</button>` : ''}
-    <span style="margin-left:8px;font-size:11.5px;color:var(--text-faint);">แสดง ${shown} จาก ${total}</span>
-  </div>`;
-}
-/* ---------- จัดกลุ่มตามวัน ---------- */
-function dayKeyOf(ts){
-  const d = new Date(ts);
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-}
-function dayLabelOf(key){
-  const [y,m,dd] = key.split('-').map(Number);
-  const d = new Date(y, m-1, dd);
-  const today = new Date(); today.setHours(0,0,0,0);
-  const diff = Math.round((today - d)/86400000);
-  const base = d.toLocaleDateString('th-TH',{weekday:'short', day:'numeric', month:'short', year:'2-digit'});
-  if(diff===0) return 'วันนี้ · '+base;
-  if(diff===1) return 'เมื่อวาน · '+base;
-  return base;
-}
-/* v33 — จัดกลุ่มตามช่วงเวลาที่เลือกได้ (วัน / เดือน / ปี)
-   ประวัติแจ้งเตือนมี 1,001 รายการ แยกรายวันก็ยังได้หัวข้อ 15 กว่าแถว
-   พอเลือกเป็นเดือนจะเหลือแถวเดียวต่อเดือน กวาดตาหาเดือนที่ต้องการได้ทันที */
-function periodKeyOf(ts, level){
-  const d = new Date(ts);
-  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0');
-  if(level==='year')  return String(y);
-  if(level==='month') return y+'-'+m;
-  return y+'-'+m+'-'+String(d.getDate()).padStart(2,'0');
-}
-function periodLabelOf(key, level){
-  if(level==='year')  return 'ปี '+(Number(key)+543);
-  if(level==='month'){
-    const [y,m] = key.split('-').map(Number);
-    return new Date(y, m-1, 1).toLocaleDateString('th-TH',{month:'long', year:'numeric'});
-  }
-  return dayLabelOf(key);
-}
-function groupByPeriod(items, tsOf, level){
-  const g = {};
-  items.forEach(it=>{ const k = periodKeyOf(tsOf(it), level); (g[k] = g[k] || []).push(it); });
-  return Object.keys(g).sort().reverse().map(k=>({ key:k, label:periodLabelOf(k, level), items:g[k] }));
-}
-function groupByDay(items, tsOf){
-  const g = {};
-  items.forEach(it=>{ const k = dayKeyOf(tsOf(it)); (g[k] = g[k] || []).push(it); });
-  return Object.keys(g).sort().reverse().map(k=>({ key:k, label:dayLabelOf(k), items:g[k] }));
-}
-/* หัวข้อกลุ่มแบบพับได้ (ใช้ในตาราง) — เปิดกลุ่มแรกให้อัตโนมัติ */
-function listGroupHeaderRow(key, renderFn, colspan, title, rightHtml, isFirst){
-  if(LIST_OPEN[key] === undefined) LIST_OPEN[key] = !!isFirst;
-  const open = LIST_OPEN[key];
-  return { open, html: `<tr class="hazard-group-row" style="cursor:pointer;background:var(--panel-2);" onclick="listToggleGroup('${key}','${renderFn}')">
-    <td colspan="${colspan}">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-        <div style="display:flex;align-items:center;gap:9px;">
-          <span style="display:inline-block;width:14px;color:var(--text-faint);">${open?'▾':'▸'}</span>
-          <strong>${title}</strong>
-        </div>
-        ${rightHtml||''}
-      </div>
-    </td></tr>` };
-}
-
 function renderHazardView(){
   const kpiWrap = document.getElementById('hazardKpis');
   const counts = {};
@@ -6358,36 +6034,14 @@ function renderHazardView(){
     <div class="kpi-card"><div class="lbl">ความรุนแรงสูง (≥3)</div><div class="val" style="color:var(--risk-high)">${STATE.hazards.filter(h=>h.severity>=3).length}</div><div class="delta">ต้องเฝ้าระวังเป็นพิเศษ</div></div>
     <div class="kpi-card"><div class="lbl">ประเภทที่พบบ่อยสุด</div><div class="val" style="font-size:18px;">${topTypes[0]?HAZ_META[topTypes[0][0]].icon+' '+HAZ_META[topTypes[0][0]].label:'-'}</div><div class="delta">${topTypes[0]?topTypes[0][1]+' จุด':''}</div></div>
   `;
+  document.getElementById('hazardCount').textContent = '('+STATE.hazards.length+' รายการ)';
   const tbody = document.getElementById('hazardTable');
 
-  /* v32 — กรองก่อนจัดกลุ่ม แล้วในแต่ละกลุ่มค่อยแบ่งแสดงทีละหน้า
-     เดิมกลุ่มเดียวกางออกมา 60 แถวรวด คูณ 28 เส้นทาง = หน้ายาวเป็นกิโล */
-  const hq = (document.getElementById('hazardSearch')?.value || '').trim().toLowerCase();
-  const hsev = document.getElementById('hazardSevFilter')?.value || '';
-  let pool = STATE.hazards;
-  if(hsev) pool = pool.filter(h=>h.severity >= +hsev);
-  if(hq){
-    pool = pool.filter(h=>{
-      const meta = HAZ_META[h.type] || {label:''};
-      const rt = STATE.routes.find(r=>r.id===h.routeId);
-      return (h.label||'').toLowerCase().includes(hq)
-          || (meta.label||'').toLowerCase().includes(hq)
-          || (h.notes||'').toLowerCase().includes(hq)
-          || (rt&&rt.name||'').toLowerCase().includes(hq);
-    });
-  }
-  document.getElementById('hazardCount').textContent =
-    (hq||hsev) ? `(พบ ${pool.length} จาก ${STATE.hazards.length} รายการ)` : `(${STATE.hazards.length} รายการ)`;
-
   const groups = {};
-  pool.forEach(h=>{
+  STATE.hazards.forEach(h=>{
     const key = h.routeId || '__none__';
     (groups[key] = groups[key] || []).push(h);
   });
-  if(!pool.length){
-    tbody.innerHTML = '<tr><td colspan="6"><div class="empty">ไม่พบจุดเสี่ยงที่ตรงกับเงื่อนไข</div></td></tr>';
-    return;
-  }
   const groupKeys = Object.keys(groups).sort((a,b)=>groups[b].length-groups[a].length);
 
   tbody.innerHTML = groupKeys.map(key=>{
@@ -6404,27 +6058,17 @@ function renderHazardView(){
             <span style="display:inline-block;width:14px;color:var(--text-faint);">${expanded?'▾':'▸'}</span>
             <strong>🛣️ ${routeName}</strong>
             <span style="color:var(--text-faint);font-size:12px;">${items.length} จุด</span>
-            <button class="btn sm" title="เปิดหน้าแผนที่แล้วแสดงจุดเสี่ยงทั้งหมดของเส้นทางนี้"
-              onclick="event.stopPropagation();showRouteHazardsOnMap('${key}')">🗺️ ดูทั้งเส้นทางบนแผนที่</button>
           </div>
           <span class="badge ${sevBadge}">รุนแรงสูงสุด ${maxSev}/4</span>
         </div>
       </td>
     </tr>`;
     if(!expanded) return headerRow;
-    const pageKey = 'hz_'+key;
-    const shown = Math.min(listShown(pageKey), items.length);
-    const itemRows = items.slice(0, shown).map(h=>{
+    const itemRows = items.map(h=>{
       const meta = HAZ_META[h.type];
       const sevBadge2 = h.severity>=4?'crit':h.severity===3?'high':h.severity===2?'mid':'low';
-      const hzPhoto = photoBadgeWithFallback(h,'viewHazardPhoto');
-      const hzWho = reporterLineText(h);
-      /* กดที่แถวไหนก็ได้ = เด้งไปหน้าแผนที่แล้วโชว์จุดนั้นจุดเดียว
-         ปุ่มแก้ไข/ลบ มี stopPropagation อยู่แล้ว จึงไม่ไปชนกัน */
-      return `<tr class="hazard-item-row" style="cursor:pointer;" title="กดเพื่อดูจุดนี้บนแผนที่" onclick="showHazardOnMap('${h.id}')">
-        <td class="strong" style="padding-left:32px;">${meta.icon} ${meta.label}${h.label?' — '+h.label:''} ${hzPhoto}${
-          hzWho ? `<div style="font-size:11px;color:var(--text-faint);font-weight:400;margin-top:2px;">📷 ${hzWho}</div>` : ''
-        }</td>
+      return `<tr>
+        <td class="strong" style="padding-left:32px;">${meta.icon} ${meta.label}${h.label?' — '+h.label:''}</td>
         <td>${routeName}</td>
         <td><span class="badge ${sevBadge2}">${'★'.repeat(h.severity)} ${h.severity}/4</span></td>
         <td class="mono">${h.lat.toFixed(3)}, ${h.lng.toFixed(3)}</td>
@@ -6432,13 +6076,8 @@ function renderHazardView(){
         <td style="white-space:nowrap;"><button class="btn sm" onclick="event.stopPropagation();openHazardEditModal('${h.id}')">แก้ไข</button> <button class="btn sm danger" onclick="event.stopPropagation();deleteHazard('${h.id}')">ลบ</button></td>
       </tr>`;
     }).join('');
-    return headerRow + itemRows + listMoreRow(pageKey, items.length, shown, 'renderHazardView', 6);
+    return headerRow + itemRows;
   }).join('');
-}
-/* ยุบทุกกลุ่มในหน้า Hazard ทีเดียว — ใช้ตอนกางไว้หลายกลุ่มจนหาไม่เจอ */
-function hazardCollapseAll(){
-  Object.keys(hazardGroupExpanded).forEach(k=>hazardGroupExpanded[k] = false);
-  renderHazardView();
 }
 function toggleHazardGroup(key){
   hazardGroupExpanded[key] = !hazardGroupExpanded[key];
@@ -6489,62 +6128,6 @@ function driverReportMeta(r){
   if(DRIVER_REPORT_META[r.type]) return DRIVER_REPORT_META[r.type];
   return HAZ_META[r.type] || {label:r.type, icon:'⚠️', color:'#8C9AB5'};
 }
-/* ---------- Reverse geocode: จังหวัด/ตำบล จากพิกัดรายงาน ----------
-   ใช้ Nominatim (ตัวเดียวกับที่ค้นหาปลายทางอยู่แล้วด้านบน) แบบย้อนกลับ
-   (พิกัด -> ชื่อสถานที่) แคชผลไว้ถาวรใน localStorage คีย์ตามพิกัดปัดเศษ
-   (~11 ม.) และคิวคำขอให้ห่างกัน ~1.1 วิ ต่อครั้งเพื่อไม่ให้เกินโควตาการใช้งาน
-   ฟรีของ Nominatim (เคยโดนบล็อก tile server เพราะใช้เกินนโยบายมาแล้ว จึงต้อง
-   ระวังจุดนี้เป็นพิเศษ) */
-let geoCache = {};
-try{ geoCache = JSON.parse(localStorage.getItem('rfsm_geocache')||'{}'); }catch(e){ geoCache = {}; }
-function saveGeoCache(){ try{ localStorage.setItem('rfsm_geocache', JSON.stringify(geoCache)); }catch(e){} }
-function geoKey(lat,lng){ return lat.toFixed(4)+','+lng.toFixed(4); }
-let geoQueue = [], geoQueueRunning = false;
-async function runGeoQueue(){
-  if(geoQueueRunning) return;
-  geoQueueRunning = true;
-  while(geoQueue.length){
-    const job = geoQueue.shift();
-    let result = null;
-    try{
-      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${job.lat}&lon=${job.lng}&zoom=14&addressdetails=1`;
-      const res = await fetch(url, {headers:{'Accept':'application/json'}});
-      if(res.ok){
-        const j = await res.json();
-        const a = j.address || {};
-        const subdistrict = a.subdistrict || a.suburb || a.village || a.town || a.quarter || a.neighbourhood || '';
-        const province = a.province || a.state || '';
-        /* v33 — ดึง "อำเภอ" มาด้วย เพื่อใช้จัดกลุ่มจังหวัด→อำเภอในหน้าจุดสำคัญ
-           (ของที่เคยแคชไว้ก่อนหน้านี้จะไม่มี district ก็ไม่เป็นไร ถือว่าไม่ระบุ) */
-        const district = a.county || a.city_district || a.district || a.city || '';
-        result = (province||subdistrict||district) ? {province, district, subdistrict} : null;
-      }
-    }catch(e){ result = null; }
-    job.resolve(result);
-    if(geoQueue.length) await new Promise(r=>setTimeout(r,1100));
-  }
-  geoQueueRunning = false;
-}
-function reverseGeoLookup(lat,lng){
-  const key = geoKey(lat,lng);
-  if(Object.prototype.hasOwnProperty.call(geoCache,key)) return Promise.resolve(geoCache[key]);
-  return new Promise(resolve=>{
-    geoQueue.push({lat,lng, resolve:(val)=>{ geoCache[key]=val; saveGeoCache(); resolve(val); }});
-    runGeoQueue();
-  });
-}
-function geoCellHtml(id){
-  return `<span id="${id}" style="color:var(--text-faint);">🔎 กำลังค้นหา...</span>`;
-}
-function fillGeoCell(id, lat, lng){
-  reverseGeoLookup(lat,lng).then(info=>{
-    const el = document.getElementById(id);
-    if(!el) return; // แถวอาจถูกวาดใหม่ไปแล้วก่อนที่ผลจะกลับมา
-    el.textContent = info ? ([info.subdistrict, info.province].filter(Boolean).join(', ') || '-') : 'ไม่พบข้อมูล';
-    el.style.color = info ? '' : 'var(--text-faint)';
-  });
-}
-
 function renderDriverReportsQueue(){
   const tbody = document.getElementById('driverReportQueue');
   if(!tbody) return;
@@ -6564,14 +6147,12 @@ function renderDriverReportsQueue(){
       : (HAZ_META[r.type] ? `<button class="btn sm primary" onclick="promoteReportToHazard('${r.id}')">✅ เพิ่มเป็นจุดเสี่ยง</button>` : '');
     const photoCell = photoBadgeHtml(r,'viewReportPhoto') || '<span style="color:var(--text-faint);font-size:12px;">—</span>';
     const reporterTag = r.reportedBy==='helper' ? ' <span style="color:var(--amber);font-size:11px;">(เด็กรถแจ้ง)</span>' : '';
-    const geoId = 'geoloc-'+r.id;
     return `<tr>
       <td class="strong">${meta.icon} ${meta.label}</td>
       <td>${driver?driver.name:'ไม่ทราบคนขับ'}${reporterTag}</td>
       <td>${veh?veh.plate:'-'}</td>
       <td class="mono">${r.lat.toFixed(3)}, ${r.lng.toFixed(3)}${r.posSource && r.posSource!=='box' ? ` <span title="${r.posSource==='default'?'ไม่พบสัญญาณ GPS ตอนส่ง — เป็นพิกัดสำรอง ไม่ใช่ตำแหน่งจริง':'ไม่ใช่พิกัดสดจากกล่อง GPS โดยตรง (ใช้ตำแหน่งล่าสุดระหว่างทริปแทน)'}" style="color:var(--risk-high);cursor:help;">⚠️</span>` : ''}</td>
       <td>${r.notes||'-'}</td>
-      <td style="font-size:12.5px;">${geoCellHtml(geoId)}</td>
       <td>${photoCell}</td>
       <td>${new Date(r.ts).toLocaleString('th-TH')}</td>
       <td style="white-space:nowrap;">
@@ -6580,8 +6161,7 @@ function renderDriverReportsQueue(){
       </td>
     </tr>`;
   }).join('') || '';
-  if(!reports.length) tbody.innerHTML = '<tr><td colspan="9"><div class="empty">ยังไม่มีรายงานที่รอตรวจสอบ</div></td></tr>';
-  reports.forEach(r=>fillGeoCell('geoloc-'+r.id, r.lat, r.lng));
+  if(!reports.length) tbody.innerHTML = '<tr><td colspan="8"><div class="empty">ยังไม่มีรายงานที่รอตรวจสอบ</div></td></tr>';
 }
 /* ---------- Shared day/month/year quick-range helper for history search ----------
    Used by both the driver-report history table and the alert-log history
@@ -6637,8 +6217,7 @@ function renderDriverReportHistory(){
   const countEl = document.getElementById('driverReportHistCount');
   if(countEl) countEl.textContent = '('+items.length+' รายการ)';
   if(!items.length){ tbody.innerHTML = '<tr><td colspan="7"><div class="empty">ไม่พบรายงานในช่วงที่เลือก</div></td></tr>'; return; }
-  /* v32 — แยกเป็นวันๆ แทนการไล่ยาวรวดเดียว 140 แถว เปิดให้เฉพาะวันล่าสุด */
-  const rowHtmlOf = r=>{
+  tbody.innerHTML = items.map(r=>{
     const meta = driverReportMeta(r);
     const driver = STATE.users.find(u=>u.id===r.driverId);
     const veh = STATE.vehicles.find(v=>v.id===r.vehicleId);
@@ -6652,21 +6231,6 @@ function renderDriverReportHistory(){
       <td>${reportStatusBadge(r)}</td>
       <td class="mono">${resolvedTxt}</td>
     </tr>`;
-  };
-  const days = groupByDay(items, r=>r.ts);
-  tbody.innerHTML = days.map((d,di)=>{
-    const gkey = 'rephist_'+d.key;
-    const pending = d.items.filter(r=>(r.status||'pending')==='pending').length;
-    const hd = listGroupHeaderRow(gkey, 'renderDriverReportHistory', 7,
-      `📅 ${d.label}`,
-      `<span style="display:flex;gap:8px;align-items:center;">
-         ${pending?`<span class="badge high">รอตรวจสอบ ${pending}</span>`:''}
-         <span style="color:var(--text-faint);font-size:12px;">${d.items.length} รายงาน</span>
-       </span>`, di===0);
-    if(!hd.open) return hd.html;
-    const shown = Math.min(listShown(gkey), d.items.length);
-    return hd.html + d.items.slice(0, shown).map(rowHtmlOf).join('')
-         + listMoreRow(gkey, d.items.length, shown, 'renderDriverReportHistory', 7);
   }).join('');
 }
 /* รูปแนบมาได้หลายรูปแล้ว (obj.photos) — obj.photo/obj.photoThumb ยังใช้
@@ -6684,62 +6248,9 @@ function photoBadgeHtml(obj, viewFn){
   const badge = photos.length>1 ? `<span class="photo-count-badge">${photos.length}</span>` : '';
   return `<span class="photo-badge-wrap" onclick="${viewFn}('${obj.id}')"><img src="${photos[0].thumb||photos[0].full}" class="report-thumb" alt="รูปประกอบ">${badge}</span>`;
 }
-/* ---------- v27 — ย้อนหา "ใครเป็นคนถ่าย/แจ้ง" ของจุดเสี่ยง/จุดพัก ----------
-   บั๊กที่แก้: พออนุมัติรายงานคนขับเป็นจุดเสี่ยง รูปถูกคัดลอกไปเก็บที่จุดเสี่ยง
-   เรียบร้อย แต่ไม่มีหน้าไหนเอามาแสดงเลยสักที่ (ทั้งตาราง Hazard และป๊อปอัปบน
-   แผนที่) รูปเลยเหมือนหายไป ทั้งที่ยังอยู่ในระบบ — และไม่เคยเก็บชื่อผู้แจ้งไว้เลย
-
-   ข้อมูลเก่าที่อนุมัติไปแล้วไม่มีฟิลด์ผู้แจ้งติดมาด้วย จึงย้อนไปหาจากรายงาน
-   ต้นทางที่ผูกกันไว้อยู่แล้ว (report.resolvedRefId ชี้มาที่จุดนี้) ทำให้ของเก่า
-   กลับมาแสดงชื่อคนถ่ายได้ทันที ไม่ต้องไปไล่แก้ข้อมูลย้อนหลัง */
-function sourceReportOf(obj){
-  if(!obj || !Array.isArray(STATE.reports)) return null;
-  if(obj.fromReportId){
-    const r = STATE.reports.find(x=>x.id===obj.fromReportId);
-    if(r) return r;
-  }
-  return STATE.reports.find(x=>x.resolvedRefId===obj.id) || null;
-}
-function reporterNameOf(obj){
-  if(obj && obj.reportedByName) return obj.reportedByName;
-  /* จุดพัก (POI) เก็บ driverId ไว้กับตัวเองอยู่แล้วตั้งแต่เดิม — ใช้อันนั้นก่อน */
-  if(obj && obj.driverId){
-    const u = (STATE.users||[]).find(x=>x.id===obj.driverId);
-    if(u && u.name) return u.name;
-  }
-  const r = sourceReportOf(obj);
-  if(!r) return '';
-  const u = (STATE.users||[]).find(x=>x.id===r.driverId);
-  return (u && u.name) || r.driverName || '';
-}
-/* บรรทัด "ผู้แจ้ง: ... · วันเวลา" ใช้ร่วมกันทั้งแกลเลอรี ตาราง และป๊อปอัปแผนที่ */
-function reporterLineText(obj){
-  const r = sourceReportOf(obj);
-  const name = reporterNameOf(obj);
-  if(!name && !r) return '';
-  const ts = (obj && (obj.reportTs || obj.reportedAt)) || (r && r.ts);
-  const when = ts ? new Date(ts).toLocaleString('th-TH',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
-  const helper = (r && r.reportedBy==='helper') ? ' (เด็กรถแจ้ง)' : '';
-  const who = name ? ('ผู้แจ้ง: '+name+helper) : 'จากรายงานคนขับ';
-  return who + (when ? ' · '+when : '');
-}
-/* รูปของจุดเสี่ยง/จุดพัก — ถ้าตัวมันเองไม่มีรูป (ของเก่าที่อนุมัติก่อนมีการคัดลอกรูป)
-   ให้ย้อนไปดึงจากรายงานต้นทางแทน */
-function objPhotosWithFallback(obj){
-  const own = reportPhotos(obj);
-  if(own.length) return own;
-  return reportPhotos(sourceReportOf(obj));
-}
-/* ป้ายรูปเล็กที่ย้อนไปหารูปจากรายงานต้นทางให้ด้วย */
-function photoBadgeWithFallback(obj, viewFn){
-  const photos = objPhotosWithFallback(obj);
-  if(!photos.length) return '';
-  const badge = photos.length>1 ? `<span class="photo-count-badge">${photos.length}</span>` : '';
-  return `<span class="photo-badge-wrap" onclick="event.stopPropagation();${viewFn}('${obj.id}')"><img src="${photos[0].thumb||photos[0].full}" class="report-thumb" alt="รูปประกอบ">${badge}</span>`;
-}
 /* แกลเลอรีดูรูป: กดที่รูปเล็กแถวล่างเพื่อสลับดูรูปที่ 1/2/3/4 ใช้ร่วมกัน
    ทั้งรายงานคนขับ (viewReportPhoto) และจุดพัก/จุดเสี่ยงที่โปรโมทมาจาก
-   รายงาน (viewPoiPhoto / viewHazardPhoto) */
+   รายงาน (viewPoiPhoto) */
 let galleryPhotos = [];
 let galleryIdx = 0;
 function galleryBodyHtml(){
@@ -6787,8 +6298,7 @@ function promoteReportToHazard(id){
   const r = STATE.reports.find(x=>x.id===id);
   if(!r){ toast('ไม่พบรายงาน'); return; }
   const meta = HAZ_META[r.type] || HAZ_META.curve;
-  const defaultRouteId = defaultRouteIdForReport(r);
-  const routeOpts = STATE.routes.map(rt=>`<option value="${rt.id}" ${rt.id===defaultRouteId?'selected':''}>${rt.name}</option>`).join('');
+  const routeOpts = STATE.routes.map(rt=>`<option value="${rt.id}">${rt.name}</option>`).join('');
   openModal('ยืนยันเพิ่มเป็นจุดเสี่ยง — '+meta.label, `
     <div class="form-grid">
       <div class="field"><label>ประเภท</label><select id="fPromoteType">${Object.entries(HAZ_META).map(([k,v])=>`<option value="${k}" ${k===r.type?'selected':''}>${v.icon} ${v.label}</option>`).join('')}</select></div>
@@ -6812,12 +6322,6 @@ function promoteReportToHazard(id){
         photos: r.photos || (r.photo ? [{full:r.photo, thumb:r.photoThumb||r.photo}] : []),
         photo: r.photo || null,
         photoThumb: r.photoThumb || null,
-        /* v27 — เก็บที่มาไว้กับจุดเสี่ยงเลย จะได้แสดง "ใครถ่าย/แจ้งเมื่อไร" ได้
-           โดยไม่ต้องพึ่งการย้อนหารายงานต้นทางทุกครั้ง */
-        fromReportId: r.id,
-        reportedByName: ((STATE.users||[]).find(u=>u.id===r.driverId)||{}).name || r.driverName || null,
-        reportedById: r.driverId || null,
-        reportTs: r.ts || null,
       };
       await idbPut('hazards',h); STATE.hazards.push(h);
       /* Keep the original report on file (status 'approved') instead of
@@ -6834,8 +6338,7 @@ function promoteReportToPoi(id){
   if(!r){ toast('ไม่พบรายงาน'); return; }
   const defaultType = POI_META[r.type] ? r.type : 'other';
   const meta = POI_META[defaultType] || POI_META.rest;
-  const defaultRouteId = defaultRouteIdForReport(r);
-  const routeOpts = STATE.routes.map(rt=>`<option value="${rt.id}" ${rt.id===defaultRouteId?'selected':''}>${rt.name}</option>`).join('');
+  const routeOpts = STATE.routes.map(rt=>`<option value="${rt.id}">${rt.name}</option>`).join('');
   const defaultName = r.type==='other' ? (r.otherLabel||meta.label) : meta.label;
   const posWarning = (r.posSource && r.posSource!=='box') ? `
     <div style="margin-bottom:10px;padding:10px 12px;border-radius:10px;background:rgba(251,146,60,.1);border:1px solid rgba(251,146,60,.3);font-size:12.5px;color:#F5C08A;">
@@ -6868,7 +6371,6 @@ function promoteReportToPoi(id){
         driverId: r.driverId || null,
         vehicleId: r.vehicleId || null,
         reportedAt: r.ts || null,
-        fromReportId: r.id,   // v27 — ใช้ย้อนหารูป/ผู้แจ้งได้แน่นอน แม้ผู้ใช้ถูกลบไปแล้ว
       };
       await idbPut('pois',p); STATE.pois.push(p);
       /* Same as promoteReportToHazard: archive with status 'approved'
@@ -6895,7 +6397,7 @@ function renderRiskLiveNote(){
   if(!live){ note.innerHTML = ''; return; }
   const routeId = document.getElementById('riskRouteSelect').value;
   const lr = STATE.liveRisk[routeId];
-  const hasKey = !!(STATE.settings && STATE.settings.gmapApiKey);
+  const hasKey = !!(STATE.settings && STATE.settings.tomtomApiKey);
   const parts = [];
   if(lr && lr.updatedTs){
     const mins = Math.max(0, Math.round((Date.now()-lr.updatedTs)/60000));
@@ -6904,9 +6406,12 @@ function renderRiskLiveNote(){
     parts.push('กำลังดึงข้อมูลสภาพอากาศ...');
   }
   if(hasKey){
-    parts.push(lr && lr.trafficLabel ? `จราจร: ${lr.trafficLabel}` : 'กำลังดึงข้อมูลจราจร...');
+    const err = TRAFFIC_FETCH_ERR[routeId];
+    if(lr && lr.trafficLabel) parts.push(`จราจร: ${lr.trafficLabel}`);
+    else if(err) parts.push(`⚠️ ดึงข้อมูลจราจรไม่สำเร็จ: ${err}`);
+    else parts.push('กำลังดึงข้อมูลจราจร...');
   } else {
-    parts.push('⚠️ ยังไม่ได้ตั้งค่า Google Maps API Key ในหน้า Settings — จะใช้เฉพาะข้อมูลสภาพอากาศ ไม่รวมข้อมูลจราจรจริง');
+    parts.push('⚠️ ยังไม่ได้ตั้งค่า TomTom API Key ในหน้า Settings — จะใช้เฉพาะข้อมูลสภาพอากาศ ไม่รวมข้อมูลจราจรจริง');
   }
   note.textContent = parts.join(' · ');
 }
@@ -7196,294 +6701,8 @@ async function deleteVehicle(id){
   renderAllDependants(); toast('ลบข้อมูลรถแล้ว');
 }
 
-/* ---------- จับคู่ตำแหน่ง (lat/lng) เข้ากับ "เส้นทาง" ที่ใกล้ที่สุด ----------
-   ใช้แก้บั๊ก: ตอนอนุมัติรายงานคนขับเป็นจุดพัก/จุดเสี่ยง (promoteReportToPoi /
-   promoteReportToHazard) ช่อง "เส้นทาง" เคย default ไปที่เส้นทางแรกในลิสต์
-   เฉยๆ ไม่เคยเดาให้เลย ทำให้จุดที่คนขับถ่ายรูปส่งมาจำนวนมากไปติดอยู่กับ
-   เส้นทางผิด และไม่โผล่เป็นตัวเลือกตอนวางแผนพักรถของเส้นทางที่ถูกต้อง */
-/* v21 — เรขาคณิต "จุด เทียบกับ แนวถนน" ----------------------------------------
-   บั๊กที่แก้: เดิมวัดระยะจากจุดพักไปยัง "จุดหักมุม (vertex)" ของเส้นทางเท่านั้น
-   ซึ่งผิดสองชั้น — (1) ถ้าเส้นทางมีแค่ waypoints ห่างๆ (จุดศูนย์กลางจังหวัด)
-   ปั๊มที่อยู่ริมถนนจริงกลางทางจะวัดได้ไกลมาก (2) ไม่มีเพดานระยะเลย ปั๊มที่อยู่
-   คนละจังหวัดห่างเป็นร้อย กม. ก็ยังถูกจับใส่เส้นทางที่ "ใกล้ที่สุดเท่าที่มี"
-   อยู่ดี แล้วโผล่มาเป็น "จุดพักบนเส้นทาง" ทั้งที่อยู่นอกเส้นทางคนละเรื่อง
-   ตรงนี้วัดระยะตั้งฉากจากจุด ไปยัง "ช่วงถนน (segment)" จริงๆ แทน และคืนระยะ
-   ทางสะสมตามแนวถนนด้วย (alongKm) เพื่อใช้เรียงลำดับ/จับคู่ช่วงพักได้ถูกต้อง */
-const KM_PER_DEG_LAT = 110.574;
-function kmPerDegLng(lat){ return 111.320 * Math.cos(lat*Math.PI/180); }
-function segProject(pt, a, b){
-  const lat0 = (a[0]+b[0])/2;
-  const kx = kmPerDegLng(lat0), ky = KM_PER_DEG_LAT;
-  const bx = (b[1]-a[1])*kx, by = (b[0]-a[0])*ky;
-  const px = (pt[1]-a[1])*kx, py = (pt[0]-a[0])*ky;
-  const segLen2 = bx*bx + by*by;
-  let t = segLen2>0 ? (px*bx + py*by)/segLen2 : 0;
-  t = Math.max(0, Math.min(1, t));
-  const dx = px - bx*t, dy = py - by*t;
-  return { offKm: Math.sqrt(dx*dx + dy*dy), t, segKm: Math.sqrt(segLen2) };
-}
-function segKmOf(a,b){
-  const lat0 = (a[0]+b[0])/2;
-  const dx = (b[1]-a[1])*kmPerDegLng(lat0), dy = (b[0]-a[0])*KM_PER_DEG_LAT;
-  return Math.sqrt(dx*dx + dy*dy);
-}
-function pathTotalKm(path){
-  let acc = 0;
-  for(let i=1;i<((path&&path.length)||0);i++) acc += segKmOf(path[i-1], path[i]);
-  return acc;
-}
-/* ---------- v30 — บีบอัดเส้นทางถนนก่อนเก็บลงฐานข้อมูล (ลด Egress) ----------
-   ต้นเหตุที่ Egress พุ่ง: OSRM ถูกเรียกด้วย overview=full ซึ่งคืนพิกัดละเอียด
-   ระดับจุดละ ~10 เมตร เส้นทางเดียวยาว 150 กม. = หมื่นจุด ~390 KB แล้วถูกเก็บลง
-   ตาราง routes ซึ่งแอปมือถือ "สมัคร realtime + ดึงซ้ำเป็นระยะ" ทุกเครื่อง
-   เท่ากับรถทุกคันต้องโหลดพิกัดหมื่นจุดต่อเส้นทาง ทั้งที่วาดบนจอมือถือแล้ว
-   แยกความต่างไม่ออกเลย
-
-   Douglas–Peucker ตัดจุดที่อยู่บนแนวเส้นตรงเดียวกัน (ภายในระยะคลาดเคลื่อนที่
-   กำหนด) ทิ้ง + ปัดพิกัดเหลือ 5 ตำแหน่ง (ละเอียด ~1 เมตร ซึ่งเกินพอสำหรับเส้นถนน)
-   ทดสอบกับเส้นทางที่โค้งเยอะมากแล้ว ลดขนาดได้ ~98% โดยรูปเส้นบนแผนที่เหมือนเดิม */
-const ROAD_PATH_TOLERANCE_KM = 0.025;   // 25 เมตร
-function simplifyRoadPath(pts, tolKm){
-  if(!Array.isArray(pts) || pts.length<3) return pts;
-  const tol = tolKm || ROAD_PATH_TOLERANCE_KM;
-  const lat0 = pts[0][0], kx = kmPerDegLng(lat0), ky = KM_PER_DEG_LAT;
-  const P = pts.map(p=>[p[1]*kx, p[0]*ky]);
-  const keep = new Uint8Array(pts.length);
-  keep[0] = keep[pts.length-1] = 1;
-  const stack = [[0, pts.length-1]];
-  while(stack.length){
-    const [s,e] = stack.pop();
-    if(e <= s+1) continue;
-    const x1=P[s][0], y1=P[s][1], x2=P[e][0], y2=P[e][1];
-    const dx=x2-x1, dy=y2-y1, L2=dx*dx+dy*dy;
-    let bi=-1, bd=0;
-    for(let i=s+1;i<e;i++){
-      const px=P[i][0], py=P[i][1];
-      let t = L2>0 ? ((px-x1)*dx + (py-y1)*dy)/L2 : 0;
-      t = Math.max(0, Math.min(1, t));
-      const d = Math.hypot(px-(x1+dx*t), py-(y1+dy*t));
-      if(d>bd){ bd=d; bi=i; }
-    }
-    if(bd>tol && bi>0){ keep[bi]=1; stack.push([s,bi],[bi,e]); }
-  }
-  const out = [];
-  for(let i=0;i<pts.length;i++){
-    if(keep[i]) out.push([ +pts[i][0].toFixed(5), +pts[i][1].toFixed(5) ]);
-  }
-  return out;
-}
-function roadPathBytes(pts){ try{ return JSON.stringify(pts||[]).length; }catch(e){ return 0; } }
-/* คืน {offKm: ห่างจากแนวถนนกี่ กม., alongKm: อยู่ที่หลักกิโลที่เท่าไรของเส้นทาง} */
-function projectOnPath(pt, path){
-  if(!path || !path.length) return null;
-  if(path.length===1) return { offKm: haversineKm(pt, path[0]), alongKm: 0 };
-  let acc = 0, best = null;
-  for(let i=1;i<path.length;i++){
-    const info = segProject(pt, path[i-1], path[i]);
-    if(!best || info.offKm < best.offKm) best = { offKm: info.offKm, alongKm: acc + info.segKm*info.t };
-    acc += info.segKm;
-  }
-  return best;
-}
-/* v23 — จุดที่แอดมินตัดสินว่า "ห้ามจอด" ใช้ type 'other' + ธง noStop:true
-   (ห้ามตั้งชื่อ type ใหม่ เพราะแอปมือถืออ่าน POI_META[p.type].icon แบบไม่กันพลาด)
-   ตรงนี้คือจุดเดียวที่ตัดสินใจว่าจะแสดงผลหน้าตาแบบไหน */
-function poiDisplayMeta(p){
-  if(p && p.noStop) return { label:'จุดห้ามจอด', icon:'⛔', color:'#F0475A' };
-  if(p && p.loadPoint) return { label:'จุดขึ้น/ลงสินค้า', icon:'📦', color:'#FBBF24' };
-  return POI_META[p && p.type] || { label:'จุดอื่นๆ', icon:'📍', color:'#8C9AB5' };
-}
-/* ค่าที่ใช้ในช่อง "การใช้งาน" ของหน้าแก้ไขจุด — เก็บเป็นธงบนอ็อบเจ็กต์ ไม่ใช่ type ใหม่ */
-function poiUsageOf(p){ return p.noStop ? 'nostop' : (p.loadPoint ? 'load' : 'rest'); }
-function applyPoiUsage(p, usage){
-  p.noStop = (usage==='nostop');
-  p.loadPoint = (usage==='load');
-  if(usage!=='rest' && !['other'].includes(p.type)) p.type = 'other';
-}
-/* ห่างจากแนวถนนจริงเกินนี้ = ไม่ถือว่าเป็นจุดพัก "บนเส้นทางนี้" */
-const ROUTE_CORRIDOR_KM = 15;
-/* ไกลกว่านี้ = ไม่จับคู่เข้ากับเส้นทางไหนเลย (แทนที่จะยัดใส่เส้นที่ใกล้ที่สุดเท่าที่มี) */
-const ROUTE_MATCH_MAX_KM = 25;
-function routeRoadPathCached(route){
-  return (route && route.roadPath && route.roadPath.length>1) ? route.roadPath : null;
-}
-/* แยกจุดพักของเส้นทางออกเป็น "อยู่บนแนวถนนจริง" กับ "หลุดออกนอกเส้นทาง"
-   สำคัญ: ถ้ายังไม่มี roadPath (เส้นทางถนนจริง) จะ "ไม่กรอง" เลย แล้วคืน
-   known:false — เพราะการเอาเส้นตรงระหว่าง waypoints มากรองจะตัดปั๊มที่อยู่
-   ริมถนนจริงทิ้งผิดๆ (เช่น ทล.2 อ้อมผ่านโคราช ห่างจากเส้นตรงสระบุรี-ขอนแก่น
-   เกือบ 60 กม.) — ต้องรอเส้นถนนจริงมาก่อนถึงจะกรองได้ถูก */
-function splitPoisByCorridor(route, pois, path){
-  const usePath = path || routeRoadPathCached(route);
-  if(!usePath) return { known:false, onRoute: pois.map(p=>({poi:p, alongKm:null, offKm:null})), offRoute: [] };
-  const onRoute = [], offRoute = [];
-  pois.forEach(p=>{
-    const pr = projectOnPath([p.lat,p.lng], usePath);
-    if(pr && pr.offKm<=ROUTE_CORRIDOR_KM) onRoute.push({poi:p, alongKm:pr.alongKm, offKm:pr.offKm});
-    else offRoute.push({poi:p, alongKm: pr?pr.alongKm:null, offKm: pr?pr.offKm:null});
-  });
-  onRoute.sort((a,b)=>a.alongKm-b.alongKm);
-  offRoute.sort((a,b)=>(a.offKm||0)-(b.offKm||0));
-  return { known:true, onRoute, offRoute };
-}
-function nearestRouteMatch(lat,lng){
-  let best = null;
-  STATE.routes.forEach(rt=>{
-    const pts = routeRoadPathCached(rt) || rt.waypoints;
-    if(!pts || !pts.length) return;
-    const pr = projectOnPath([lat,lng], pts);
-    if(pr && (!best || pr.offKm < best.distKm)) best = { id: rt.id, distKm: pr.offKm };
-  });
-  return best;
-}
-function nearestRouteId(lat,lng){
-  const m = nearestRouteMatch(lat,lng);
-  return (m && m.distKm<=ROUTE_MATCH_MAX_KM) ? m.id : null;
-}
-function defaultRouteIdForReport(r){
-  const veh = STATE.vehicles.find(v=>v.id===r.vehicleId);
-  const vehRoute = veh && veh.routeId ? STATE.routes.find(rt=>rt.id===veh.routeId) : null;
-  /* ใช้ "เส้นทางประจำของรถคันนี้" ต่อเมื่อจุดที่คนขับถ่ายส่งมา อยู่ใกล้แนวเส้นทางนั้นจริงๆ
-     เดิมใช้ทันทีโดยไม่เช็คระยะ ทำให้ปั๊มที่คนขับแวะตอนวิ่งงานเส้นอื่น ไปติดอยู่กับ
-     เส้นทางประจำของรถ แล้วโผล่เป็น "จุดพักบนเส้นทาง" ทั้งที่อยู่คนละทางกันเลย */
-  if(vehRoute){
-    const pts = routeRoadPathCached(vehRoute) || vehRoute.waypoints;
-    const pr = (pts && pts.length) ? projectOnPath([r.lat,r.lng], pts) : null;
-    if(pr && pr.offKm<=ROUTE_MATCH_MAX_KM) return vehRoute.id;
-  }
-  const m = nearestRouteMatch(r.lat, r.lng);
-  if(m && m.distKm<=ROUTE_MATCH_MAX_KM) return m.id;
-  if(vehRoute) return vehRoute.id;
-  return STATE.routes[0] && STATE.routes[0].id;
-}
-async function rematchPoiRoutes(){
-  if(!confirm('จับคู่ "เส้นทาง" ของจุดพัก/ปั๊มน้ำมัน/Truck Stop/ศูนย์ซ่อม/โรงพยาบาลทุกจุดใหม่ ตามพิกัดจริงที่ใกล้เส้นทางไหนที่สุด?\n\nใช้แก้จุดที่เคยถูกตั้งเส้นทางผิดตอนอนุมัติจากรายงานคนขับ (จุดที่ตรงอยู่แล้วจะไม่ถูกแก้)')) return;
-  let changed = 0, orphan = 0;
-  for(const p of STATE.pois){
-    const m = nearestRouteMatch(p.lat, p.lng);
-    if(!m || m.distKm>ROUTE_MATCH_MAX_KM){ orphan++; continue; }
-    if(m.id!==p.routeId){ p.routeId = m.id; changed++; await idbPut('pois', p); }
-  }
-  renderPoiList(); renderAllDependants();
-  let msg = changed ? `จับคู่เส้นทางใหม่ให้ ${changed} จุดเรียบร้อย` : 'ทุกจุดตรงกับเส้นทางที่ใกล้ที่สุดอยู่แล้ว';
-  if(orphan) msg += ` — อีก ${orphan} จุดไม่ได้อยู่ใกล้เส้นทางไหนเลย (ห่างแนวถนนเกิน ${ROUTE_MATCH_MAX_KM} กม.) คงเส้นทางเดิมไว้ก่อน ควรเข้าไปตรวจสอบ/ลบทิ้ง`;
-  toast(msg);
-}
-
-/* ---------- ดึงเส้นทางถนนจริง (roadPath) ให้เส้นทางที่ยังไม่มี ----------
-   เส้นทางตัวอย่าง/เส้นทางที่สร้างจากลำดับจังหวัด มีแค่ waypoints ห่างๆ กัน
-   (จุดศูนย์กลางจังหวัด) ลากเส้นตรงระหว่างจุดจะตัดผ่านภูเขา/ป่าซึ่งไม่ตรงกับ
-   ถนนจริง — ฟังก์ชันนี้ขอเส้นทางถนนจริงจาก Google Directions (มี API Key
-   อยู่แล้ว) หรือ OSRM (สำรอง ไม่ต้องใช้ key) แล้วเก็บผลไว้ถาวรใน route.roadPath
-   ครั้งเดียวต่อเส้นทาง ไม่ต้องขอซ้ำทุกครั้งที่เปิดดู */
-/* เก็บเหตุผลล่าสุดที่ Google Directions ใช้ไม่ได้ไว้ให้ ensureRouteRoadPath
-   อ่านไปแจ้งเตือนแอดมิน — เดิมเงียบแล้วสลับไป OSRM ทันทีโดยไม่มีใครรู้ว่า
-   ทำไมเส้นทางถึงไม่ตรงถนนสายหลัก (OSRM ใช้ข้อมูล OpenStreetMap ซึ่งบางเส้น
-   ในไทยจัดชั้นถนนไม่ตรงกับความเป็นจริง เลยเลือกถนนรองแทนถนนสายหลักได้) */
-let lastGoogleDirectionsError = null;
-async function fetchRoadPathGoogle(waypoints){
-  lastGoogleDirectionsError = null;
-  const key = STATE.settings && STATE.settings.gmapApiKey;
-  if(!key){ lastGoogleDirectionsError = 'ยังไม่ได้ตั้งค่า Google Maps API Key'; return null; }
-  try{
-    await loadGoogleMaps(key);
-    if(!(window.google && google.maps && google.maps.DirectionsService)){
-      lastGoogleDirectionsError = 'โหลด Google Maps ไม่สำเร็จ';
-      return null;
-    }
-    const origin = {lat:waypoints[0][0], lng:waypoints[0][1]};
-    const destination = {lat:waypoints[waypoints.length-1][0], lng:waypoints[waypoints.length-1][1]};
-    const mid = waypoints.slice(1,-1).slice(0,23); // Directions API รองรับ waypoints กลางทางสูงสุด ~23 จุด
-    const directionsService = new google.maps.DirectionsService();
-    const result = await new Promise((resolve,reject)=>{
-      directionsService.route({
-        origin, destination,
-        waypoints: mid.map(p=>({location:{lat:p[0],lng:p[1]}, stopover:false})),
-        travelMode: google.maps.TravelMode.DRIVING,
-      }, (res,status)=>{
-        if(status==='OK' && res.routes && res.routes[0]) resolve(res); else reject(new Error(status));
-      });
-    });
-    return result.routes[0].overview_path.map(p=>[p.lat(), p.lng()]);
-  }catch(e){ lastGoogleDirectionsError = (e&&e.message)||'ไม่ทราบสาเหตุ'; return null; }
-}
-async function fetchRoadPathOSRM(waypoints){
-  try{
-    const coords = waypoints.map(p=>`${p[1]},${p[0]}`).join(';');
-    /* overview=simplified แทน full — full คืนพิกัดจุดละ ~10 ม. (หมื่นจุดต่อเส้นทาง)
-       ซึ่งวาดบนแผนที่แล้วไม่ต่างกันเลย แต่กิน Egress มหาศาลตอน sync ไปให้รถทุกคัน */
-    const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=simplified&geometries=geojson`;
-    const res = await fetch(url);
-    if(!res.ok) return null;
-    const data = await res.json();
-    if(data.code!=='Ok' || !data.routes || !data.routes[0]) return null;
-    return data.routes[0].geometry.coordinates.map(([lng,lat])=>[lat,lng]);
-  }catch(e){ return null; }
-}
-let routeRoadPathFetching = {};
-async function ensureRouteRoadPath(route){
-  if(!route) return null;
-  if(route.roadPath && route.roadPath.length>1) return route.roadPath;
-  if(!route.waypoints || route.waypoints.length<2) return null;
-  if(routeRoadPathFetching[route.id]) return routeRoadPathFetching[route.id];
-  routeRoadPathFetching[route.id] = (async ()=>{
-    let path = await fetchRoadPathGoogle(route.waypoints);
-    if(!path || path.length<2){
-      if(lastGoogleDirectionsError){
-        console.warn('Google Directions ใช้ไม่ได้ ('+route.name+'):', lastGoogleDirectionsError);
-        toast('⚠️ เส้นทางถนนของ "'+route.name+'" ขอจาก Google ไม่สำเร็จ ('+lastGoogleDirectionsError+') — ใช้ระบบสำรอง (OSRM) แทนชั่วคราว ซึ่งบางครั้งอาจเลือกถนนรองแทนถนนสายหลัก ลองตรวจสอบว่าเปิดใช้งาน "Directions API" ในโปรเจกต์ Google Cloud ของ API Key นี้แล้วหรือยัง');
-      }
-      path = await fetchRoadPathOSRM(route.waypoints);
-    }
-    if(path && path.length>1){
-      /* v30 — บีบอัดก่อนเก็บเสมอ ทั้งของ Google และ OSRM
-         เพราะแถว routes ถูก sync ไปให้รถทุกคัน ขนาดแถวจึงคูณด้วยจำนวนรถ */
-      const before = roadPathBytes(path);
-      route.roadPath = simplifyRoadPath(path);
-      const after = roadPathBytes(route.roadPath);
-      if(before>after*2) console.info('บีบอัดเส้นทางถนน "'+route.name+'": '+(before/1024).toFixed(0)+' KB -> '+(after/1024).toFixed(1)+' KB ('+path.length+' -> '+route.roadPath.length+' จุด)');
-      try{ await idbPut('routes', route); }catch(e){}
-    }
-    return route.roadPath || null;
-  })();
-  let result;
-  try{ result = await routeRoadPathFetching[route.id]; }
-  finally{ delete routeRoadPathFetching[route.id]; }
-  return result;
-}
-/* จุดบนเส้นทาง (path เป็นพิกัดเรียงตามลำดับ) ที่ระยะทางสะสม = km */
-function posAtKm(path, km){
-  if(!path || !path.length) return null;
-  if(path.length===1 || km<=0) return path[0];
-  let acc = 0;
-  for(let i=1;i<path.length;i++){
-    const segKm = haversineKm(path[i-1], path[i]);
-    if(acc+segKm >= km || i===path.length-1){
-      const remain = km - acc;
-      const frac = segKm>0 ? Math.max(0,Math.min(1, remain/segKm)) : 0;
-      return [
-        path[i-1][0] + (path[i][0]-path[i-1][0])*frac,
-        path[i-1][1] + (path[i][1]-path[i-1][1])*frac,
-      ];
-    }
-    acc += segKm;
-  }
-  return path[path.length-1];
-}
-function nearestPoiToPos(pos, pois){
-  let best=null, bestDist=Infinity;
-  pois.forEach(p=>{
-    const d = haversineKm(pos, [p.lat,p.lng]);
-    if(d<bestDist){ bestDist=d; best=p; }
-  });
-  return best ? {poi:best, distKm:bestDist} : null;
-}
-
 /* ---------- REST PLANNING VIEW ---------- */
-/* ระยะไกลสุดที่ยังถือว่า "มีจุดพักใกล้พอ" สำหรับตำแหน่งที่ต้องพักแต่ละช่วง —
-   เกินนี้ถือว่าไม่มีจุดพักเหมาะสมจริงๆ (ไม่ใช่แค่หยิบจุดที่ใกล้ที่สุดเท่าที่มี
-   มาแนะนำทั้งที่ไกลเกินไป) */
-const REST_STOP_MAX_KM = 30;
-async function computeRestPlan(){
+function computeRestPlan(){
   const routeId = document.getElementById('restRouteSelect').value;
   const startTime = document.getElementById('restStartTime').value;
   const route = STATE.routes.find(r=>r.id===routeId);
@@ -7492,132 +6711,28 @@ async function computeRestPlan(){
   const legs = Math.ceil(route.distanceKm / s.maxRestKm);
   const restPois = STATE.pois.filter(p=>p.routeId===routeId && (p.type==='rest'||p.type==='truckstop'||p.type==='fuel'));
 
-  document.getElementById('restPlanBox').innerHTML = '<div style="font-size:12.5px;color:var(--text-faint);">⏳ กำลังคำนวณตามเส้นทางถนนจริง...</div>';
-  const roadPath = await ensureRouteRoadPath(route);
-  const pathForCalc = (roadPath && roadPath.length>1) ? roadPath : route.waypoints;
-  /* v22 — เลิกใช้ routeId เป็นตัวตัดสินว่า "จุดไหนอยู่บนเส้นทางนี้"
-     เหตุผล: เส้นทางหลายเส้นวิ่งทับถนนสายเดียวกัน เช่น สระบุรี→ขอนแก่น ใช้ ทล.2
-     ร่วมกับ สระบุรี→นครราชสีมา เกือบทั้งช่วงแรก ปั๊มที่ถูกผูกไว้กับเส้นโคราช
-     จึงไม่เคยถูกหยิบมาใช้ตอนวางแผนเส้นขอนแก่นเลย ทั้งที่รถวิ่งผ่านปั๊มนั้นจริงๆ
-     — ตอนนี้ดูจาก "พิกัดจริงเทียบกับแนวถนนของเส้นทางที่เลือก" แทน จุดไหนอยู่ใน
-     ระยะ ROUTE_CORRIDOR_KM จากแนวถนนเส้นนี้ ใช้ได้หมด ไม่ว่าจะผูกกับเส้นทางไหน
-     (v21 แก้ไปครึ่งเดียว คือกรอง "จุดนอกเส้นทาง" ออก แต่ยังไม่ดึง "จุดของเส้นทาง
-     อื่นที่วิ่งทับกัน" เข้ามาใช้ เลยกลายเป็นไม่เหลือจุดพักให้เลือกเลย) */
-  /* v26 — เกณฑ์ "เอาไปแนะนำเป็นจุดพักได้ไหม"
-     รวม "จุดอื่นๆ" ที่แอดมินอนุมัติด้วย (ตามกฎบริษัท: ที่กว้าง ปลอดภัย แอดมินยินยอม = จอดพักได้)
-     แต่ตัดออก 2 อย่างที่ห้ามแนะนำเด็ดขาด:
-       noStop    = ไหล่ทาง/ริมถนน ที่แอดมินตัดสินว่าห้ามจอด
-       loadPoint = จุดขึ้น/ลงสินค้าของลูกค้า — ไม่แจ้งเตือนเวลารถไปจอด (เพราะเป็นงาน)
-                   แต่ห้ามเอาไปบอกคนขับว่าเป็นที่พัก เพราะมันคือโรงงาน/โกดังของลูกค้า */
-  const isRestType = p=>['rest','truckstop','fuel','other'].includes(p.type) && !p.noStop && !p.loadPoint;
-  const allRestPois = STATE.pois.filter(isRestType);
-  const split = splitPoisByCorridor(route, allRestPois, (roadPath && roadPath.length>1) ? roadPath : null);
-  const candidates = split.known ? split.onRoute : restPois.map(p=>({poi:p, alongKm:null, offKm:null}));
-  /* เตือนเฉพาะจุดที่ "ผูกไว้กับเส้นทางนี้" แต่ไม่ได้อยู่บนแนวถนนจริงของเส้นนี้
-     (จุดของเส้นทางอื่นที่อยู่ไกล ไม่ต้องเอามาเตือน เพราะไม่เกี่ยวกับเส้นนี้อยู่แล้ว) */
-  const taggedOff = split.known ? split.offRoute.filter(c=>c.poi.routeId===routeId) : [];
-  /* จุดที่ยืมมาจากเส้นทางอื่นที่วิ่งทับกัน — โชว์ให้แอดมินรู้ว่าระบบดึงมาใช้ด้วย */
-  const borrowed = split.known ? split.onRoute.filter(c=>c.poi.routeId!==routeId) : [];
-  /* ปรับสเกล: alongKm วัดตามเส้นถนนจริงที่ดึงมา ซึ่งความยาวรวมอาจไม่เท่ากับ
-     route.distanceKm ที่แสดงบนหน้าจอ — ปรับให้อยู่สเกลเดียวกันก่อน ตัวเลข
-     "กม. ที่เท่าไรของเส้นทาง" จะได้ตรงกับที่แอดมินเห็นในหัวข้อด้านบน */
-  const roadTotalKm = pathTotalKm(pathForCalc);
-  const kmScale = (split.known && roadTotalKm>0 && route.distanceKm>0) ? route.distanceKm/roadTotalKm : 1;
-  const planStops = candidates
-    .filter(c=>c.alongKm!=null)
-    .map(c=>({poi:c.poi, km:c.alongKm*kmScale, offKm:c.offKm}))
-    .sort((a,b)=>a.km-b.km);
-
   let html = `<div style="font-size:12.5px;color:var(--text-dim);margin-bottom:12px;">เดินทาง ${route.distanceKm} กม. ด้วยความเร็วเฉลี่ย ~${avgSpeed.toFixed(0)} กม./ชม. — ต้องพักทุก ${s.maxRestKm} กม. (ไม่เกิน ${s.maxDriveHr} ชม. ต่อเนื่อง)</div>`;
   html += '<div style="display:flex;flex-direction:column;gap:8px;">';
   let warned=false;
-  let lastStopKm = 0;   // หลักกิโลของจุดที่พักไปแล้วรอบก่อน (กันแนะนำจุดเดิมซ้ำ/ย้อนหลัง)
-  const [sh,sm] = startTime.split(':').map(Number);
-  const clockAt = km=>{
-    const mins = sh*60 + sm + (km/avgSpeed)*60;
-    return String(Math.floor(mins/60)%24).padStart(2,'0')+':'+String(Math.round(mins%60)%60).padStart(2,'0');
-  };
   for(let i=1;i<=legs;i++){
     const cumKm = Math.min(i*s.maxRestKm, route.distanceKm);
-    const isFinal = cumKm >= route.distanceKm;
-    if(isFinal){
-      /* ช่วงสุดท้ายคือ "ถึงปลายทาง" ไม่ใช่จุดที่ต้องหาที่พัก — เดิมนับเป็นช่วงพัก
-         ด้วย เลยขึ้นเตือน "ไม่พบจุดพัก" ทั้งที่รถถึงที่หมายแล้ว */
-      html += `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--border-soft);border-radius:10px;background:var(--panel-2);">
-        <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-faint);width:70px;">กม. ${cumKm}</div>
-        <div style="font-family:var(--font-mono);font-size:13px;width:60px;">${clockAt(cumKm)}</div>
-        <div style="flex:1;font-size:13px;">🏁 ถึงปลายทาง — ${route.name.split('→').pop().trim()}</div>
-        <span class="badge low">สิ้นสุดเส้นทาง</span>
-      </div>`;
-      continue;
-    }
-    /* v22 — กติกาการเลือกจุดพักที่ถูกต้อง: กฎคือ "ห้ามขับเกิน maxRestKm ติดต่อกัน"
-       ดังนั้นต้องพัก *ก่อน* ถึงหลักกิโลนั้น ไม่ใช่พักตรงหลักกิโลนั้นพอดี — เลือก
-       จุดที่ไกลที่สุดเท่าที่ยัง "ไม่เกิน" กำหนด (ขับได้มากที่สุดโดยไม่ผิดกฎ)
-       เดิมบังคับให้จุดพักต้องอยู่ห่างจากหลักกิโลที่กำหนดไม่เกิน 30 กม. ซึ่งผิด
-       หลักการ — ปั๊มที่อยู่ที่ กม.96 ใช้พักก่อนครบ 150 กม. ได้สบายๆ แต่ระบบกลับ
-       บอกว่า "ไม่พบจุดพักที่เหมาะสม" */
-    let chosen = null, overshoot = false;
-    if(split.known){
-      planStops.forEach(c=>{
-        if(c.km <= lastStopKm + 1) return;               // ผ่านมาแล้ว/พักไปแล้ว
-        if(c.km <= cumKm && (!chosen || c.km > chosen.km)) chosen = c;
-      });
-      if(!chosen){
-        /* ไม่มีจุดพักเลยก่อนถึงกำหนด — ขอจุดถัดไปที่เลยกำหนดไปไม่มาก แล้วเตือนว่าเลยระยะ */
-        planStops.forEach(c=>{
-          if(c.km <= lastStopKm + 1) return;
-          if(c.km - cumKm <= REST_STOP_MAX_KM && (!chosen || c.km < chosen.km)) chosen = c;
-        });
-        if(chosen) overshoot = true;
-      }
-    } else {
-      const legPos = posAtKm(pathForCalc, cumKm);
-      const match = (legPos && restPois.length) ? nearestPoiToPos(legPos, restPois) : null;
-      if(match && match.distKm<=REST_STOP_MAX_KM) chosen = {poi:match.poi, km:cumKm, offKm:match.distKm};
-    }
-    const gapOk = !!chosen;
+    const hoursIn = cumKm/avgSpeed;
+    const [h,m] = startTime.split(':').map(Number);
+    const arrMinutes = h*60+m + hoursIn*60;
+    const arrH = Math.floor(arrMinutes/60)%24, arrM = Math.round(arrMinutes%60);
+    const nearest = restPois[i%Math.max(restPois.length,1)] || null;
+    const gapOk = !!nearest;
     if(!gapOk) warned=true;
-    if(gapOk) lastStopKm = chosen.km;
-    const nearest = gapOk ? chosen.poi : null;
-    const stopKm = gapOk ? Math.round(chosen.km) : cumKm;
-    let detail;
-    if(!gapOk){
-      detail = 'ไม่พบจุดพักที่เหมาะสมในระยะนี้';
-    } else {
-      const early = cumKm - chosen.km;
-      const note = overshoot
-        ? `<span style="color:#F5C26B;">⚠️ เลยระยะที่กำหนด ~${Math.round(chosen.km-cumKm)} กม.</span>`
-        : (early>=1 ? `<span style="color:var(--text-faint);">พักก่อนครบกำหนด ${Math.round(early)} กม.</span>` : '');
-      const offNote = (chosen.offKm!=null && chosen.offKm>=1) ? `<span style="color:var(--text-faint);"> · ห่างจากถนน ~${chosen.offKm.toFixed(0)} กม.</span>` : '';
-      detail = `${POI_META[nearest.type].icon} แนะนำ: ${nearest.name} <span style="color:var(--text-faint);">(กม. ${stopKm})</span> ${note}${offNote}`;
-    }
-    const locBtn = gapOk ? `<button class="btn sm" style="margin-left:8px;" onclick="focusRestMiniMap('${nearest.id}')">📍 ดูตำแหน่ง</button>` : '';
     html += `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--border-soft);border-radius:10px;background:var(--panel-2);">
-      <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-faint);width:70px;">กม. ${stopKm}</div>
-      <div style="font-family:var(--font-mono);font-size:13px;width:60px;">${clockAt(gapOk?chosen.km:cumKm)}</div>
-      <div style="flex:1;font-size:13px;">${detail}</div>
-      <span class="badge ${gapOk?(overshoot?'high':'low'):'crit'}">${gapOk?(overshoot?'เลยระยะกำหนด':'พร้อมพัก'):'⚠ ควรวางแผนเพิ่มน้ำมัน/พัก'}</span>
-      ${locBtn}
+      <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-faint);width:70px;">กม. ${cumKm}</div>
+      <div style="font-family:var(--font-mono);font-size:13px;width:60px;">${String(arrH).padStart(2,'0')}:${String(arrM).padStart(2,'0')}</div>
+      <div style="flex:1;font-size:13px;">${gapOk? (POI_META[nearest.type].icon+' แนะนำ: '+nearest.name) : 'ไม่พบจุดพักที่เหมาะสมในระยะนี้'}</div>
+      <span class="badge ${gapOk?'low':'crit'}">${gapOk?'พร้อมพัก':'⚠ ควรวางแผนเพิ่มน้ำมัน/พัก'}</span>
     </div>`;
   }
   html += '</div>';
-  if(borrowed.length){
-    const srcNames = [...new Set(borrowed.map(c=>{
-      const rt = STATE.routes.find(r=>r.id===c.poi.routeId);
-      return rt ? rt.name : 'ไม่ระบุเส้นทาง';
-    }))];
-    html += `<div style="margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(34,211,199,.08);border:1px solid rgba(34,211,199,.25);font-size:12.5px;color:var(--text-dim);">🔗 ใช้จุดพัก ${borrowed.length} จุดจากเส้นทางอื่นที่วิ่งทับถนนสายเดียวกันด้วย (${srcNames.join(', ')}) — เพราะอยู่บนแนวถนนของเส้นทางนี้จริง ไม่ต้องไปเพิ่มจุดซ้ำอีก</div>`;
-  }
-  if(taggedOff.length){
-    html += `<div style="margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.25);font-size:12.5px;color:#F5C26B;">🚫 ข้าม ${taggedOff.length} จุดที่ผูกกับเส้นทางนี้ไว้ แต่จริงๆ อยู่ห่างจากแนวถนนเกิน ${ROUTE_CORRIDOR_KM} กม. (อยู่นอกเส้นทาง) — ดูรายการได้ที่ตารางด้านล่าง กด "แก้ไข" เพื่อย้ายไปเส้นทางที่ถูก หรือกด "🧭 จับคู่เส้นทางใหม่ทั้งหมด" ที่หน้า Admin/Settings</div>`;
-  }
-  if(!split.known){
-    html += `<div style="margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(34,211,199,.08);border:1px solid rgba(34,211,199,.25);font-size:12.5px;color:var(--text-dim);">⏳ ยังไม่มีเส้นทางถนนจริงของเส้นทางนี้ จึงยังกรอง "จุดนอกเส้นทาง" ออกให้ไม่ได้ — กด "🔄 รีเฟรชถนน" ที่หน้า Admin/Settings แล้วคำนวณใหม่อีกครั้ง</div>`;
-  }
-  if(warned) html += `<div style="margin-top:12px;padding:12px;border-radius:10px;background:rgba(240,71,90,.08);border:1px solid rgba(240,71,90,.25);font-size:13px;color:#F5A9B0;">⚠️ พบช่วงที่ไม่มีจุดพักเหมาะสมตามระยะที่กำหนด แนะนำให้ติดต่อศูนย์ควบคุมเพื่อวางแผนเพิ่มเติม (ถ้ามั่นใจว่ามีจุดที่คนขับถ่ายรูปส่งมาอยู่แถวนี้แล้ว ลองกด "🧭 จับคู่เส้นทางใหม่ทั้งหมด" ที่หน้า Admin/Settings ก่อน เผื่อจุดนั้นยังติดเส้นทางผิดอยู่)</div>`;
+  if(warned) html += `<div style="margin-top:12px;padding:12px;border-radius:10px;background:rgba(240,71,90,.08);border:1px solid rgba(240,71,90,.25);font-size:13px;color:#F5A9B0;">⚠️ พบช่วงที่ไม่มีจุดพักเหมาะสมตามระยะที่กำหนด แนะนำให้ติดต่อศูนย์ควบคุมเพื่อวางแผนเพิ่มเติม</div>`;
   document.getElementById('restPlanBox').innerHTML = html;
-  renderRestMiniMap();
 }
 function renderRestSettingsBox(){
   const s = STATE.settings;
@@ -7634,793 +6749,13 @@ function renderRestPoiTable(){
   const route = STATE.routes.find(r=>r.id===routeId);
   const start = route && route.waypoints && route.waypoints[0];
   const rows = STATE.pois.filter(p=>p.routeId===routeId && p.type!=='repair' && p.type!=='hospital');
-  /* v22 — ตารางนี้ชื่อ "จุดพัก ... บนเส้นทางที่เลือก" จึงต้องดูจากพิกัดจริงเทียบ
-     แนวถนนของเส้นทางนี้ ไม่ใช่ดูแค่ routeId — จุดของเส้นทางอื่นที่วิ่งทับถนน
-     สายเดียวกัน (เช่น ปั๊มบน ทล.2 ที่ผูกไว้กับเส้นโคราช ตอนดูเส้นขอนแก่น) ต้อง
-     ขึ้นมาด้วย เพราะรถวิ่งผ่านจุดนั้นจริง */
-  const allPois = STATE.pois.filter(p=>p.type!=='repair' && p.type!=='hospital');
-  const split = splitPoisByCorridor(route, allPois, null);
-  const routeNameOf = rid=>{ const rt = STATE.routes.find(r=>r.id===rid); return rt ? rt.name : ''; };
-  const rowHtml = (p, distLabel, distStyle)=>{
-    const meta = poiDisplayMeta(p);
+  document.getElementById('restPoiTable').innerHTML = rows.map(p=>{
+    const meta = POI_META[p.type];
+    const distKm = start ? Math.round(haversineKm(start,[p.lat,p.lng])) : null;
     const photoTag = photoBadgeHtml(p,'viewPoiPhoto');
-    /* บอกที่มาให้ชัด ถ้าเป็นจุดที่ยืมมาจากเส้นทางอื่นที่วิ่งทับกัน */
-    const srcTag = (p.routeId && p.routeId!==routeId && routeNameOf(p.routeId))
-      ? ` <span style="font-size:11px;color:var(--text-faint);">🔗 ${routeNameOf(p.routeId)}</span>` : '';
-    /* v28 — บอกที่มาใต้ชื่อจุด: รถคันไหนไปจอด/แจ้ง เมื่อไร (ถ้ามีข้อมูล) */
-    const originTag = poiOriginRowsHtml(p).replace(/<div class="pop-row">/g,'<div style="font-size:11px;color:var(--text-faint);font-weight:400;">');
-    return `<tr><td>${meta.icon} ${meta.label}</td><td class="strong">${p.name} ${photoTag}${srcTag}${originTag}</td><td class="mono" style="${distStyle||''}">${distLabel}</td><td>${p.notes||''}</td>
-      <td style="white-space:nowrap;"><button class="btn sm" onclick="focusRestMiniMap('${p.id}')">📍 ดูตำแหน่ง</button> <button class="btn sm" onclick="openPoiEditModal('${p.id}')">แก้ไข</button> <button class="btn sm danger" onclick="deletePoi('${p.id}')">ลบ</button></td></tr>`;
-  };
-  let html = '';
-  if(!split.known){
-    /* ยังไม่มีเส้นถนนจริง — ยังกรองไม่ได้ (ห้ามเดาด้วยเส้นตรง เดี๋ยวตัดจุดที่ถูกต้องทิ้ง) */
-    html += rows.map(p=>{
-      const distKm = start ? Math.round(haversineKm(start,[p.lat,p.lng])) : null;
-      return rowHtml(p, distKm!=null?('~'+distKm+' กม. (เส้นตรง)'):'-');
-    }).join('');
-    if(rows.length) html += `<tr><td colspan="5" style="font-size:12px;color:var(--text-faint);">⏳ ยังไม่มีเส้นทางถนนจริงของเส้นทางนี้ จึงยังแยก "จุดนอกเส้นทาง" ออกให้ไม่ได้ — กำลังขอเส้นทางถนนจริงให้อัตโนมัติ</td></tr>`;
-  } else {
-    /* ปรับสเกลให้ "หลักกิโล" ตรงกับระยะทางของเส้นทางที่แสดงบนหน้าจอ (เหมือนในแผนพักรถ) */
-    const roadTotalKm = pathTotalKm(routeRoadPathCached(route));
-    const kmScale = (roadTotalKm>0 && route.distanceKm>0) ? route.distanceKm/roadTotalKm : 1;
-    html += split.onRoute.map(c=>rowHtml(c.poi, '~'+Math.round(c.alongKm*kmScale)+' กม.')).join('');
-    /* เตือนเฉพาะจุดที่ผูกไว้กับเส้นทางนี้ แต่ไม่ได้อยู่บนแนวถนนจริงของเส้นนี้ */
-    const taggedOff = split.offRoute.filter(c=>c.poi.routeId===routeId);
-    if(taggedOff.length){
-      html += `<tr><td colspan="5" style="padding-top:14px;font-size:12.5px;color:#F5C26B;background:rgba(245,166,35,.06);">⚠️ ต่อไปนี้คือจุดที่ "ผูกไว้กับเส้นทางนี้" แต่จริงๆ อยู่นอกแนวถนน (ห่างเกิน ${ROUTE_CORRIDOR_KM} กม.) ระบบจะไม่นำมาแนะนำเป็นจุดพักของเส้นทางนี้ — กด "แก้ไข" เพื่อย้ายไปเส้นทางที่ถูกต้อง หรือลบทิ้งถ้าไม่ใช้</td></tr>`;
-      html += taggedOff.map(c=>rowHtml(
-        c.poi,
-        c.offKm!=null ? ('นอกเส้นทาง ~'+Math.round(c.offKm)+' กม.') : 'นอกเส้นทาง',
-        'color:#F0475A;'
-      )).join('');
-    }
-  }
-  document.getElementById('restPoiTable').innerHTML = html || `<tr><td colspan="5" class="empty">ไม่มีข้อมูลจุดพักสำหรับเส้นทางนี้</td></tr>`;
-  /* ถ้ายังไม่มีเส้นถนนจริง ขอมาก่อนแล้ววาดตารางใหม่รอบเดียว (รอบสองจะเจอแคชแล้ว ไม่วนซ้ำ) */
-  if(route && !routeRoadPathCached(route)){
-    ensureRouteRoadPath(route).then(p=>{ if(p && p.length>1) renderRestPoiTable(); });
-  }
-  renderRestMiniMap();
-}
-
-/* ---------- แผนที่เล็กแสดงตัวอย่างเส้นทาง + จุดพัก (Google Maps) ----------
-   อยู่ในช่องว่างใต้การ์ด "เงื่อนไขปัจจุบัน" ทางขวาของหน้าวางแผนพักรถ —
-   ใช้ Google Maps (ไม่ใช่ Leaflet/CARTO) เพราะระบบมี Google Maps API Key
-   ตั้งไว้อยู่แล้วที่ Admin/Settings — วาดจุด A -> B -> C ... ไปจนถึงปลายทาง
-   ตามลำดับ waypoints ของเส้นทางที่เลือก แบบเดียวกับหมุด A/B/C ของ Google Maps
-   จริง พร้อมจุดพัก/ปั๊มน้ำมันเป็นตัวอย่าง ซูมเข้า-ออกดูตำแหน่งใกล้ๆ ได้ตามปกติ
-   กดปุ่ม "📍 ดูตำแหน่ง" จากแผนด้านซ้าย หรือจากตารางจุดพักด้านล่าง จะซูม/เปิด
-   ป้ายชื่อไปที่จุดนั้นให้เลย */
-let restMiniMapObj = null, restMiniMapOverlays = [], restMiniMapInitPromise = null;
-function restMiniMapMsg(html){
-  const el = document.getElementById('restMiniMap');
-  if(el) el.innerHTML = `<div style="height:100%;display:flex;align-items:center;justify-content:center;text-align:center;padding:16px;font-size:12.5px;color:var(--text-faint);">${html}</div>`;
-}
-function initRestMiniMap(){
-  if(restMiniMapObj) return Promise.resolve();
-  if(restMiniMapInitPromise) return restMiniMapInitPromise;
-  const el = document.getElementById('restMiniMap');
-  if(!el) return Promise.resolve();
-  const key = STATE.settings && STATE.settings.gmapApiKey;
-  if(!key){
-    restMiniMapMsg('⚠️ ต้องตั้งค่า Google Maps API Key ที่หน้า <b>Admin / Settings</b> ก่อน จึงจะแสดงแผนที่ตัวอย่างจุดพักได้');
-    return Promise.resolve();
-  }
-  restMiniMapMsg('🌍 กำลังโหลด Google Maps...');
-  restMiniMapInitPromise = loadGoogleMaps(key).then(()=>{
-    el.innerHTML = '';
-    restMiniMapObj = new google.maps.Map(el, {
-      center:{lat:15.5,lng:100.6}, zoom:6, styles:G_DARK_STYLE,
-      disableDefaultUI:true, zoomControl:true, scrollwheel:true, gestureHandling:'greedy',
-    });
-  }).catch(err=>{
-    restMiniMapMsg('โหลด Google Maps ไม่สำเร็จ: '+(err&&err.message?err.message:'ตรวจสอบ API Key'));
-  }).finally(()=>{ restMiniMapInitPromise = null; });
-  return restMiniMapInitPromise;
-}
-async function renderRestMiniMap(focusPoiId){
-  if(!restMiniMapObj) await initRestMiniMap();
-  if(!restMiniMapObj) return; // ยังไม่มี API Key หรือโหลดไม่สำเร็จ — ข้อความแจ้งเตือนแสดงอยู่แล้วในกล่อง
-  restMiniMapOverlays.forEach(o=>o.setMap(null));
-  restMiniMapOverlays = [];
-
-  const routeId = document.getElementById('restRouteSelect')?.value || STATE.routes[0]?.id;
-  const route = STATE.routes.find(r=>r.id===routeId);
-  const bounds = new google.maps.LatLngBounds();
-
-  if(route && route.waypoints && route.waypoints.length){
-    /* เส้นทางถนนจริง — ขอจาก Google Directions/OSRM แล้วเก็บแคชถาวรไว้ที่
-       route.roadPath (ครั้งแรกอาจใช้เวลาสักครู่ ครั้งต่อไปดึงจากแคชทันที)
-       ไม่ใช่การลากเส้นตรงเชื่อม waypoints แบบเดิมที่ตัดผ่านภูเขา/ป่า */
-    const roadPath = await ensureRouteRoadPath(route);
-    const linePath = (roadPath && roadPath.length>1 ? roadPath : route.waypoints).map(p=>({lat:p[0],lng:p[1]}));
-    restMiniMapOverlays.push(new google.maps.Polyline({
-      path: linePath, strokeColor:'#22D3C7', strokeWeight:4, strokeOpacity:.85, map: restMiniMapObj, zIndex:1,
-    }));
-
-    /* จุด A -> B -> C ... จนถึงปลายทาง (label ตัวอักษรบนหมุดของ Google เอง
-       เหมือนแผนที่นำทางจริง) */
-    route.waypoints.forEach((wp,i)=>{
-      const letter = String.fromCharCode(65 + Math.min(i,25));
-      const isStart = i===0, isEnd = i===route.waypoints.length-1;
-      const m = new google.maps.Marker({
-        position:{lat:wp[0],lng:wp[1]}, map: restMiniMapObj,
-        label:{text:letter, color:'#fff', fontSize:'11px', fontWeight:'700'},
-        title: isEnd ? `${route.name} (ปลายทาง)` : (isStart ? `${route.name} (จุดเริ่มต้น)` : `จุด ${letter} ระหว่างทาง`),
-        zIndex: 500,
-      });
-      restMiniMapOverlays.push(m);
-      bounds.extend({lat:wp[0],lng:wp[1]});
-    });
-  }
-
-  /* v21 — วาดเฉพาะจุดที่อยู่บนแนวถนนจริงของเส้นทางนี้ (เดิมวาดทุกจุดที่ routeId
-     ตรงกัน ปั๊มนอกเส้นทางเลยโผล่เป็นหมุดลอยห่างจากเส้นสีฟ้าไปไกลมาก) — ยกเว้น
-     จุดที่กด "📍 ดูตำแหน่ง" มา ต้องวาดให้เห็นเสมอแม้จะอยู่นอกเส้นทาง แต่ใช้สี
-     เตือน (แดง) เพื่อให้รู้ทันทีว่าจุดนี้ไม่ได้อยู่บนเส้นทางที่เลือก */
-  /* v22 — ดึงจากทุกจุดในระบบ แล้วคัดด้วยแนวถนนจริงของเส้นทางนี้ (ไม่ใช่ routeId)
-     จุดพักบน ทล.2 ที่ผูกไว้กับเส้นโคราช จะขึ้นบนแผนที่เส้นขอนแก่นด้วย เพราะรถวิ่งผ่านจริง */
-  const allStops = route ? STATE.pois.filter(p=>(p.type==='rest'||p.type==='truckstop'||p.type==='fuel'||p.noStop)) : [];
-  const stopSplit = splitPoisByCorridor(route, allStops, null);
-  /* ถ้ายังไม่มีเส้นถนนจริง (known:false) จะกรองด้วยแนวถนนไม่ได้ ต้องถอยกลับไปใช้
-     routeId ตามเดิม ไม่งั้นจะวาดจุดพักทั้งประเทศลงบนแผนที่เส้นทางเดียว */
-  const drawList = (stopSplit.known
-      ? stopSplit.onRoute.map(c=>c.poi)
-      : allStops.filter(p=>route && p.routeId===route.id)
-    ).map(p=>({poi:p, off:false}));
-  if(focusPoiId){
-    const offHit = stopSplit.offRoute.find(c=>c.poi.id===focusPoiId);
-    if(offHit) drawList.push({poi:offHit.poi, off:true, offKm:offHit.offKm});
-    else if(!drawList.some(d=>d.poi.id===focusPoiId)){
-      /* กดดูตำแหน่งจุดประเภทอื่น (ศูนย์ซ่อม/โรงพยาบาล) หรือจุดของเส้นทางอื่น */
-      const any = STATE.pois.find(p=>p.id===focusPoiId);
-      if(any) drawList.push({poi:any, off:true, offKm:null});
-    }
-  }
-  let focusMarker = null;
-  drawList.forEach(({poi:p, off, offKm})=>{
-    const meta = poiDisplayMeta(p);
-    const m = new google.maps.Marker({
-      position:{lat:p.lat,lng:p.lng}, map: restMiniMapObj,
-      icon: gDotIconUrl((off||p.noStop) ? '#F0475A' : (meta.color||'#22D3C7'), 26, meta.icon), title:p.name, zIndex: (off||p.noStop)?700:600,
-    });
-    const noStopWarn = p.noStop ? '<br><span style="color:#B00020"><b>⛔ จุดห้ามจอด — ระบบจะไม่แนะนำเป็นที่พัก</b></span>' : '';
-    const warn = noStopWarn + (off ? `<br><span style="color:#B00020">⚠️ อยู่นอกแนวเส้นทางนี้${offKm!=null?(' ~'+Math.round(offKm)+' กม.'):''}</span>` : '');
-    const iw = new google.maps.InfoWindow({content:`<div style="color:#111"><b>${meta.icon} ${p.name}</b><br>${meta.label}${warn}</div>`});
-    m.addListener('click',()=>iw.open(restMiniMapObj,m));
-    restMiniMapOverlays.push(m);
-    bounds.extend({lat:p.lat,lng:p.lng});
-    if(focusPoiId && p.id===focusPoiId) focusMarker = {marker:m, iw, pos:{lat:p.lat,lng:p.lng}};
-  });
-
-  google.maps.event.trigger(restMiniMapObj,'resize');
-  if(focusMarker){
-    restMiniMapObj.setCenter(focusMarker.pos);
-    restMiniMapObj.setZoom(13);
-    focusMarker.iw.open(restMiniMapObj, focusMarker.marker);
-  } else if(!bounds.isEmpty()){
-    restMiniMapObj.fitBounds(bounds, 40);
-  }
-}
-function focusRestMiniMap(poiId){
-  renderRestMiniMap(poiId);
-  document.getElementById('restMiniMap')?.scrollIntoView({behavior:'smooth',block:'center'});
-}
-
-/* ================= v23 — ตรวจจับ "จุดจอดผิดปกติ" จากสัญญาณ GPS =================
-   โจทย์: ห้ามรถจอดไหล่ทาง/ข้างถนนที่ไม่ใช่ปั๊ม เพราะอันตราย แต่จะรู้ได้ต้องเห็นก่อน
-   วิธี: เฝ้าดูตำแหน่งรถจากกล่อง GPS (ตาราง vehicle_live ที่ดึงอยู่ทุก 30 วิ)
-   ถ้ารถอยู่นิ่งที่เดิมนานเกินค่าที่ตั้งไว้ และจุดนั้นไม่ใช่ปั๊ม/จุดพักที่ปักหมุดไว้
-   และไม่ใช่ต้นทาง/ปลายทาง → บันทึกไว้ให้แอดมินเข้าไปเปิด Google Maps ดูว่าคืออะไร
-
-   ข้อจำกัดที่ต้องรู้ 2 ข้อ (มีเหตุผลทางเทคนิคบังคับ):
-   1) ตาราง vehicle_live เก็บ "ตำแหน่งปัจจุบัน" อย่างเดียว ไม่มีประวัติย้อนหลัง
-      การรู้ว่าจอดมากี่นาทีจึงต้องนับเองจากหน้านี้ = ตรวจจับได้เฉพาะตอนเปิดหน้า
-      แอดมินค้างไว้ ทางแก้ถาวรคือย้ายไปคำนวณใน live_push.py (จดไว้ในหน้า Settings)
-   2) ห้ามสร้าง object store ใหม่ใน IndexedDB เด็ดขาด — สคริปต์แอปมือถือกับแอดมิน
-      ใช้ฐานข้อมูล rfsm_db ตัวเดียวกัน ถ้าขยับ DB_VER เฉพาะฝั่งแอดมิน ฝั่งมือถือจะ
-      เปิดด้วยเวอร์ชันต่ำกว่าแล้วได้ VersionError = แอปคนขับพัง จึงเก็บข้อมูลนี้ลง
-      ตาราง fleet_sync โดยตรง (store='stopEvents') ไม่ผ่าน IndexedDB เลย ฝั่งมือถือ
-      ไม่รู้จัก store นี้ก็ไม่ดึงไป → ไม่กระทบ APK เดิมแม้แต่บรรทัดเดียว */
-const STOP_STORE = 'stopEvents';
-const STOP_DEFAULTS = { minMin:5, longMin:40, nearPoiM:300, depotKm:2, moveM:150, moveSpeed:5, boxSleepMin:30, sameSpotM:400, mergeGapMin:60 };
-function stopCfg(){
-  const s = STATE.settings || {};
-  const num = (v,d)=>{ const n = Number(v); return isFinite(n) && n>0 ? n : d; };
-  return {
-    minMin:   num(s.stopMinMin,   STOP_DEFAULTS.minMin),
-    longMin:  num(s.stopLongMin,  STOP_DEFAULTS.longMin),
-    nearPoiM: num(s.stopNearPoiM, STOP_DEFAULTS.nearPoiM),
-    depotKm:  (Number(s.stopDepotKm)>=0 ? Number(s.stopDepotKm) : STOP_DEFAULTS.depotKm),
-    /* v25 — สเปกกล่อง GPS ที่ผู้ให้บริการยืนยัน: รถต้องจอดนิ่งครบเท่านี้ กล่องถึงจะดับ
-       ค่านี้เปลี่ยนวิธีตีความ "กล่องเงียบ" ไปเลย — ถ้ากล่องยังส่งสัญญาณอยู่กับที่
-       จนครบเวลานี้แล้วค่อยเงียบ แปลว่ามันดับเพราะ "รถจอด" ไม่ใช่เพราะสัญญาณหาย
-       = เป็นหลักฐานว่ารถยังจอดอยู่ตรงนั้น ไม่ใช่เหตุผลให้หยุดนับเวลา */
-    boxSleepMin: num(s.stopBoxSleepMin, STOP_DEFAULTS.boxSleepMin),
-    /* v34 — รัศมี "ยังถือว่าเป็นการจอดครั้งเดิม"
-       รถขยับในลานจอด ถอยเข้าช่อง เลื่อนตามคิว หรือพิกัด GPS แกว่งเอง
-       ล้วนทำให้ตำแหน่งเปลี่ยนเกิน 150 เมตรได้ทั้งนั้น ซึ่งเดิมนับเป็น
-       "ออกจากจุดเดิม" แล้วเปิดรายการใหม่ กลายเป็นรายงานซ้ำคันเดิมที่เดิม */
-    sameSpotM:   num(s.stopSameSpotM,   STOP_DEFAULTS.sameSpotM),
-    mergeGapMin: num(s.stopMergeGapMin, STOP_DEFAULTS.mergeGapMin),
-    moveM:    STOP_DEFAULTS.moveM,
-    moveSpeed:STOP_DEFAULTS.moveSpeed,
-  };
-}
-/* หารายการจอดเดิมของรถคันนี้ ที่จุดเดียวกันและเวลาต่อเนื่องกัน — ใช้ต่อยอดแทนสร้างใหม่
-   กันซ้ำได้ทั้งกรณีรถขยับเล็กน้อย และกรณีแอดมินรีเฟรชหน้าจนตัวจับเวลาหายไป */
-function findOpenStopEventNear(v, lat, lng, atTs, cfg){
-  const gap = cfg.mergeGapMin * 60000;
-  let best = null;
-  (STATE.stopEvents||[]).forEach(e=>{
-    if(e.status!=='pending' && e.status!=='ask') return;      // ตัดสินไปแล้ว ไม่ยุ่ง
-    if(e.vehicleId ? (e.vehicleId!==v.id) : (e.plate!==v.plate)) return;
-    if(haversineKm([lat,lng],[e.lat,e.lng])*1000 > cfg.sameSpotM) return;
-    const endedAt = e.endTs || e.startTs || 0;
-    if(atTs - endedAt > gap) return;                           // ห่างกันนานเกิน ถือเป็นคนละครั้ง
-    if(!best || (e.startTs||0) < (best.startTs||0)) best = e;   // เอารายการที่เริ่มก่อนสุด
-  });
-  return best;
-}
-/* เวลาที่ใช้ตัดสินว่า "จอดนานผิดปกติ" — ถ้ายืนยันได้ว่ากล่องดับเพราะรถจอด
-   ให้ใช้เวลาที่ประเมินต่อเนื่อง เพราะรู้ว่ารถยังจอดอยู่จริง ไม่ใช่สัญญาณหาย */
-function stopEffectiveMin(e){
-  if(!e) return 0;
-  return Math.max(e.durationMin||0, e.ongoingMin||0, (e.parkConfirmed && e.maxDurationMin)||0);
-}
-async function stopEventPush(ev){
-  if(!window.__supa) return;
-  try{
-    const { error } = await window.__supa.from('fleet_sync')
-      .upsert({ store:STOP_STORE, id:ev.id, data:ev, updated_at:new Date().toISOString() }, { onConflict:'store,id' });
-    if(error) throw error;
-  }catch(e){ console.warn('บันทึกจุดจอดขึ้นฐานข้อมูลกลางไม่สำเร็จ:', e); }
-}
-async function stopEventLoadAll(){
-  if(!window.__supa) return [];
-  try{
-    const { data, error } = await window.__supa.from('fleet_sync').select('data').eq('store', STOP_STORE);
-    if(error) throw error;
-    return (data||[]).map(r=>r.data).filter(Boolean);
-  }catch(e){ console.warn('โหลดข้อมูลจุดจอดไม่สำเร็จ:', e); return []; }
-}
-async function stopEventRemove(id){
-  if(!window.__supa) return;
-  try{
-    const { error } = await window.__supa.from('fleet_sync').delete().eq('store',STOP_STORE).eq('id',id);
-    if(error) throw error;
-  }catch(e){ console.warn('ลบจุดจอดไม่สำเร็จ:', e); }
-}
-
-/* จุดนี้ถือว่า "ถึงปั๊ม/จุดพักที่อนุมัติไว้แล้ว" หรือยัง — ถ้าใช่ ไม่ต้องแจ้ง */
-function stopNearApprovedPoi(lat,lng,cfg){
-  /* เช็คจาก "หมุดทุกหมุดในระบบ" ไม่ผูกกับทะเบียนรถหรือเส้นทางใดเส้นทางหนึ่ง
-     ดังนั้นพออนุมัติจุดหนึ่งไปแล้ว รถคันไหนมาจอดซ้ำตรงนั้นก็ไม่ถูกแจ้งอีก
-     รวมถึงจุดขึ้น/ลงสินค้า (loadPoint) และจุดพักอื่นๆ ที่แอดมินอนุมัติแล้วด้วย */
-  return (STATE.pois||[]).some(p=>{
-    if(p.noStop) return false;                                   // จุดห้ามจอด ไม่นับเป็นที่ที่อนุญาต
-    if(!['fuel','rest','truckstop','other'].includes(p.type)) return false;
-    return haversineKm([lat,lng],[p.lat,p.lng])*1000 <= cfg.nearPoiM;
-  });
-}
-/* ต้นทาง/ปลายทางของเส้นทาง = โกดัง/ลานจอด/จุดส่งของ — จอดตรงนั้นเป็นเรื่องปกติ */
-function stopNearDepot(lat,lng,cfg){
-  if(!(cfg.depotKm>0)) return false;
-  return (STATE.routes||[]).some(r=>{
-    const wp = r.waypoints||[];
-    if(!wp.length) return false;
-    return [wp[0], wp[wp.length-1]].some(e=>haversineKm([lat,lng], e) <= cfg.depotKm);
-  });
-}
-/* เคยตัดทิ้งจุดนี้ไปแล้ว (เช่น ไฟแดง/ด่าน) ไม่ต้องเด้งซ้ำอีก */
-function stopPreviouslyIgnored(lat,lng,cfg){
-  return (STATE.stopEvents||[]).some(e=>e.status==='ignored'
-    && haversineKm([lat,lng],[e.lat,e.lng])*1000 <= cfg.nearPoiM);
-}
-
-const stopAnchors = new Map();   // plate_norm -> {lat,lng,sinceGps,lastGps,eventId,...}
-let stopDetectLastRun = 0;
-/* ปิดยอดการจอด เมื่อรถขยับออกไปจริงๆ */
-function stopFinalize(a, newGpsTs, cfg){
-  const ev = STATE.stopEvents.find(x=>x.id===a.eventId);
-  if(!ev) return;
-  ev.endTs = a.lastGps;
-  ev.durationMin = Math.round((a.lastGps - a.sinceGps)/60000);
-  ev.ended = true;
-  ev.boxQuiet = false;
-  ev.ongoingMin = null;
-  /* ถ้าก่อนรถจะขยับ กล่องเงียบไปนาน แปลว่าจอดจริงอาจนานกว่าที่พิสูจน์ได้
-     รู้แค่ว่าไม่เกินตอนที่กล่องส่งสัญญาณใหม่ — บอกเป็นช่วงแทนที่จะเดาเป็นตัวเลขเดียว */
-  const gapMin = Math.round((newGpsTs - a.lastGps)/60000);
-  if(gapMin >= cfg.minMin){
-    ev.uncertainEnd = true;
-    ev.maxDurationMin = Math.round((newGpsTs - a.sinceGps)/60000);
-    /* v25 — กล่องดับหลังจอดครบ boxSleepMin แล้วตื่นอีกทีตอนสตาร์ตเครื่อง
-       ดังนั้น "เวลาที่กล่องตื่น" ≈ "เวลาที่รถออก" ค่าจริงจึงใกล้ขอบบนมากกว่าขอบล่าง
-       (ขอบล่างคือแค่ตอนที่กล่องดับ ซึ่งคือ 30 นาทีหลังรถจอดเท่านั้น) */
-    ev.parkConfirmed = (ev.durationMin||0) >= cfg.boxSleepMin * 0.7;
-  }
-  stopEventPush(ev);
-}
-function stopDetectOff(){ return !!(STATE.settings && STATE.settings.stopDetectOff); }
-function stopDetectTick(){
-  /* v33 — ปิดสวิตช์แล้วหยุดทำงานทั้งหมด: ไม่สร้างรายการใหม่ ไม่เขียนขึ้นฐานข้อมูลกลาง
-     และตอนเปิดหน้าก็ไม่ต้องโหลดรายการเก่าลงมา (ดู loadStopEvents) */
-  if(stopDetectOff()){ stopAnchors.clear(); return; }
-  if(!Array.isArray(STATE.stopEvents)) return;   // ยังโหลดข้อมูลเดิมไม่เสร็จ
-  const cfg = stopCfg();
-  const now = Date.now();
-  const offlineMs = Math.max(1, (typeof GPSBOX!=='undefined' ? GPSBOX.offlineAfterMinutes : 30)) * 60000;
-  stopDetectLastRun = now;
-  (STATE.vehicles||[]).forEach(v=>{
-    const key = normPlate(v.plate);
-    if(!key) return;
-    const live = liveOf(v);
-    if(!live || typeof live.lat!=='number' || typeof live.lng!=='number'){
-      stopAnchors.delete(key);   // ไม่เคยมีตำแหน่งเลย ไม่มีอะไรให้นับ
-      return;
-    }
-    /* v24 — นับเวลาจาก "นาฬิกาของกล่อง" (gps_time) ไม่ใช่นาฬิกาเครื่องแอดมิน
-       เหตุผล: กล่องหลายรุ่นหยุดส่งตอนดับเครื่อง พอรถจอดนานๆ กล่องจะเงียบ
-       v23 ตัดตัวจับเวลาทิ้งทันทีที่กล่องเงียบเกิน 30 นาที ทำให้เกิดบั๊ก 3 ข้อ
-         1) เวลาจอดค้างอยู่ที่ตอนกล่องเงียบ ไม่มีวันแตะเกณฑ์ "จอดนานผิดปกติ"
-            (ทดสอบแล้ว: จอดจริง 45 นาที ระบบขึ้นแค่ 36 นาที และไม่ติดธงแดง)
-         2) รายการค้างสถานะ "ยังจอดอยู่" ตลอดไป เพราะไม่มีใครมาปิดยอดให้
-         3) พอกล่องตื่นมาที่จุดเดิม ระบบนับเป็นการจอดครั้งใหม่ → ข้อมูลซ้ำ
-       วิธีใหม่: ไม่ลบตัวจับเวลาตอนกล่องเงียบ แต่วัดจากช่วง gps_time แรกสุด→
-       ล่าสุด ที่ "พิสูจน์ได้ว่ารถอยู่ตรงนี้" พอกล่องตื่นมาที่จุดเดิม ช่วงเวลา
-       จะยืดเป็นเวลาจริงทันที และถ้ากล่องตายจริง เวลาก็หยุดโต ไม่วิ่งมั่ว
-       เพราะมันโตตาม gps_time ไม่ใช่ตามนาฬิกาเครื่องแอดมิน */
-    const gpsTs = Number(v.lastSeenTs) || now;
-    const online = isVehicleOnline(v);
-    const pos = [live.lat, live.lng];
-    const spd = Number(live.speed)||0;
-    const a = stopAnchors.get(key);
-    const movedM = a ? haversineKm(pos,[a.lat,a.lng])*1000 : Infinity;
-
-    /* v34 — ปิดการจอดก็ต่อเมื่อรถ "ออกนอกบริเวณ" จริงๆ (เกิน sameSpotM)
-       เดิมใช้ 150 เมตร หรือความเร็วเกิน 5 กม./ชม. เป็นตัวตัด ซึ่งแค่ถอยรถ
-       เข้าช่องจอด เลื่อนตามคิว หรือพิกัดแกว่ง ก็เข้าเงื่อนไขแล้ว ระบบจึงปิด
-       รายการเดิมแล้วเปิดรายการใหม่ทันที = รถคันเดิมที่เดิมโผล่มาสองรายการ */
-    if(!a || movedM > cfg.sameSpotM){
-      if(a && a.eventId) stopFinalize(a, gpsTs, cfg);
-      stopAnchors.set(key, {lat:pos[0], lng:pos[1], sinceGps:gpsTs, lastGps:gpsTs,
-                            eventId:null, pushedLong:false, lastPushedMin:0, hadGap:false});
-      return;
-    }
-
-    /* ยังอยู่ในบริเวณเดิม — ยืดเวลาเมื่อมีสัญญาณใหม่และรถไม่ได้กำลังวิ่ง
-       (ขยับช้าๆ ในลานจอดยังนับว่าจอดอยู่ แต่ถ้าออกตัววิ่งจะไม่บวกเวลาให้) */
-    if(gpsTs > a.lastGps && spd <= cfg.moveSpeed){
-      if(gpsTs - a.lastGps > offlineMs) a.hadGap = true;   // มีช่วงกล่องเงียบคั่นอยู่
-      a.lastGps = gpsTs;
-    }
-    const mins = (a.lastGps - a.sinceGps)/60000;
-
-    if(!a.eventId){
-      if(mins < cfg.minMin) return;
-      if(stopNearApprovedPoi(a.lat,a.lng,cfg)) return;   // จอดที่ปั๊มที่ปักหมุดไว้ — ไม่ต้องส่งข้อมูลมา
-      if(stopNearDepot(a.lat,a.lng,cfg)) return;         // ต้นทาง/ปลายทาง
-      if(stopPreviouslyIgnored(a.lat,a.lng,cfg)) return; // เคยตัดทิ้งไปแล้ว
-      /* v34 — ถ้ามีรายการของรถคันนี้ที่จุดเดียวกันค้างอยู่ ให้ต่อยอดรายการนั้น
-         ไม่สร้างใหม่ ครอบคลุมทั้งกรณีรถขยับข้ามรัศมีแล้วกลับมา และกรณีแอดมิน
-         รีเฟรชหน้า/เปิดหลายแท็บ จนตัวจับเวลาในหน้าหายไปแล้วเริ่มนับใหม่ */
-      const cont = findOpenStopEventNear(v, a.lat, a.lng, a.lastGps, cfg);
-      if(cont){
-        a.eventId = cont.id;
-        if(a.sinceGps < (cont.startTs||Infinity)) cont.startTs = a.sinceGps;
-        cont.endTs = Math.max(cont.endTs||0, a.lastGps);
-        cont.durationMin = Math.round((cont.endTs - cont.startTs)/60000);
-        cont.ended = false;
-        a.lastPushedMin = cont.durationMin;
-        stopEventPush(cont);
-        if(document.getElementById('hazardview')?.classList.contains('active')) renderStopEventQueue();
-        return;
-      }
-      const route = nearestRouteMatch(a.lat, a.lng);
-      const ev = {
-        id: uid('stop'),
-        plate: v.plate, vehicleId: v.id, driver: v.driver || '',
-        lat: a.lat, lng: a.lng,
-        startTs: a.sinceGps, endTs: a.lastGps, durationMin: Math.round(mins), ended:false,
-        boxQuiet: !online, estimated: a.hadGap,
-        routeId: (route && route.distKm<=ROUTE_MATCH_MAX_KM) ? route.id : null,
-        status: 'pending', note: '', poiId: null,
-        reviewedBy: null, reviewedTs: null,
-        detectedBy: 'admin-dashboard',
-      };
-      a.eventId = ev.id; a.lastPushedMin = mins;
-      if(mins >= cfg.longMin) a.pushedLong = true;
-      STATE.stopEvents.push(ev);
-      stopEventPush(ev);
-      if(document.getElementById('hazardview')?.classList.contains('active')) renderStopEventQueue();
-      return;
-    }
-    const ev = STATE.stopEvents.find(x=>x.id===a.eventId);
-    if(!ev) return;
-    ev.endTs = a.lastGps; ev.durationMin = Math.round(mins);
-    ev.boxQuiet = !online; ev.estimated = a.hadGap;
-    /* v25 — ผู้ให้บริการยืนยันว่ากล่องจะดับก็ต่อเมื่อรถจอดนิ่งครบ boxSleepMin นาที
-       ดังนั้น "กล่องเงียบทั้งที่ตำแหน่งไม่ขยับ" = กล่องดับเพราะรถจอด ไม่ใช่สัญญาณหาย
-       → รถยังจอดอยู่ตรงนั้นแน่ๆ นับเวลาต่อได้ (ติดป้ายว่าเป็นค่าประเมิน)
-       v24 หยุดนับตรงนี้ ทำให้การจอดยาวค้างอยู่ที่ 30 นาทีตลอดไป ไม่มีวันติดธง
-       "จอดนานผิดปกติ" ทั้งที่รถจอดจริงเป็นชั่วโมง — ซึ่งคือเคสที่ต้องจับให้ได้ที่สุด */
-    if(!online){
-      const provenMin = (a.lastGps - a.sinceGps)/60000;
-      /* กล่องอยู่ครบตามสเปกก่อนดับ (เผื่อคลาด 30%) = ดับเพราะจอดจริง เชื่อถือได้
-         ถ้าเงียบตั้งแต่ยังไม่ครบ = สัญญาณหาย/กล่องมีปัญหา ไม่เดาต่อ */
-      ev.parkConfirmed = provenMin >= cfg.boxSleepMin * 0.7;
-      ev.ongoingMin = ev.parkConfirmed ? Math.round((now - a.sinceGps)/60000) : null;
-    } else {
-      ev.parkConfirmed = false; ev.ongoingMin = null;
-    }
-    /* จอดยาวจนติดเกณฑ์ตอนกล่องดับไปแล้ว ก็ต้องรีบบันทึกขึ้นเซิร์ฟเวอร์เหมือนกัน */
-    if(!a.pushedLong && stopEffectiveMin(ev) >= cfg.longMin){ a.pushedLong = true; stopEventPush(ev); }
-    /* ไม่ push ทุก 30 วิ (เปลืองโควตา) — push ซ้ำเมื่อข้ามเส้น "จอดนานผิดปกติ"
-       หรือเมื่อเวลาโตขึ้นมากพอ (เช่น กล่องเพิ่งตื่นแล้วเวลาพุ่งทีเดียว)
-       เพื่อให้ข้อมูลบนเซิร์ฟเวอร์ไม่ค้าง แม้แอดมินจะปิดหน้าไปก่อนรถออก */
-    const crossedLong = !a.pushedLong && mins >= cfg.longMin;
-    const jumped = (mins - (a.lastPushedMin||0)) >= Math.max(cfg.minMin, 10);
-    if(crossedLong || jumped){
-      if(crossedLong) a.pushedLong = true;
-      a.lastPushedMin = mins;
-      stopEventPush(ev);
-    }
-  });
-}
-
-function stopEventStatusMeta(st){
-  return ({
-    pending: {label:'รอตรวจสอบ',          cls:'high', icon:'🔍'},
-    ask:     {label:'รอถามคนขับ',          cls:'mid',  icon:'❓'},
-    approved:{label:'อนุมัติเป็นจุดพักแล้ว', cls:'low',  icon:'✅'},
-    nostop:  {label:'จุดห้ามจอด',           cls:'crit', icon:'⛔'},
-    ignored: {label:'ไม่เกี่ยว',            cls:'',     icon:'🚫'},
-  })[st] || {label: st||'-', cls:'', icon:'•'};
-}
-function renderStopEventQueue(){
-  const tb = document.getElementById('stopEventTable');
-  if(!tb) return;
-  const cfg = stopCfg();
-  const filter = document.getElementById('stopEventFilter')?.value ?? 'open';
-  let items = (STATE.stopEvents||[]).slice();
-  if(filter==='open') items = items.filter(e=>e.status==='pending'||e.status==='ask');
-  else if(filter) items = items.filter(e=>e.status===filter);
-
-  /* v32 — ค้นหาทะเบียน/คนขับ/สถานที่ + ช่วงวันที่ย้อนหลัง */
-  const sq = (document.getElementById('stopEventSearch')?.value || '').trim().toLowerCase();
-  if(sq) items = items.filter(e=>
-    (e.plate||'').toLowerCase().includes(sq) ||
-    (e.driver||'').toLowerCase().includes(sq) ||
-    (e.note||'').toLowerCase().includes(sq));
-  const sFrom = document.getElementById('stopEventFrom')?.value || '';
-  const sTo   = document.getElementById('stopEventTo')?.value || '';
-  if(sFrom){ const t = new Date(sFrom+'T00:00:00').getTime(); items = items.filter(e=>(e.startTs||0) >= t); }
-  if(sTo){   const t = new Date(sTo+'T23:59:59').getTime();   items = items.filter(e=>(e.startTs||0) <= t); }
-
-  items.sort((a,b)=>(b.startTs||0)-(a.startTs||0));
-
-  const cntEl = document.getElementById('stopEventCount');
-  if(cntEl) cntEl.textContent = (sq||sFrom||sTo)
-    ? `(พบ ${items.length} จาก ${(STATE.stopEvents||[]).length} รายการ)`
-    : `(${items.length} รายการ)`;
-  const btn = document.getElementById('stopDetectToggleBtn');
-  if(btn){
-    const off = stopDetectOff();
-    btn.textContent = off ? '▶️ เปิดการตรวจจับ' : '⏸️ ปิดการตรวจจับชั่วคราว';
-    btn.className = 'btn sm' + (off ? ' primary' : '');
-  }
-  const stEl = document.getElementById('stopDetectStatus');
-  if(stEl && stopDetectOff()){
-    stEl.innerHTML = '⏸️ <b style="color:var(--amber,#F5C26B)">ปิดการตรวจจับอยู่</b> — ไม่บันทึกจุดจอดใหม่ และไม่โหลดรายการเก่าลงมา (ข้อมูลเดิมยังอยู่ครบในฐานข้อมูล)';
-  } else if(stEl){
-    stEl.innerHTML = stopDetectLastRun
-      ? `👁️ กำลังเฝ้าดู ${(STATE.vehicles||[]).filter(isVehicleOnline).length} คันที่ออนไลน์ · เก็บข้อมูลเมื่อจอดเกิน ${cfg.minMin} นาที · ตรวจล่าสุด ${new Date(stopDetectLastRun).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}`
-      : '⏳ กำลังรอสัญญาณจากกล่อง GPS...';
-  }
-  if(!items.length){
-    tb.innerHTML = '<tr><td colspan="8" class="empty">ไม่มีรายการที่ตรงกับเงื่อนไข</td></tr>';
-    return;
-  }
-  /* v32 — แยกเป็นวันๆ ยุบไว้ก่อน เปิดให้เฉพาะวันล่าสุด */
-  const rowHtmlOf = e=>{
-    const meta = stopEventStatusMeta(e.status);
-    const route = STATE.routes.find(r=>r.id===e.routeId);
-    const effMin = stopEffectiveMin(e);
-    const isLong = effMin >= cfg.longMin;
-    const fmtMin = m=>(m>=60 ? Math.floor(m/60)+' ชม. '+(m%60)+' นาที' : (m||0)+' นาที');
-    /* ถ้ายืนยันได้ว่ากล่องดับเพราะรถจอด ให้โชว์เวลาที่นับต่อเนื่องเป็นตัวเลขหลัก
-       เพราะนั่นคือเวลาจอดจริง ส่วนเวลาที่พิสูจน์ได้จากสัญญาณจะบอกไว้บรรทัดล่าง */
-    const durTxt = fmtMin(e.parkConfirmed ? effMin : (e.durationMin||0));
-    const geoId = 'stopgeo-'+e.id;
-    const acts = (e.status==='approved' || e.status==='nostop')
-      ? `<button class="btn sm" onclick="openStopEventMap('${e.id}')">🗺️ แผนที่</button>
-         <button class="btn sm danger" onclick="deleteStopEvent('${e.id}')">ลบ</button>`
-      : `<button class="btn sm" onclick="openStopEventMap('${e.id}')">🗺️ ดูใน Google Maps</button>
-         <button class="btn sm primary" onclick="approveStopAsPoi('${e.id}')">✅ เป็นปั๊ม/จุดพัก</button>
-         <button class="btn sm" onclick="markStopAskDriver('${e.id}')">❓ รอถามคนขับ</button>
-         <button class="btn sm danger" onclick="markStopNoStop('${e.id}')">⛔ จุดห้ามจอด</button>
-         <button class="btn sm" onclick="dismissStopEvent('${e.id}')">🚫 ไม่เกี่ยว</button>`;
-    return `<tr>
-      <td class="strong">${e.plate||'-'}<div style="font-size:11px;color:var(--text-faint);">${e.driver||''}</div></td>
-      <td class="mono" style="font-size:12px;">${e.startTs?new Date(e.startTs).toLocaleString('th-TH',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'-'}</td>
-      <td class="mono" style="${isLong?'color:#F0475A;font-weight:600;':''}">${durTxt}${isLong?' ⚠️':''}${
-        e.ended ? '' : ' <span style="color:var(--accent);font-size:11px;">(ยังจอดอยู่)</span>'
-      }${
-        (e.boxQuiet && e.parkConfirmed) ? `<div style="font-size:11px;color:#F5C26B;font-family:var(--font);">🅿️ กล่องดับเพราะจอดครบ ${cfg.boxSleepMin} นาที — ยังจอดต่อเนื่อง (ยืนยันจากสัญญาณถึงนาทีที่ ${e.durationMin})</div>` : ''
-      }${
-        (e.boxQuiet && !e.parkConfirmed) ? '<div style="font-size:11px;color:#F5C26B;font-family:var(--font);">📵 ขาดสัญญาณก่อนครบเวลาที่กล่องจะดับ — อาจเป็นปัญหาที่กล่อง ไม่ใช่การจอด</div>' : ''
-      }${
-        (e.uncertainEnd && e.maxDurationMin) ? `<div style="font-size:11px;color:#F5C26B;font-family:var(--font);">${e.parkConfirmed?'กล่องตื่นตอนสตาร์ตเครื่อง — จอดจริงใกล้ ':'ช่วงกล่องเงียบ — จอดจริง '}${e.durationMin}–${e.maxDurationMin} นาที</div>` : ''
-      }${
-        (e.estimated && !e.uncertainEnd) ? '<div style="font-size:11px;color:var(--text-faint);font-family:var(--font);">⏳ รวมช่วงที่กล่องเงียบแล้ว (ประเมิน)</div>' : ''
-      }</td>
-      <td>${geoCellHtml(geoId)}</td>
-      <td style="font-size:12px;">${route?route.name:'<span style="color:var(--text-faint)">ไม่อยู่ใกล้เส้นทางไหน</span>'}</td>
-      <td><span class="badge ${meta.cls}">${meta.icon} ${meta.label}</span></td>
-      <td style="font-size:12px;color:var(--text-dim);">${e.note||'-'}</td>
-      <td style="white-space:nowrap;">${acts}</td>
-    </tr>`;
-  };
-  const days = groupByDay(items, e=>e.startTs||Date.now());
-  const rendered = [];
-  tb.innerHTML = days.map((d,di)=>{
-    const gkey = 'stopday_'+d.key;
-    const longCount = d.items.filter(e=>stopEffectiveMin(e)>=cfg.longMin).length;
-    const hd = listGroupHeaderRow(gkey, 'renderStopEventQueue', 8,
-      `📅 ${d.label}`,
-      `<span style="display:flex;gap:8px;align-items:center;">
-         ${longCount?`<span class="badge crit">จอดนานผิดปกติ ${longCount}</span>`:''}
-         <span style="color:var(--text-faint);font-size:12px;">${d.items.length} รายการ</span>
-       </span>`, di===0);
-    if(!hd.open) return hd.html;
-    const shown = Math.min(listShown(gkey), d.items.length);
-    const page = d.items.slice(0, shown);
-    rendered.push(...page);
-    return hd.html + page.map(rowHtmlOf).join('')
-         + listMoreRow(gkey, d.items.length, shown, 'renderStopEventQueue', 8);
-  }).join('');
-  /* เรียกหาชื่อจังหวัด/ตำบล เฉพาะแถวที่แสดงอยู่จริง — เดิมยิงทุกแถวแม้ยังไม่ได้ดู */
-  rendered.forEach(e=>fillGeoCell('stopgeo-'+e.id, e.lat, e.lng));
-}
-function setStopEventRange(kind){
-  const {from,to} = quickDateBounds(kind);
-  const f = document.getElementById('stopEventFrom'), t = document.getElementById('stopEventTo');
-  if(f) f.value = from; if(t) t.value = to;
-  renderStopEventQueue();
-}
-function findStopEvent(id){ return (STATE.stopEvents||[]).find(e=>e.id===id); }
-async function saveStopEvent(ev, msg){
-  ev.reviewedTs = Date.now();
-  ev.reviewedBy = (typeof adminSession!=='undefined' && adminSession && adminSession.name) ? adminSession.name : 'admin';
-  await stopEventPush(ev);
-  renderStopEventQueue();
-  if(msg) toast(msg);
-}
-function openStopEventMap(id){
-  const e = findStopEvent(id);
-  if(!e) return;
-  /* เปิด Google Maps ที่พิกัดนั้นตรงๆ — แอดมินดูได้เลยว่าตรงนั้นเป็นปั๊ม ร้านข้าว หรือไหล่ทางเปล่าๆ */
-  window.open(`https://www.google.com/maps/search/?api=1&query=${e.lat},${e.lng}`, '_blank', 'noopener');
-}
-function approveStopAsPoi(id){
-  const e = findStopEvent(id);
-  if(!e){ toast('ไม่พบรายการนี้'); return; }
-  const cfg = stopCfg();
-  const routeOpts = STATE.routes.map(rt=>`<option value="${rt.id}" ${rt.id===e.routeId?'selected':''}>${rt.name}</option>`).join('');
-  openModal('อนุมัติเป็นจุดพัก — '+(e.plate||''), `
-    <p style="font-size:12.5px;color:var(--text-faint);margin-bottom:12px;">บันทึกเป็นหมุดถาวร ครั้งต่อไปที่<b>รถคันไหนก็ตาม</b>จอดตรงนี้ ระบบจะไม่แจ้งอีก (รัศมี ${cfg.nearPoiM} ม.)<br>
-      <span style="color:#F5C26B;">📦 เลือก "จุดขึ้น/ลงสินค้า" สำหรับโรงงาน/โกดังของลูกค้า — ระบบจะเลิกแจ้งเตือนให้ แต่จะ<b>ไม่</b>เอาไปแนะนำคนขับเป็นที่พัก (ต่างจากปั๊ม/จุดพัก ที่จะถูกนำไปใช้วางแผนพักรถด้วย)</span></p>
-    <div class="form-grid">
-      <div class="field"><label>ประเภท</label><select id="fStopPoiType">
-        <option value="fuel">⛽ ปั๊มน้ำมัน</option>
-        <option value="rest">🅿️ จุดพักกรมทางหลวง</option>
-        <option value="truckstop">🚛 Truck Stop</option>
-        <option value="other">📍 จุดพักอื่นๆ ที่อนุมัติ (ที่กว้าง ปลอดภัย)</option>
-        <option value="load">📦 จุดขึ้น/ลงสินค้า (ลูกค้า/โกดัง)</option>
-      </select></div>
-      <div class="field"><label>เส้นทาง</label><select id="fStopPoiRoute">${routeOpts}</select></div>
-      <div class="field" style="grid-column:1/-1;"><label>ชื่อจุด</label><input id="fStopPoiName" placeholder="เช่น ปั๊ม PT ก่อนถึงสีคิ้ว"></div>
-      <div class="field" style="grid-column:1/-1;"><label>หมายเหตุ / สิ่งอำนวยความสะดวก</label><input id="fStopPoiNote" placeholder="เช่น มีห้องน้ำ ร้านอาหาร ลานจอดกว้าง"></div>
-    </div>
-  `, [
-    {label:'ยกเลิก',cls:'',action:closeModal},
-    {label:'บันทึกเป็นจุดพัก',cls:'primary',action: async ()=>{
-      const name = (document.getElementById('fStopPoiName').value||'').trim();
-      if(!name){ toast('กรุณาตั้งชื่อจุด'); return; }
-      /* 'load' ไม่ใช่ประเภทจริงในฐานข้อมูล — เก็บเป็น type:'other' + ธง loadPoint
-         (ห้ามตั้งชื่อ type ใหม่ เพราะแอปมือถืออ่าน POI_META[p.type].icon แบบไม่กันพลาด) */
-      const sel = document.getElementById('fStopPoiType').value;
-      const poi = {
-        id: uid('poi'),
-        type: (sel==='load') ? 'other' : sel,
-        loadPoint: sel==='load',
-        routeId: document.getElementById('fStopPoiRoute').value,
-        name, lat: e.lat, lng: e.lng,
-        notes: (document.getElementById('fStopPoiNote').value||'').trim(),
-        fromStopEventId: e.id,
-        /* v28 — เก็บ "ใครไปจอด จอดตอนไหน นานเท่าไร" ติดไว้กับจุดเลย
-           จะได้ยังแสดงได้แม้ภายหลังจะลบรายการจุดจอดต้นทางทิ้งไปแล้ว */
-        plate: e.plate || null,
-        stopDriverName: e.driver || null,
-        stopVehicleId: e.vehicleId || null,
-        stopTs: e.startTs || null,
-        stopDurationMin: stopEffectiveMin(e) || null,
-      };
-      await idbPut('pois', poi); STATE.pois.push(poi);
-      e.status = 'approved'; e.poiId = poi.id; e.note = e.note || ('อนุมัติเป็น: '+name);
-      closeModal();
-      renderPoiList(); renderAllDependants();
-      await saveStopEvent(e, 'บันทึกเป็นจุดพักแล้ว: '+name);
-    }}
-  ]);
-}
-function markStopAskDriver(id){
-  const e = findStopEvent(id);
-  if(!e){ toast('ไม่พบรายการนี้'); return; }
-  openModal('รอถามคนขับ — '+(e.plate||''), `
-    <p style="font-size:12.5px;color:var(--text-faint);margin-bottom:12px;">ยังไม่รู้ว่าจุดนี้คืออะไร — เก็บข้อมูลไว้ก่อน แล้วไปถามคนขับ พอได้คำตอบค่อยกลับมาจดไว้ตรงนี้ แล้วจึงตัดสินใจว่าจะทำเป็นจุดพักหรือจุดห้ามจอด</p>
-    <div class="field"><label>คนขับตอบว่าเป็นที่ไหน / บันทึกการติดตาม</label>
-      <input id="fStopAskNote" value="${(e.note||'').replace(/"/g,'&quot;')}" placeholder="เช่น ร้านข้าวริมทาง / ยังติดต่อไม่ได้"></div>
-  `, [
-    {label:'ยกเลิก',cls:'',action:closeModal},
-    {label:'บันทึก',cls:'primary',action: async ()=>{
-      e.note = (document.getElementById('fStopAskNote').value||'').trim();
-      e.status = 'ask';
-      closeModal();
-      await saveStopEvent(e, 'เก็บไว้รอถามคนขับแล้ว');
-    }}
-  ]);
-}
-function markStopNoStop(id){
-  const e = findStopEvent(id);
-  if(!e){ toast('ไม่พบรายการนี้'); return; }
-  const routeOpts = STATE.routes.map(rt=>`<option value="${rt.id}" ${rt.id===e.routeId?'selected':''}>${rt.name}</option>`).join('');
-  openModal('ทำเป็นจุดห้ามจอด — '+(e.plate||''), `
-    <p style="font-size:12.5px;color:var(--text-faint);margin-bottom:12px;">ตรวจแล้วว่าไม่ใช่ปั๊ม/จุดพักที่อนุญาต — ปักเป็นหมุด <b style="color:#F0475A">⛔ จุดห้ามจอด</b> ระบบจะ<b>ไม่</b>นำไปแนะนำเป็นจุดพักเด็ดขาด และจะขึ้นเป็นหมุดแดงบนแผนที่</p>
-    <div class="form-grid">
-      <div class="field" style="grid-column:1/-1;"><label>ชื่อ/ลักษณะจุด</label><input id="fNoStopName" placeholder="เช่น ไหล่ทางก่อนขึ้นสะพาน / ร้านข้าวริมถนน"></div>
-      <div class="field"><label>เส้นทาง</label><select id="fNoStopRoute">${routeOpts}</select></div>
-      <div class="field"><label>หมายเหตุ</label><input id="fNoStopNote" placeholder="เหตุผลที่ห้ามจอด"></div>
-    </div>
-  `, [
-    {label:'ยกเลิก',cls:'',action:closeModal},
-    {label:'ปักเป็นจุดห้ามจอด',cls:'primary',action: async ()=>{
-      const name = (document.getElementById('fNoStopName').value||'').trim() || 'จุดห้ามจอด';
-      /* ใช้ type 'other' + ธง noStop:true — ห้ามตั้ง type ใหม่ เพราะแอปมือถืออ่าน
-         POI_META[p.type].icon แบบไม่กันพลาด (บรรทัด ~4030) เจอประเภทที่ไม่รู้จักจะพัง
-         ส่วนฟิลด์ที่มันไม่รู้จักอย่าง noStop จะถูกมองข้ามไปเฉยๆ ไม่มีปัญหา */
-      const poi = {
-        id: uid('poi'), type:'other', noStop:true,
-        routeId: document.getElementById('fNoStopRoute').value,
-        name, lat:e.lat, lng:e.lng,
-        notes: (document.getElementById('fNoStopNote').value||'').trim(),
-        fromStopEventId: e.id,
-        /* จุดห้ามจอดยิ่งต้องรู้ว่าคันไหนไปจอด จอดตอนไหน นานแค่ไหน */
-        plate: e.plate || null,
-        stopDriverName: e.driver || null,
-        stopVehicleId: e.vehicleId || null,
-        stopTs: e.startTs || null,
-        stopDurationMin: stopEffectiveMin(e) || null,
-      };
-      await idbPut('pois', poi); STATE.pois.push(poi);
-      e.status = 'nostop'; e.poiId = poi.id; e.note = e.note || ('จุดห้ามจอด: '+name);
-      closeModal();
-      renderPoiList(); renderAllDependants();
-      await saveStopEvent(e, 'ปักเป็นจุดห้ามจอดแล้ว: '+name);
-    }}
-  ]);
-}
-async function dismissStopEvent(id){
-  const e = findStopEvent(id);
-  if(!e) return;
-  e.status = 'ignored';
-  await saveStopEvent(e, 'ตัดออกแล้ว — จุดนี้จะไม่ถูกแจ้งอีก');
-}
-async function deleteStopEvent(id){
-  const e = findStopEvent(id);
-  if(!e) return;
-  if(!confirm('ลบรายการจุดจอดนี้ถาวร?\n(หมุดจุดพัก/จุดห้ามจอดที่สร้างไว้แล้วจะยังอยู่)')) return;
-  STATE.stopEvents = STATE.stopEvents.filter(x=>x.id!==id);
-  await stopEventRemove(id);
-  renderStopEventQueue();
-  toast('ลบรายการแล้ว');
-}
-async function saveStopSettings(){
-  const s = STATE.settings;
-  const num = (id, d)=>{ const n = Number(document.getElementById(id).value); return isFinite(n) ? n : d; };
-  s.stopMinMin   = Math.max(1, num('setStopMinMin',   STOP_DEFAULTS.minMin));
-  s.stopLongMin  = Math.max(s.stopMinMin, num('setStopLongMin', STOP_DEFAULTS.longMin));
-  s.stopNearPoiM = Math.max(50, num('setStopNearPoiM',STOP_DEFAULTS.nearPoiM));
-  s.stopDepotKm  = Math.max(0,  num('setStopDepotKm', STOP_DEFAULTS.depotKm));
-  s.stopBoxSleepMin = Math.max(1, num('setStopBoxSleepMin', STOP_DEFAULTS.boxSleepMin));
-  s.stopSameSpotM   = Math.max(100, num('setStopSameSpotM',   STOP_DEFAULTS.sameSpotM));
-  s.stopMergeGapMin = Math.max(5,   num('setStopMergeGapMin', STOP_DEFAULTS.mergeGapMin));
-  await idbPut('settings', s);
-  renderStopSettings(); renderStopEventQueue();
-  toast('บันทึกการตั้งค่าการตรวจจับจุดจอดแล้ว');
-}
-function renderStopSettings(){
-  const cfg = stopCfg();
-  const set = (id,v)=>{ const el = document.getElementById(id); if(el) el.value = v; };
-  set('setStopMinMin', cfg.minMin);
-  set('setStopLongMin', cfg.longMin);
-  set('setStopNearPoiM', cfg.nearPoiM);
-  set('setStopDepotKm', cfg.depotKm);
-  set('setStopBoxSleepMin', cfg.boxSleepMin);
-  set('setStopSameSpotM', cfg.sameSpotM);
-  set('setStopMergeGapMin', cfg.mergeGapMin);
-}
-async function loadStopEvents(force){
-  if(stopDetectOff() && !force){
-    /* ปิดอยู่ = ไม่ต้องดึงรายการเก่าลงมาเลย ประหยัดการโหลดตอนเปิดหน้าทุกครั้ง */
-    STATE.stopEvents = [];
-    renderStopEventQueue();
-    return;
-  }
-  STATE.stopEvents = await stopEventLoadAll();
-  renderStopEventQueue();
-}
-/* v34 — รวมรายการที่ซ้ำกันซึ่งบันทึกไว้แล้วก่อนหน้านี้
-   เกณฑ์เดียวกับตัวตรวจจับ: รถคันเดียวกัน อยู่ในรัศมี sameSpotM และเวลาต่อเนื่องกัน
-   ไม่เกิน mergeGapMin — ยุบให้เหลือรายการเดียวโดยเก็บเวลาเริ่มที่เร็วที่สุด
-   และเวลาสิ้นสุดที่ช้าที่สุด ส่วนหมายเหตุที่แอดมินเคยจดไว้จะถูกรวมไปด้วย */
-async function mergeDuplicateStopEvents(){
-  const cfg = stopCfg();
-  const open = (STATE.stopEvents||[]).filter(e=>e.status==='pending'||e.status==='ask');
-  const byVeh = {};
-  open.forEach(e=>{ const k = e.vehicleId || e.plate || '?'; (byVeh[k] = byVeh[k]||[]).push(e); });
-  const plan = [];   // {keep, drop:[...]}
-  Object.values(byVeh).forEach(list=>{
-    list.sort((a,b)=>(a.startTs||0)-(b.startTs||0));
-    const used = new Set();
-    list.forEach(e=>{
-      if(used.has(e.id)) return;
-      const group = [e]; used.add(e.id);
-      let endTs = e.endTs || e.startTs || 0;
-      list.forEach(o=>{
-        if(used.has(o.id)) return;
-        if(haversineKm([e.lat,e.lng],[o.lat,o.lng])*1000 > cfg.sameSpotM) return;
-        if((o.startTs||0) - endTs > cfg.mergeGapMin*60000) return;
-        group.push(o); used.add(o.id);
-        endTs = Math.max(endTs, o.endTs || o.startTs || 0);
-      });
-      if(group.length>1) plan.push({ keep:group[0], drop:group.slice(1), endTs });
-    });
-  });
-  const dropCount = plan.reduce((n,g)=>n+g.drop.length, 0);
-  if(!dropCount){ toast('ไม่พบรายการซ้ำ'); return; }
-  if(!confirm(`พบรายการซ้ำ ${dropCount} รายการ (รถคันเดียวกัน จุดเดียวกัน เวลาต่อเนื่องกัน)\n\nรวมให้เหลือรายการเดียวต่อการจอดหนึ่งครั้ง โดยใช้เวลาเริ่มที่เร็วที่สุดและเวลาสิ้นสุดที่ช้าที่สุด?`)) return;
-  for(const g of plan){
-    const keep = g.keep;
-    keep.startTs = Math.min(...[keep, ...g.drop].map(x=>x.startTs||Infinity));
-    keep.endTs   = g.endTs;
-    keep.durationMin = Math.round((keep.endTs - keep.startTs)/60000);
-    const notes = [keep.note, ...g.drop.map(x=>x.note)].filter(Boolean);
-    if(notes.length) keep.note = [...new Set(notes)].join(' · ');
-    keep.mergedCount = (keep.mergedCount||1) + g.drop.length;
-    await stopEventPush(keep);
-    for(const d of g.drop){
-      STATE.stopEvents = STATE.stopEvents.filter(x=>x.id!==d.id);
-      await stopEventRemove(d.id);
-    }
-  }
-  /* ตัวจับเวลาที่ค้างอยู่อาจชี้ไปยังรายการที่เพิ่งถูกยุบทิ้ง ล้างทิ้งให้เริ่มนับใหม่ */
-  stopAnchors.clear();
-  renderStopEventQueue();
-  toast(`รวมรายการซ้ำแล้ว — ยุบ ${dropCount} รายการเข้ากับรายการหลัก`);
-}
-async function toggleStopDetect(){
-  const s = STATE.settings;
-  const turningOff = !stopDetectOff();
-  if(turningOff && !confirm('ปิดการตรวจจับจุดจอดชั่วคราว?\n\nระหว่างปิด ระบบจะไม่บันทึกจุดจอดใหม่ และไม่โหลดรายการเก่าลงมาตอนเปิดหน้า\nรายการที่บันทึกไว้แล้วยังอยู่ครบ เปิดกลับมาเมื่อไรก็เห็นเหมือนเดิม')) return;
-  s.stopDetectOff = turningOff;
-  await idbPut('settings', s);
-  stopAnchors.clear();
-  await loadStopEvents(!turningOff);
-  renderStopEventQueue();
-  toast(turningOff ? 'ปิดการตรวจจับจุดจอดแล้ว — กดปุ่มเดิมเพื่อเปิดกลับ' : 'เปิดการตรวจจับจุดจอดแล้ว');
+    return `<tr><td>${meta.icon} ${meta.label}</td><td class="strong">${p.name} ${photoTag}</td><td class="mono">${distKm!=null?('~'+distKm+' กม.'):'-'}</td><td>${p.notes||''}</td>
+      <td style="white-space:nowrap;"><button class="btn sm" onclick="openPoiEditModal('${p.id}')">แก้ไข</button> <button class="btn sm danger" onclick="deletePoi('${p.id}')">ลบ</button></td></tr>`;
+  }).join('') || `<tr><td colspan="5" class="empty">ไม่มีข้อมูลจุดพักสำหรับเส้นทางนี้</td></tr>`;
 }
 
 /* ---------- MAINTENANCE VIEW ---------- */
@@ -9469,12 +7804,10 @@ function renderPoiList(){
     (p.subdistrict||'').toLowerCase().includes(q)
   ) : all;
   const selectedCount = items.filter(p=>selectedPoiIds.has(p.id)).length;
-  const missingProv = all.filter(p=>!p.province).length;
 
   const toolbarHtml = `
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
       <input id="poiSearchBox" placeholder="🔎 ค้นหาจังหวัด/อำเภอ/ชื่อจุด..." value="${poiSearchQuery.replace(/"/g,'&quot;')}" style="flex:1;min-width:200px;">
-      <button class="btn sm" onclick="fillPoiProvinces()" title="จุดที่คนขับส่งมาหรือระบบตรวจพบเอง มีแต่พิกัด ไม่มีชื่อจังหวัด จึงไปกองอยู่ใน 'ไม่ระบุจังหวัด' — ปุ่มนี้แปลงพิกัดเป็นชื่อจังหวัด/อำเภอให้อัตโนมัติ">📍 เติมจังหวัดจากพิกัด${missingProv?` (${missingProv})`:''}</button>
       <button class="btn sm danger" id="poiBulkDeleteBtn" onclick="bulkDeleteSelectedPois()" ${selectedCount?'':'disabled'}>ลบที่เลือก (${selectedCount})</button>
     </div>`;
 
@@ -9512,10 +7845,7 @@ function renderPoiList(){
       </details>`;
     }).join('');
     return `<details style="margin-bottom:8px;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:2px 10px;" ${singleProvince?'open':''}>
-      <summary style="cursor:pointer;font-weight:600;padding:6px 0;display:flex;align-items:center;gap:10px;">
-        <span style="flex:1;">🗺️ ${prov} (${provCount})</span>
-        <button class="btn sm" onclick="event.preventDefault();event.stopPropagation();openPoiModal('${String(prov).replace(/'/g,"\\'")}')">+ เพิ่มจุดในจังหวัดนี้</button>
-      </summary>
+      <summary style="cursor:pointer;font-weight:600;padding:6px 0;">🗺️ ${prov} (${provCount})</summary>
       ${distHtml}
     </details>`;
   }).join('');
@@ -9566,80 +7896,12 @@ async function deletePoi(id){
 }
 function viewPoiPhoto(id){
   const p = STATE.pois.find(x=>x.id===id);
-  const photos = objPhotosWithFallback(p);
+  const photos = reportPhotos(p);
   if(!p || !photos.length){ toast('ไม่พบรูปภาพ'); return; }
-  const meta = poiDisplayMeta(p);
-  const who = reporterLineText(p);
-  const origin = poiOriginRowsHtml(p).replace(/<div class="pop-row">/g,'<div>');
-  openPhotoGallery(photos, `📷 ${meta.icon} ${p.name}`, `
-    <div style="font-size:13px;color:var(--text-dim);margin-top:10px;">${who?who+'<br>':''}${origin}${p.notes?p.notes.replace(/</g,'&lt;'):''}</div>`);
-}
-/* v27 — ของใหม่: ดูรูปของ "จุดเสี่ยง" ได้แล้ว (เดิมไม่มีฟังก์ชันนี้เลย รูปที่คนขับ
-   ถ่ายส่งมาจึงดูไม่ได้หลังอนุมัติเป็นจุดเสี่ยง) */
-function viewHazardPhoto(id){
-  const h = STATE.hazards.find(x=>x.id===id);
-  const photos = objPhotosWithFallback(h);
-  if(!h || !photos.length){ toast('ไม่พบรูปภาพ'); return; }
-  const meta = HAZ_META[h.type] || {icon:'⚠️', label:h.type};
-  const who = reporterLineText(h);
-  openPhotoGallery(photos, `📷 ${meta.icon} ${h.label || meta.label}`, `
-    <div style="font-size:13px;color:var(--text-dim);margin-top:10px;">
-      ${who ? who+'<br>' : ''}ความรุนแรง ${h.severity}/4${h.notes?' · '+h.notes.replace(/</g,'&lt;'):''}
-    </div>
-  `);
-}
-/* v32 — แยกรายชื่อผู้ใช้ตามฟลีทที่สังกัด (ผ่านรถที่ผูกไว้ → groupId)
-   เดิมพ่นรายชื่อทั้งหมดเรียงยาวรวดเดียว หาคนที่ต้องการไม่เจอ ต้องไล่อ่านทีละบรรทัด */
-function userFleetOf(u){
-  if(u.role!=='Driver') return { id:'__admin__', name:'ผู้ดูแลระบบ / ไม่ได้ขับรถ', icon:'🛡️' };
-  const veh = STATE.vehicles.find(v=>v.id===u.vehicleId);
-  if(!veh) return { id:'__novehicle__', name:'ยังไม่ได้ผูกทะเบียนรถ', icon:'⚠️' };
-  const g = (STATE.fleetGroups||[]).find(x=>x.id===veh.groupId);
-  return g ? { id:g.id, name:g.name, icon:'🚛' } : { id:'__nogroup__', name:'ยังไม่ได้จัดเข้าฟลีท', icon:'📦' };
-}
-function userCollapseAll(open){
-  const box = document.getElementById('userListBox');
-  if(!box) return;
-  Object.keys(LIST_OPEN).forEach(k=>{ if(k.startsWith('usr_')) LIST_OPEN[k] = open; });
-  /* กลุ่มที่ยังไม่เคยถูกแตะ ต้องตั้งค่าให้ด้วย ไม่งั้นกดแล้วไม่ขยับ */
-  const seen = {};
-  (STATE.users||[]).forEach(u=>{ seen['usr_'+userFleetOf(u).id] = true; });
-  Object.keys(seen).forEach(k=>{ LIST_OPEN[k] = open; });
-  renderUserList();
+  openPhotoGallery(photos, `📷 ${POI_META[p.type].icon} ${p.name}`, '');
 }
 function renderUserList(){
-  const box = document.getElementById('userListBox');
-  if(!box) return;
-  const q = (document.getElementById('userSearch')?.value || '').trim().toLowerCase();
-  const roleF = document.getElementById('userRoleFilter')?.value || '';
-  let users = [...(STATE.users||[])];
-  if(roleF) users = users.filter(u=>u.role===roleF);
-  if(q){
-    users = users.filter(u=>{
-      const veh = STATE.vehicles.find(v=>v.id===u.vehicleId);
-      return (u.name||'').toLowerCase().includes(q)
-          || (u.username||'').toLowerCase().includes(q)
-          || (veh&&veh.plate||'').toLowerCase().includes(q);
-    });
-  }
-  const cnt = document.getElementById('userCount');
-  if(cnt) cnt.textContent = (q||roleF)
-    ? `(พบ ${users.length} จาก ${(STATE.users||[]).length} คน)`
-    : `(${(STATE.users||[]).length} คน)`;
-  if(!users.length){ box.innerHTML = '<div class="empty">ไม่พบผู้ใช้งานที่ตรงกับเงื่อนไข</div>'; return; }
-
-  const groups = {};
-  users.forEach(u=>{
-    const f = userFleetOf(u);
-    (groups[f.id] = groups[f.id] || { fleet:f, items:[] }).items.push(u);
-  });
-  /* เรียงให้ฟลีทจริงขึ้นก่อน กลุ่มตกค้าง (ไม่มีรถ/ไม่มีฟลีท) ไปอยู่ท้ายสุด */
-  const order = Object.values(groups).sort((a,b)=>{
-    const rank = f=>f.id.startsWith('__') ? 1 : 0;
-    if(rank(a.fleet)!==rank(b.fleet)) return rank(a.fleet)-rank(b.fleet);
-    return b.items.length - a.items.length;
-  });
-  const userItemHtml = u=>{
+  document.getElementById('userListBox').innerHTML = STATE.users.map(u=>{
     const veh = STATE.vehicles.find(v=>v.id===u.vehicleId);
     const vehLine = u.role==='Driver' ? (veh?('รถ: '+veh.plate):'⚠️ ยังไม่ได้ผูกทะเบียนรถ') : '';
     return `
@@ -9649,27 +7911,6 @@ function renderUserList(){
       <button class="btn sm" onclick="openEditUserModal('${u.id}')">แก้ไข</button>
       <button class="btn sm danger" onclick="deleteUser('${u.id}')">ลบ</button>
     </div>`;
-  };
-  box.innerHTML = order.map((g,gi)=>{
-    const gkey = 'usr_'+g.fleet.id;
-    /* ค้นหาอยู่ = กางให้หมด จะได้เห็นผลลัพธ์ทันทีโดยไม่ต้องไล่กดเปิดทีละฟลีท */
-    if(q) LIST_OPEN[gkey] = true;
-    else if(LIST_OPEN[gkey] === undefined) LIST_OPEN[gkey] = (gi===0);
-    const open = LIST_OPEN[gkey];
-    const noPass = g.items.filter(u=>!u.password).length;
-    const head = `<div class="admin-list-item" style="cursor:pointer;background:var(--panel-2);" onclick="listToggleGroup('${gkey}','renderUserList')">
-      <div class="aif" style="display:flex;align-items:center;gap:9px;">
-        <span style="width:14px;color:var(--text-faint);">${open?'▾':'▸'}</span>
-        <b>${g.fleet.icon} ${g.fleet.name}</b>
-        <span style="color:var(--text-faint);font-size:12px;">${g.items.length} คน</span>
-      </div>
-      ${noPass?`<span class="badge high">ยังไม่ตั้งรหัสผ่าน ${noPass}</span>`:''}
-    </div>`;
-    if(!open) return head;
-    const shown = Math.min(listShown(gkey), g.items.length);
-    const sorted = [...g.items].sort((a,b)=>(a.name||'').localeCompare(b.name||'','th'));
-    return head + sorted.slice(0, shown).map(userItemHtml).join('')
-         + listMoreBox(gkey, g.items.length, shown, 'renderUserList');
   }).join('');
 }
 async function deleteUser(id){
@@ -9753,76 +7994,32 @@ function openVehicleModal(){
   ]);
 }
 
-/* v33 — เพิ่มช่องจังหวัด/อำเภอ/ตำบล เพราะรายการจุดสำคัญจัดกลุ่มตามจังหวัด
-   ถ้าไม่มีช่องให้กรอก จุดที่สร้างใหม่จะไปกองอยู่ใน "ไม่ระบุจังหวัด" ตลอด
-   presetProvince = กดปุ่ม "+ เพิ่มจุดในจังหวัดนี้" จากหัวข้อจังหวัดไหน ก็เติมให้เลย */
-function openPoiModal(presetProvince){
+function openPoiModal(){
   const routeOpts = STATE.routes.map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
-  const provOpts = '<option value="">— ไม่ระบุ —</option>' +
-    PROVINCES.map(pv=>`<option value="${pv[0]}" ${pv[0]===presetProvince?'selected':''}>${pv[0]}</option>`).join('');
-  openModal('เพิ่มจุดสำคัญ ('+POI_META[currentPoiTab].label+')'+(presetProvince?' — '+presetProvince:''), `
+  openModal('เพิ่มจุดสำคัญ ('+POI_META[currentPoiTab].label+')', `
     <div class="form-grid">
       <div class="field"><label>ชื่อจุด</label><input id="fPoiName" placeholder="เช่น จุดพักรถ กม.120"></div>
       <div class="field"><label>เส้นทาง</label><select id="fPoiRoute">${routeOpts}</select></div>
       <div class="field"><label>ละติจูด</label><input id="fPoiLat" type="number" step="0.0001" value="13.75"></div>
       <div class="field"><label>ลองจิจูด</label><input id="fPoiLng" type="number" step="0.0001" value="100.50"></div>
-      <div class="field"><label>จังหวัด</label><select id="fPoiProv">${provOpts}</select></div>
-      <div class="field"><label>อำเภอ</label><input id="fPoiDist" placeholder="เช่น แก่งคอย"></div>
     </div>
     <div class="field" style="margin-top:10px;"><label>รายละเอียด/สิ่งอำนวยความสะดวก</label><textarea id="fPoiNote" rows="2"></textarea></div>
-    <div style="margin-top:10px;padding:9px 12px;border-radius:10px;background:rgba(34,211,199,.08);border:1px solid rgba(34,211,199,.25);font-size:12px;color:var(--text-dim);">
-      💡 เว้นจังหวัดไว้ก็ได้ แล้วค่อยกดปุ่ม "📍 เติมจังหวัดจากพิกัด" ให้ระบบแปลงจากพิกัดให้ทีเดียวทั้งหมด
-    </div>
   `, [
     {label:'ยกเลิก',cls:'',action:closeModal},
     {label:'บันทึก',cls:'primary',action: async ()=>{
       const p = {id:uid('poi'), type:currentPoiTab, name:document.getElementById('fPoiName').value||'ไม่ระบุชื่อ',
         routeId:document.getElementById('fPoiRoute').value, lat:+document.getElementById('fPoiLat').value,
-        lng:+document.getElementById('fPoiLng').value, notes:document.getElementById('fPoiNote').value,
-        province:document.getElementById('fPoiProv').value || '',
-        district:(document.getElementById('fPoiDist').value||'').trim()};
+        lng:+document.getElementById('fPoiLng').value, notes:document.getElementById('fPoiNote').value};
       await idbPut('pois',p); STATE.pois.push(p);
       closeModal(); renderPoiList(); renderAllDependants(); toast('เพิ่มจุดสำคัญเรียบร้อย');
     }}
   ]);
-}
-/* เติมจังหวัด/อำเภอจากพิกัดให้จุดที่ยังไม่ระบุ — แก้ปัญหา "ไม่ระบุจังหวัด (33)"
-   ใช้บริการแปลงพิกัดตัวเดียวกับที่หน้ารายงานคนขับใช้อยู่แล้ว ซึ่งจำกัดความถี่
-   1 คำขอต่อวินาที จึงต้องทยอยทำและรายงานความคืบหน้าให้เห็น */
-async function fillPoiProvinces(){
-  const targets = STATE.pois.filter(p=>!p.province && typeof p.lat==='number' && typeof p.lng==='number');
-  if(!targets.length){ toast('ทุกจุดมีจังหวัดครบแล้ว'); return; }
-  if(!confirm(`เติมจังหวัด/อำเภอจากพิกัดให้ ${targets.length} จุดที่ยังไม่ระบุ?\n\nใช้เวลาประมาณ ${Math.ceil(targets.length*1.2/60)} นาที (บริการแปลงพิกัดจำกัดความถี่)\nระหว่างนี้ใช้งานหน้าอื่นต่อได้ตามปกติ`)) return;
-  let done = 0, ok = 0;
-  for(const p of targets){
-    try{
-      const g = await reverseGeoLookup(p.lat, p.lng);
-      if(g && (g.province || g.district)){
-        if(g.province) p.province = g.province;
-        if(g.district) p.district = g.district;
-        if(g.subdistrict) p.subdistrict = g.subdistrict;
-        await idbPut('pois', p);
-        ok++;
-      }
-    }catch(e){ /* จุดนี้แปลงไม่ได้ ข้ามไป ไม่ให้ทั้งชุดหยุด */ }
-    done++;
-    if(done % 5 === 0 || done === targets.length){
-      toast(`กำลังเติมจังหวัด... ${done}/${targets.length} จุด`);
-      renderPoiList();
-    }
-  }
-  renderPoiList(); renderAllDependants();
-  toast(`เติมจังหวัดสำเร็จ ${ok} จาก ${targets.length} จุด` + (ok<targets.length ? ' — ที่เหลือแปลงพิกัดไม่ได้ ใส่เองได้ที่ปุ่มแก้ไข' : ''));
 }
 function openPoiEditModal(id){
   const p = STATE.pois.find(x=>x.id===id);
   if(!p){ toast('ไม่พบข้อมูลจุดนี้'); return; }
   const routeOpts = STATE.routes.map(r=>`<option value="${r.id}" ${r.id===p.routeId?'selected':''}>${r.name}</option>`).join('');
   const typeOpts = Object.entries(POI_META).map(([k,v])=>`<option value="${k}" ${k===p.type?'selected':''}>${v.icon} ${v.label}</option>`).join('');
-  /* v33 — ให้ย้ายจุดไปอยู่จังหวัดอื่นได้ เดิมไม่มีช่องนี้เลย จุดที่ไม่มีจังหวัด
-     จึงติดอยู่ในกลุ่ม "ไม่ระบุจังหวัด" ถาวร แก้ด้วยมือก็ไม่ได้ */
-  const provOpts = '<option value="">— ไม่ระบุ —</option>' +
-    PROVINCES.map(pv=>`<option value="${pv[0]}" ${pv[0]===p.province?'selected':''}>${pv[0]}</option>`).join('');
   openModal('แก้ไขจุดสำคัญ', `
     <div class="form-grid">
       <div class="field"><label>ประเภท</label><select id="fPoiEditType">${typeOpts}</select></div>
@@ -9830,16 +8027,6 @@ function openPoiEditModal(id){
       <div class="field"><label>เส้นทาง</label><select id="fPoiEditRoute">${routeOpts}</select></div>
       <div class="field"><label>ละติจูด</label><input id="fPoiEditLat" type="number" step="0.0001" value="${p.lat}"></div>
       <div class="field"><label>ลองจิจูด</label><input id="fPoiEditLng" type="number" step="0.0001" value="${p.lng}"></div>
-      <div class="field"><label>จังหวัด</label><select id="fPoiEditProv">${provOpts}</select></div>
-      <div class="field"><label>อำเภอ</label><input id="fPoiEditDist" value="${(p.district||'').replace(/"/g,'&quot;')}" placeholder="เช่น แก่งคอย"></div>
-      <div class="field" style="grid-column:1/-1;"><label>การใช้งาน</label>
-        <select id="fPoiEditUsage">
-          <option value="rest"   ${poiUsageOf(p)==='rest'?'selected':''}>✅ ใช้เป็นจุดพักได้ — นำไปแนะนำในแผนพักรถ</option>
-          <option value="load"   ${poiUsageOf(p)==='load'?'selected':''}>📦 จุดขึ้น/ลงสินค้า — ไม่แจ้งเตือน แต่ไม่แนะนำเป็นที่พัก</option>
-          <option value="nostop" ${poiUsageOf(p)==='nostop'?'selected':''}>⛔ ห้ามจอด — ไหล่ทาง/ริมถนน ไม่แนะนำเด็ดขาด</option>
-        </select>
-        <div style="font-size:11.5px;color:var(--text-faint);margin-top:6px;">ใช้แก้จุดที่เคยบันทึกผิดประเภทได้ เช่น โรงงานลูกค้าที่เผลอบันทึกเป็น "ปั๊มน้ำมัน" ไว้ ซึ่งจะทำให้ระบบเอาไปแนะนำคนขับเป็นที่พัก</div>
-      </div>
     </div>
     <div class="field" style="margin-top:10px;"><label>รายละเอียด/สิ่งอำนวยความสะดวก</label><textarea id="fPoiEditNote" rows="2">${(p.notes||'').replace(/</g,'&lt;')}</textarea></div>
   `, [
@@ -9852,9 +8039,6 @@ function openPoiEditModal(id){
       p.lat = +document.getElementById('fPoiEditLat').value;
       p.lng = +document.getElementById('fPoiEditLng').value;
       p.notes = document.getElementById('fPoiEditNote').value;
-      applyPoiUsage(p, document.getElementById('fPoiEditUsage').value);
-      p.province = document.getElementById('fPoiEditProv').value || '';
-      p.district = (document.getElementById('fPoiEditDist').value||'').trim();
       await idbPut('pois',p);
       closeModal(); renderPoiList(); renderAllDependants(); toast('บันทึกการแก้ไขแล้ว');
     }}
@@ -10004,54 +8188,12 @@ function renderRouteBuilderChain(){
 }
 
 function renderRouteListBox(){
-  /* v32 — 28 เส้นทางเรียงยาวรวด หาเส้นที่ต้องการยาก เพิ่มค้นหา + แบ่งหน้า */
-  const q = (document.getElementById('routeSearch')?.value || '').trim().toLowerCase();
-  let list = [...STATE.routes];
-  if(q) list = list.filter(r=>(r.name||'').toLowerCase().includes(q)
-    || (r.provinces||[]).some(p=>String(p).toLowerCase().includes(q)));
-  document.getElementById('routeCount').textContent = q
-    ? `(พบ ${list.length} จาก ${STATE.routes.length} เส้นทาง)`
-    : `(${STATE.routes.length} เส้นทาง)`;
-  const rkey = 'routes_all';
-  const shown = Math.min(listShown(rkey), list.length);
-  document.getElementById('routeListBox').innerHTML = list.slice(0, shown).map(r=>`
+  document.getElementById('routeCount').textContent = '('+STATE.routes.length+' เส้นทาง)';
+  document.getElementById('routeListBox').innerHTML = STATE.routes.map(r=>`
     <div class="admin-list-item">
       <div class="aif"><b>${r.name}</b><br><span style="color:var(--text-faint);font-size:11.5px;">${r.distanceKm} กม. · ${r.avgTimeHr} ชม. ${r.provinces?('· '+r.provinces.length+' จังหวัด'):''}</span></div>
-      <button class="btn sm" onclick="refreshRouteRoadPath('${r.id}')" title="ล้างเส้นทางถนนจริงที่แคชไว้ แล้วขอใหม่ครั้งถัดไปที่เปิดดู — ใช้หลังแก้ปัญหา Google Directions หรือแก้ไขจุดผ่านของเส้นทางนี้">🔄 รีเฟรชถนน</button>
-      <button class="btn sm" onclick="openRouteEditModal('${r.id}')">แก้ไข</button>
       <button class="btn sm danger" onclick="deleteRoute('${r.id}')">ลบ</button>
-    </div>`).join('') + listMoreBox(rkey, list.length, shown, 'renderRouteListBox')
-    || '<div class="empty">ไม่พบเส้นทางที่ตรงกับเงื่อนไข</div>';
-}
-/* v30 — บีบอัดเส้นทางที่เก็บไว้แล้วทั้งหมด (แก้ของเก่าที่บันทึกแบบละเอียดเกินจำเป็น)
-   ตัวนี้คือตัวที่ลด Egress ได้ทันที เพราะเส้นทางที่ดึงมาก่อนหน้านี้ยังเป็นพิกัด
-   หมื่นจุดค้างอยู่ในฐานข้อมูล และถูกส่งให้รถทุกคันซ้ำๆ ทุกครั้งที่ sync */
-async function compactRouteRoadPaths(){
-  const targets = STATE.routes.filter(r=>Array.isArray(r.roadPath) && r.roadPath.length>2);
-  if(!targets.length){ toast('ยังไม่มีเส้นทางที่เก็บเส้นถนนจริงไว้'); return; }
-  let before = 0, after = 0;
-  targets.forEach(r=>{ before += roadPathBytes(r.roadPath); });
-  if(!confirm(`บีบอัดเส้นทางถนนที่เก็บไว้ ${targets.length} เส้นทาง?\n\nข้อมูลตอนนี้รวม ~${(before/1024/1024).toFixed(2)} MB ซึ่งถูกส่งให้รถทุกคันทุกครั้งที่ sync\nการบีบอัดจะตัดจุดที่อยู่บนแนวเส้นตรงเดียวกันทิ้ง รูปเส้นบนแผนที่เหมือนเดิม`)) return;
-  let changed = 0;
-  for(const r of targets){
-    const small = simplifyRoadPath(r.roadPath);
-    if(small.length < r.roadPath.length){
-      r.roadPath = small; changed++;
-      await idbPut('routes', r);
-    }
-    after += roadPathBytes(r.roadPath);
-  }
-  renderRouteListBox(); renderAllDependants();
-  const pct = before>0 ? ((1-after/before)*100).toFixed(1) : '0';
-  toast(`บีบอัด ${changed} เส้นทางแล้ว — ${(before/1024).toFixed(0)} KB → ${(after/1024).toFixed(0)} KB (ลด ${pct}%) ข้อมูลที่ต้องส่งให้รถทุกคันจะเล็กลงเท่านี้ทุกครั้งที่ sync`);
-}
-async function refreshRouteRoadPath(id){
-  const route = STATE.routes.find(r=>r.id===id);
-  if(!route){ toast('ไม่พบเส้นทางนี้'); return; }
-  route.roadPath = null;
-  await idbPut('routes', route);
-  toast('ล้างเส้นทางถนนเดิมของ "'+route.name+'" แล้ว — เปิดหน้าวางแผนพักรถหรือ Risk Management ของเส้นทางนี้อีกครั้งเพื่อขอเส้นทางถนนจริงใหม่');
-  renderRestMiniMap();
+    </div>`).join('') || '<div class="empty">ยังไม่มีเส้นทาง</div>';
 }
 async function deleteRoute(id){
   if(STATE.routes.length<=1){ toast('ต้องมีอย่างน้อย 1 เส้นทางในระบบ'); return; }
@@ -10062,69 +8204,35 @@ async function deleteRoute(id){
   renderAllDependants(); toast('ลบเส้นทางแล้ว');
 }
 
-/* ---------- แก้ไขเส้นทางที่มีอยู่แล้ว (แทรก/ลบ/สลับลำดับจังหวัดระหว่างทาง) ----------
-   ใช้แก้ปัญหา: เส้นทางที่สร้างไว้มีแค่จุดต้นทาง-ปลายทาง 2 จุด (ไม่ได้ระบุ
-   จังหวัดระหว่างทางจริงๆ) ทำให้ตอนขอเส้นทางถนนจริงจาก Google Directions
-   มันเลือกเส้นของมันเอง (เช่นผ่านตาก) แทนที่จะเป็นเส้นที่กองรถใช้จริง (เช่น
-   ผ่านนครสวรรค์) — แก้ไขแบบนี้แทนการลบแล้วสร้างใหม่ เพราะการลบจะทำให้ id
-   เส้นทางเปลี่ยน และจุดพัก/จุดเสี่ยงที่ผูกไว้กับเส้นทางนี้ (routeId) จะหลุด
-   ไปด้วยทั้งหมด — แก้ไขในที่เดิม id เดิมไม่หลุด */
-function openRouteEditModal(id){
-  const route = STATE.routes.find(r=>r.id===id);
-  if(!route){ toast('ไม่พบเส้นทางนี้'); return; }
-  routeBuilderList = (route.waypoints||[]).map((wp,i)=>[
-    (route.provinces && route.provinces[i]) || `จุดเดิม ${i+1}`, wp[0], wp[1]
-  ]);
-  const provOpts = PROVINCES.map(p=>`<option value="${p[0]}">${p[0]}</option>`).join('');
-  openModal('แก้ไขเส้นทาง — '+route.name, `
-    <div class="field" style="margin-bottom:12px;"><label>ชื่อเส้นทาง</label><input id="fRouteName" value="${(route.name||'').replace(/"/g,'&quot;')}"></div>
-    <div class="form-grid" style="margin-bottom:10px;">
-      <div class="field" style="grid-column:1/-1;"><label>เพิ่มจังหวัดที่ต้องผ่านจริง แล้วใช้ปุ่ม ↑/↓ ย้ายไปแทรกตำแหน่งที่ถูกต้อง (เช่น แทรก "นครสวรรค์" ระหว่างต้นทาง-ปลายทาง)</label>
-        <div style="display:flex;gap:8px;">
-          <select id="fRouteProvPick" style="flex:1;">${provOpts}</select>
-          <button class="btn sm primary" type="button" onclick="addProvinceToBuilder()">+ เพิ่ม</button>
-        </div>
-      </div>
-    </div>
-    <div id="routeBuilderChain" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;"></div>
-    <div id="routeBuilderSummary" style="margin-top:10px;font-size:12.5px;color:var(--text-faint);"></div>
-    <div style="margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(34,211,199,.08);border:1px solid rgba(34,211,199,.25);font-size:12px;color:var(--text-dim);">
-      💡 จุดที่ขึ้นชื่อ "จุดเดิม N" คือจุดจากเส้นทางเดิม (ลบได้ถ้าไม่ต้องการ) — แทรกจังหวัดจริงคั่นกลางแล้วบันทึก ระบบจะขอเส้นทางถนนจริงใหม่ให้ผ่านจุดที่แทรกไว้
-    </div>
-  `, [
-    {label:'ยกเลิก',cls:'',action:closeModal},
-    {label:'บันทึกการแก้ไข',cls:'primary',action: async ()=>{
-      if(routeBuilderList.length<2){ toast('ต้องมีอย่างน้อย 2 จุด (ต้นทาง-ปลายทาง)'); return; }
-      let distanceKm=0;
-      for(let i=1;i<routeBuilderList.length;i++) distanceKm += haversineKm(routeBuilderList[i-1].slice(1), routeBuilderList[i].slice(1))*1.3;
-      route.distanceKm = Math.round(distanceKm);
-      route.avgTimeHr = Math.round((route.distanceKm/60)*10)/10;
-      route.name = document.getElementById('fRouteName').value.trim() || route.name;
-      route.provinces = routeBuilderList.map(p=>p[0]);
-      route.waypoints = routeBuilderList.map(p=>[p[1],p[2]]);
-      route.roadPath = null; // เคลียร์เส้นทางถนนเดิม บังคับขอเส้นทางจริงใหม่ตามจุดที่แก้ไข
-      await idbPut('routes', route);
-      closeModal(); populateRouteSelects();
-      document.getElementById('restRouteSelect').value = route.id;
-      document.getElementById('riskRouteSelect').value = route.id;
-      renderAllDependants(); toast('บันทึกการแก้ไขเส้นทางแล้ว: '+route.name);
-    }}
-  ]);
-  renderRouteBuilderChain();
-}
-
 async function saveGmapKey(){
   const input = document.getElementById('setGmapKey');
   const key = (input?input.value:'').trim();
   if(!key){ toast('กรุณากรอก Google Maps API Key ก่อนบันทึก'); return; }
-  if(!STATE.settings) STATE.settings = {id:'config', thresholds:{low:30,mid:60,high:85}, maxRestKm:150, maxDriveHr:4, gmapApiKey:''};
+  if(!STATE.settings) STATE.settings = {id:'config', thresholds:{low:30,mid:60,high:85}, maxRestKm:150, maxDriveHr:4, gmapApiKey:'', tomtomApiKey:''};
   STATE.settings.gmapApiKey = key;
   try{
     await idbPut('settings', STATE.settings);
     toast('บันทึก Google Maps API Key แล้ว — กดปุ่ม "🌍 Google Maps" บนแผนที่เพื่อสลับ');
+  }catch(err){
+    toast('บันทึกไม่สำเร็จ: '+(err&&err.message?err.message:'เกิดข้อผิดพลาดไม่ทราบสาเหตุ'));
+  }
+}
+
+/* TomTom key คนละตัวกับ Google Maps key ข้างบน — ใช้เฉพาะดึงข้อมูลจราจรจริง
+   (fetchRouteTrafficLive) ไม่เกี่ยวกับการแสดงผลแผนที่เลย เลือกใช้ TomTom เพราะ
+   ไม่ต้องผูกบัตรเครดิต ต่างจาก Google Distance Matrix ที่ต้องผูก billing account
+   เสมอ (ดูรายละเอียดที่คุยกันไว้) */
+async function saveTomtomKey(){
+  const input = document.getElementById('setTomtomKey');
+  const key = (input?input.value:'').trim();
+  if(!key){ toast('กรุณากรอก TomTom API Key ก่อนบันทึก'); return; }
+  if(!STATE.settings) STATE.settings = {id:'config', thresholds:{low:30,mid:60,high:85}, maxRestKm:150, maxDriveHr:4, gmapApiKey:'', tomtomApiKey:''};
+  STATE.settings.tomtomApiKey = key;
+  try{
+    await idbPut('settings', STATE.settings);
+    toast('บันทึก TomTom API Key แล้ว — กำลังดึงข้อมูลจราจรใหม่...');
     Object.keys(STATE.liveRisk).forEach(id=>{ STATE.liveRisk[id].trafficTs = null; }); // force a fresh traffic fetch with the new key
     refreshLiveRiskData();
-    renderRestMiniMap(); // มีคีย์แล้ว โหลดแผนที่ตัวอย่างจุดพักที่เคยขึ้นข้อความขอคีย์ค้างไว้ทันที
   }catch(err){
     toast('บันทึกไม่สำเร็จ: '+(err&&err.message?err.message:'เกิดข้อผิดพลาดไม่ทราบสาเหตุ'));
   }
@@ -10194,7 +8302,6 @@ function renderAllDependants(){
   renderHazardView(); renderRiskView(); renderFleetView(); renderDriverReportsQueue(); renderDriverReportHistory();
   renderRestPoiTable(); renderRestSettingsBox(); renderMaintView(); renderReportView();
   renderThresholdBox(); renderPoiList(); renderUserList(); renderRouteListBox();
-  renderStopSettings(); renderStopEventQueue();
 }
 
 async function boot(){
@@ -10233,10 +8340,8 @@ async function boot(){
   renderHazardView(); renderRiskView(); renderFleetView(); renderDriverReportsQueue(); renderDriverReportHistory();
   renderRestPoiTable(); renderRestSettingsBox(); renderDriveSettings();
   renderMaintView(); renderReportView(); renderThresholdBox(); renderPoiList(); renderUserList(); renderRouteListBox();
-  renderStopSettings();
-  /* จุดจอดที่ตรวจพบ เก็บใน fleet_sync โดยตรง (ไม่ผ่าน IndexedDB) — ดูเหตุผลที่บล็อก v23 */
-  loadStopEvents();
   document.getElementById('setGmapKey').value = STATE.settings.gmapApiKey || '';
+  document.getElementById('setTomtomKey').value = STATE.settings.tomtomApiKey || '';
   const adminSwEl = document.getElementById('adminThemeSwatches');
   if(adminSwEl) adminSwEl.innerHTML = themeSwatchesHtml();
 
@@ -10418,8 +8523,7 @@ function renderAlertLogsView(){
 
   document.getElementById('alertLogCount').textContent = '('+items.length+' รายการ)';
   if(!items.length){ table.innerHTML = '<tr><td colspan="7" class="empty">ยังไม่มีประวัติการแจ้งเตือน</td></tr>'; return; }
-  /* v32 — แยกเป็นวันๆ เหมือนหน้าอื่น */
-  const rowHtmlOf = l=>{
+  table.innerHTML = items.map(l=>{
     const meta = HAZ_META[l.hazardType] || {label:l.hazardType, icon:'⚠️'};
     const route = STATE.routes.find(r=>r.id===l.routeId);
     const time = new Date(l.ts).toLocaleString('th-TH',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'2-digit'});
@@ -10432,22 +8536,6 @@ function renderAlertLogsView(){
       <td>${route ? route.name : '-'}</td>
       <td>${l.distanceKm!=null ? l.distanceKm+' กม.' : '-'}</td>
     </tr>`;
-  };
-  const lvl = document.getElementById('alertLogGroupBy')?.value || 'day';
-  const days = groupByPeriod(items, l=>l.ts, lvl);
-  table.innerHTML = days.map((d,di)=>{
-    const gkey = 'alert_'+lvl+'_'+d.key;
-    const crit = d.items.filter(l=>l.severity>=4).length;
-    const hd = listGroupHeaderRow(gkey, 'renderAlertLogsView', 7,
-      `📅 ${d.label}`,
-      `<span style="display:flex;gap:8px;align-items:center;">
-         ${crit?`<span class="badge crit">วิกฤต ${crit}</span>`:''}
-         <span style="color:var(--text-faint);font-size:12px;">${d.items.length} ครั้ง</span>
-       </span>`, di===0);
-    if(!hd.open) return hd.html;
-    const shown = Math.min(listShown(gkey), d.items.length);
-    return hd.html + d.items.slice(0, shown).map(rowHtmlOf).join('')
-         + listMoreRow(gkey, d.items.length, shown, 'renderAlertLogsView', 7);
   }).join('');
 }
 /* ---------- Points / rewards dashboard ----------
@@ -10699,15 +8787,7 @@ async function doAdminLogin(){
   errEl.textContent = '';
   if(!username || !pw){ errEl.textContent = 'กรุณากรอก Username และรหัสผ่าน'; return; }
   const u = STATE.users.find(x => (x.username||'').toLowerCase() === username.toLowerCase());
-  if(!u || u.role !== 'Admin'){
-    /* แยกให้ชัดระหว่าง "พิมพ์ชื่อผิด" กับ "ข้อมูลผู้ใช้ยังไม่ถูกดึงลงมา"
-       สองกรณีนี้แก้คนละวิธีกันคนละเรื่อง แต่เดิมขึ้นข้อความเดียวกันหมด */
-    const total = STATE.users.filter(x => x.role === 'Admin').length;
-    errEl.innerHTML = total
-      ? 'ไม่พบบัญชีแอดมินชื่อนี้ (ในเครื่องมี ' + total + ' บัญชี — ตรวจตัวสะกด username อีกครั้ง)'
-      : '⚠️ ยังไม่มีข้อมูลผู้ใช้ในเครื่องนี้เลย<br>ตรวจว่าต่ออินเทอร์เน็ตอยู่ แล้วกด F5 รีเฟรชหน้านี้';
-    return;
-  }
+  if(!u || u.role !== 'Admin'){ errEl.textContent = 'ไม่พบบัญชีแอดมินนี้'; return; }
   if(pw !== u.password){ errEl.textContent = 'รหัสผ่านไม่ถูกต้อง'; return; }
   try{ localStorage.setItem('rfsm_admin_session', u.id); }catch(e){}
   pEl.value = '';
@@ -10718,31 +8798,10 @@ function adminLogout(){
   location.reload();
 }
 async function prepareAdminLogin(){
-  /* v35 — แสดงหน้าล็อกอินก่อนเสมอ แล้วค่อยโหลดข้อมูลเบื้องหลัง
-     บั๊กเดิม: บรรทัดที่สั่งโชว์หน้าล็อกอินอยู่ "ท้ายสุด" ของฟังก์ชันนี้
-     ถ้า seedIfEmpty() หรือการอ่านฐานข้อมูลในเครื่องพังกลางทาง (เจอบ่อยมาก
-     บนเครื่องที่เพิ่งติดตั้งใหม่ ซึ่งยังไม่มีข้อมูลในเครื่องเลย ต้องดึงจาก
-     ฐานข้อมูลกลางอย่างเดียว) โค้ดจะหยุดตรงนั้น หน้าล็อกอินไม่เคยถูกแสดง
-     ผู้ใช้เห็นจอเปล่าๆ ไม่มีช่องให้พิมพ์รหัสผ่านเลย และไม่มีข้อความบอกสาเหตุ */
-  const screen = document.getElementById('adminLoginScreen');
-  const errEl  = document.getElementById('adminLoginError');
-  const btn    = screen ? screen.querySelector('.btn.primary') : null;
-  if(screen) screen.style.display = 'flex';
-  if(btn){ btn.disabled = true; btn.textContent = 'กำลังโหลดข้อมูลผู้ใช้...'; }
-
-  let loadErr = null;
-  try{
-    await seedIfEmpty();
-  }catch(e){ loadErr = e; console.warn('ดึงข้อมูลเริ่มต้นไม่สำเร็จ:', e); }
-  try{
-    STATE.users = await idbAll('users');
-  }catch(e){
-    loadErr = loadErr || e;
-    STATE.users = Array.isArray(STATE.users) ? STATE.users : [];
-    console.warn('อ่านรายชื่อผู้ใช้จากเครื่องนี้ไม่สำเร็จ:', e);
-  }
-  if(btn){ btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ'; }
-
+  // Load (and seed, if this is the very first run) just enough data to check credentials
+  // against, without rendering the dashboard until a valid admin has logged in.
+  await seedIfEmpty();
+  STATE.users = await idbAll('users');
   let savedId = null;
   try{ savedId = localStorage.getItem('rfsm_admin_session'); }catch(e){}
   if(savedId){
@@ -10750,18 +8809,7 @@ async function prepareAdminLogin(){
     if(u){ await enterAdminApp(); return; }
     try{ localStorage.removeItem('rfsm_admin_session'); }catch(e){}
   }
-
-  /* บอกสาเหตุให้เห็นตรงหน้าจอ แทนที่จะปล่อยให้เดาเองว่าทำไมล็อกอินไม่ผ่าน */
-  const adminCount = STATE.users.filter(x => x.role === 'Admin').length;
-  if(errEl){
-    if(loadErr){
-      errEl.innerHTML = '⚠️ โหลดข้อมูลผู้ใช้ไม่สำเร็จ (' + ((loadErr && loadErr.message) || 'ไม่ทราบสาเหตุ') + ')<br>'
-        + 'ตรวจว่าเครื่องนี้ต่ออินเทอร์เน็ตอยู่ แล้วกด F5 รีเฟรชหน้านี้';
-    } else if(!adminCount){
-      errEl.innerHTML = '⚠️ ยังไม่มีบัญชีแอดมินในเครื่องนี้<br>'
-        + 'แปลว่าดึงรายชื่อผู้ใช้จากฐานข้อมูลกลางไม่สำเร็จ — ตรวจอินเทอร์เน็ตแล้วกด F5';
-    }
-  }
+  document.getElementById('adminLoginScreen').style.display = 'flex';
 }
 window.__bootAdmin = prepareAdminLogin;
 
@@ -10771,16 +8819,11 @@ window.__bootAdmin = prepareAdminLogin;
 Object.assign(window, {
   galleryGoto,
   deleteHazard, computeRiskPanel, deleteVehicle, viewVehicleHistory, viewMaintHistory,
-  computeRestPlan, focusRestMiniMap, rematchPoiRoutes, saveThresholds, exportCSV, deletePoi, openHazardModal, openHazardEditModal, openVehicleModal,
+  computeRestPlan, saveThresholds, exportCSV, deletePoi, openHazardModal, openHazardEditModal, openVehicleModal,
   openPoiModal, openPoiEditModal, openUserModal, openEditUserModal, deleteUser, saveDriveSettings, addProvinceToBuilder,
-  moveProvinceInBuilder, removeProvinceFromBuilder, openRouteBuilderModal, openRouteEditModal, refreshRouteRoadPath, compactRouteRoadPaths, deleteRoute,
+  moveProvinceInBuilder, removeProvinceFromBuilder, openRouteBuilderModal, deleteRoute,
   saveGmapKey, switchMapProvider, recenterFleetMap, doAdminLogin, adminLogout,
-  showRouteHazardsOnMap, showHazardOnMap, clearHazardFocus,
-  listMore, listToggleGroup, hazardCollapseAll, userCollapseAll, setStopEventRange,
-  toggleStopDetect, fillPoiProvinces, mergeDuplicateStopEvents,
-  renderStopEventQueue, openStopEventMap, approveStopAsPoi, markStopAskDriver,
-  markStopNoStop, dismissStopEvent, deleteStopEvent, saveStopSettings,
-  promoteReportToHazard, dismissDriverReport, promoteReportToPoi, viewReportPhoto, viewPoiPhoto, viewHazardPhoto,
+  promoteReportToHazard, dismissDriverReport, promoteReportToPoi, viewReportPhoto, viewPoiPhoto,
   toggleMapFilter, focusVehicleOnMap, renderGpsVehList,
   triggerHazardImport, handleHazardImportFile, exportHazardsExcel, toggleHazardGroup,
   renderAlertLogsView, setAlertLogRange, renderDriverReportHistory, setReportHistRange,
