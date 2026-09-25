@@ -1553,7 +1553,13 @@ function themeSwatchesHtml(){
         <div class="card">
           <h3>เงื่อนไขปัจจุบัน <small>จาก Admin / Settings</small></h3>
           <div id="restSettingsBox"></div>
-          <div style="font-size:12px;color:var(--text-faint);margin:16px 0 8px;">🗺️ ตัวอย่างจุดพักบนเส้นทางที่เลือก — กดจุดในแผนด้านซ้ายเพื่อดูตำแหน่ง</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:16px 0 8px;">
+            <div style="font-size:12px;color:var(--text-faint);">🗺️ ตัวอย่างจุดพักบนเส้นทางที่เลือก — กดจุดในแผนด้านซ้ายเพื่อดูตำแหน่ง</div>
+            <div style="display:flex;gap:4px;">
+              <button class="btn sm" id="btnRestMiniLeaflet" onclick="switchRestMiniMapProvider('leaflet')" title="แผนที่ฟรี ไม่ต้องมีคีย์">🗺️ Dark Ops</button>
+              <button class="btn sm" id="btnRestMiniGoogle" onclick="switchRestMiniMapProvider('google')" title="ต้องตั้งค่า Google Maps API Key">🌍 Google</button>
+            </div>
+          </div>
           <div id="restMiniMap" style="height:230px;border-radius:12px;overflow:hidden;border:1px solid var(--border-soft);"></div>
         </div>
       </div>
@@ -7883,27 +7889,66 @@ function renderRestPoiTable(){
   renderRestMiniMap();
 }
 
-/* ---------- แผนที่เล็กแสดงตัวอย่างเส้นทาง + จุดพัก (Google Maps) ----------
+/* ---------- แผนที่เล็กแสดงตัวอย่างเส้นทาง + จุดพัก ----------
    อยู่ในช่องว่างใต้การ์ด "เงื่อนไขปัจจุบัน" ทางขวาของหน้าวางแผนพักรถ —
-   ใช้ Google Maps (ไม่ใช่ Leaflet/CARTO) เพราะระบบมี Google Maps API Key
-   ตั้งไว้อยู่แล้วที่ Admin/Settings — วาดจุด A -> B -> C ... ไปจนถึงปลายทาง
-   ตามลำดับ waypoints ของเส้นทางที่เลือก แบบเดียวกับหมุด A/B/C ของ Google Maps
-   จริง พร้อมจุดพัก/ปั๊มน้ำมันเป็นตัวอย่าง ซูมเข้า-ออกดูตำแหน่งใกล้ๆ ได้ตามปกติ
-   กดปุ่ม "📍 ดูตำแหน่ง" จากแผนด้านซ้าย หรือจากตารางจุดพักด้านล่าง จะซูม/เปิด
-   ป้ายชื่อไปที่จุดนั้นให้เลย */
-let restMiniMapObj = null, restMiniMapOverlays = [], restMiniMapInitPromise = null;
+   สลับได้ 2 แบบด้วยปุ่มเหนือแผนที่ (เหมือนแผนที่หลัก):
+     - "🗺️ Dark Ops" = Leaflet + CARTO dark tiles ฟรี ไม่ต้องมีคีย์
+     - "🌍 Google"    = Google Maps (ต้องตั้ง Google Maps API Key ที่ Settings)
+   ค่าเริ่มต้นจะเลือกให้เองครั้งแรกตามว่ามีคีย์ Google หรือไม่ จากนั้นพี่กดสลับ
+   เองได้ตลอด — วาดจุด A -> B -> C ... ไปจนถึงปลายทางตามลำดับ waypoints ของ
+   เส้นทางที่เลือก พร้อมจุดพัก/ปั๊มน้ำมันเป็นตัวอย่าง กดปุ่ม "📍 ดูตำแหน่ง" จาก
+   แผนด้านซ้าย หรือจากตารางจุดพักด้านล่าง จะซูม/เปิดป้ายชื่อไปที่จุดนั้นให้เลย */
+let restMiniMapProvider = null; // null = ยังไม่ตัดสินใจ, ตั้งอัตโนมัติครั้งแรกที่ render
+let restMiniMapObj = null, restMiniMapOverlays = [], restMiniMapInitPromise = null; // Google
+let restMiniMapLeaflet = null, restMiniMapLeafletLayer = null; // Dark Ops (Leaflet)
 function restMiniMapMsg(html){
   const el = document.getElementById('restMiniMap');
   if(el) el.innerHTML = `<div style="height:100%;display:flex;align-items:center;justify-content:center;text-align:center;padding:16px;font-size:12.5px;color:var(--text-faint);">${html}</div>`;
 }
-function initRestMiniMap(){
+function updateRestMiniMapProviderBtns(){
+  const bL = document.getElementById('btnRestMiniLeaflet'), bG = document.getElementById('btnRestMiniGoogle');
+  [[bL,'leaflet'],[bG,'google']].forEach(([btn,p])=>{
+    if(!btn) return;
+    const on = restMiniMapProvider === p;
+    btn.style.borderColor = on ? 'var(--accent)' : '';
+    btn.style.color = on ? 'var(--accent)' : '';
+  });
+}
+function switchRestMiniMapProvider(p){
+  if(restMiniMapProvider === p) return;
+  restMiniMapProvider = p;
+  /* ทำลายอินสแตนซ์แผนที่เดิมทิ้งก่อนเสมอ กันแผนที่ 2 ระบบไปซ้อนกันในช่องเดียว */
+  if(restMiniMapLeaflet){ restMiniMapLeaflet.remove(); restMiniMapLeaflet = null; restMiniMapLeafletLayer = null; }
+  if(restMiniMapObj){ restMiniMapOverlays.forEach(o=>{ try{ o.setMap(null); }catch(e){} }); }
+  restMiniMapObj = null; restMiniMapOverlays = [];
+  const el = document.getElementById('restMiniMap');
+  if(el) el.innerHTML = '';
+  updateRestMiniMapProviderBtns();
+  renderRestMiniMap();
+}
+window.switchRestMiniMapProvider = switchRestMiniMapProvider;
+
+function initRestMiniMapLeaflet(){
+  if(restMiniMapLeaflet) return Promise.resolve();
+  const el = document.getElementById('restMiniMap');
+  if(!el) return Promise.resolve();
+  el.innerHTML = '';
+  restMiniMapLeaflet = L.map(el, {zoomControl:true, attributionControl:true}).setView([15.5,100.6], 6);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+    maxZoom:20, className:'dark-tiles', subdomains:'abcd',
+    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+  }).addTo(restMiniMapLeaflet);
+  restMiniMapLeafletLayer = L.layerGroup().addTo(restMiniMapLeaflet);
+  return Promise.resolve();
+}
+function initRestMiniMapGoogle(){
   if(restMiniMapObj) return Promise.resolve();
   if(restMiniMapInitPromise) return restMiniMapInitPromise;
   const el = document.getElementById('restMiniMap');
   if(!el) return Promise.resolve();
   const key = STATE.settings && STATE.settings.gmapApiKey;
   if(!key){
-    restMiniMapMsg('⚠️ ต้องตั้งค่า Google Maps API Key ที่หน้า <b>Admin / Settings</b> ก่อน จึงจะแสดงแผนที่ตัวอย่างจุดพักได้');
+    restMiniMapMsg('⚠️ ต้องตั้งค่า Google Maps API Key ที่หน้า <b>Admin / Settings</b> ก่อน จึงจะแสดงแผนที่ตัวอย่างจุดพักแบบ Google ได้ — หรือกดปุ่ม "🗺️ Dark Ops" ด้านบนเพื่อดูแบบฟรีแทนได้เลย');
     return Promise.resolve();
   }
   restMiniMapMsg('🌍 กำลังโหลด Google Maps...');
@@ -7918,8 +7963,77 @@ function initRestMiniMap(){
   }).finally(()=>{ restMiniMapInitPromise = null; });
   return restMiniMapInitPromise;
 }
+
 async function renderRestMiniMap(focusPoiId){
-  if(!restMiniMapObj) await initRestMiniMap();
+  if(restMiniMapProvider === null){
+    /* ครั้งแรก: มีคีย์ Google อยู่แล้วก็ใช้ Google ต่อเหมือนเดิม ไม่มีคีย์ก็ใช้ Dark Ops ฟรีแทนทันที */
+    restMiniMapProvider = (STATE.settings && STATE.settings.gmapApiKey) ? 'google' : 'leaflet';
+  }
+  updateRestMiniMapProviderBtns();
+  if(restMiniMapProvider === 'leaflet') return renderRestMiniMapLeaflet(focusPoiId);
+  return renderRestMiniMapGoogle(focusPoiId);
+}
+
+async function renderRestMiniMapLeaflet(focusPoiId){
+  if(!restMiniMapLeaflet) await initRestMiniMapLeaflet();
+  if(!restMiniMapLeaflet) return;
+  restMiniMapLeafletLayer.clearLayers();
+
+  const routeId = document.getElementById('restRouteSelect')?.value || STATE.routes[0]?.id;
+  const route = STATE.routes.find(r=>r.id===routeId);
+  const bounds = [];
+
+  if(route && route.waypoints && route.waypoints.length){
+    const roadPath = await ensureRouteRoadPath(route);
+    const linePath = (roadPath && roadPath.length>1 ? roadPath : route.waypoints);
+    L.polyline(linePath, {color:'#22D3C7', weight:4, opacity:.85}).addTo(restMiniMapLeafletLayer);
+    route.waypoints.forEach((wp,i)=>{
+      const letter = String.fromCharCode(65 + Math.min(i,25));
+      const isStart = i===0, isEnd = i===route.waypoints.length-1;
+      L.marker(wp, {icon:dotIcon(isEnd?'#F0475A':(isStart?'#34D399':'#22D3C7'), 20, letter)})
+        .addTo(restMiniMapLeafletLayer)
+        .bindPopup(isEnd ? `${route.name} (ปลายทาง)` : (isStart ? `${route.name} (จุดเริ่มต้น)` : `จุด ${letter} ระหว่างทาง`));
+      bounds.push(wp);
+    });
+  }
+
+  const allStops = route ? STATE.pois.filter(p=>(p.type==='rest'||p.type==='truckstop'||p.type==='fuel'||p.noStop)) : [];
+  const stopSplit = splitPoisByCorridor(route, allStops, null);
+  const drawList = (stopSplit.known
+      ? stopSplit.onRoute.map(c=>c.poi)
+      : allStops.filter(p=>route && p.routeId===route.id)
+    ).map(p=>({poi:p, off:false}));
+  if(focusPoiId){
+    const offHit = stopSplit.offRoute.find(c=>c.poi.id===focusPoiId);
+    if(offHit) drawList.push({poi:offHit.poi, off:true, offKm:offHit.offKm});
+    else if(!drawList.some(d=>d.poi.id===focusPoiId)){
+      const any = STATE.pois.find(p=>p.id===focusPoiId);
+      if(any) drawList.push({poi:any, off:true, offKm:null});
+    }
+  }
+  let focusHit = null;
+  drawList.forEach(({poi:p, off, offKm})=>{
+    const meta = poiDisplayMeta(p);
+    const marker = L.marker([p.lat,p.lng], {icon:dotIcon((off||p.noStop) ? '#F0475A' : (meta.color||'#22D3C7'), 24, meta.icon)})
+      .addTo(restMiniMapLeafletLayer);
+    const noStopWarn = p.noStop ? '<br><span style="color:#B00020"><b>⛔ จุดห้ามจอด — ระบบจะไม่แนะนำเป็นที่พัก</b></span>' : '';
+    const warn = noStopWarn + (off ? `<br><span style="color:#B00020">⚠️ อยู่นอกแนวเส้นทางนี้${offKm!=null?(' ~'+Math.round(offKm)+' กม.'):''}</span>` : '');
+    marker.bindPopup(`<div style="color:#111"><b>${meta.icon} ${p.name}</b><br>${meta.label}${warn}</div>`);
+    bounds.push([p.lat,p.lng]);
+    if(focusPoiId && p.id===focusPoiId) focusHit = {marker, pos:[p.lat,p.lng]};
+  });
+
+  setTimeout(()=>{ if(restMiniMapLeaflet) restMiniMapLeaflet.invalidateSize(); }, 50);
+  if(focusHit){
+    restMiniMapLeaflet.setView(focusHit.pos, 13);
+    focusHit.marker.openPopup();
+  } else if(bounds.length){
+    restMiniMapLeaflet.fitBounds(bounds, {padding:[30,30]});
+  }
+}
+
+async function renderRestMiniMapGoogle(focusPoiId){
+  if(!restMiniMapObj) await initRestMiniMapGoogle();
   if(!restMiniMapObj) return; // ยังไม่มี API Key หรือโหลดไม่สำเร็จ — ข้อความแจ้งเตือนแสดงอยู่แล้วในกล่อง
   restMiniMapOverlays.forEach(o=>o.setMap(null));
   restMiniMapOverlays = [];
