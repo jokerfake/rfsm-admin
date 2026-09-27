@@ -1258,7 +1258,7 @@ function themeSwatchesHtml(){
         <button class="btn sm" title="จัดกึ่งกลางกองรถ" onclick="recenterFleetMap()">🎯 จัดกึ่งกลาง</button>
         <button class="btn sm" id="btnRoadNet" title="แนวถนนที่กองรถเราใช้ซ้ำ สร้างจากรอยรถจริง" onclick="toggleRoadNetwork()">🛣️ ถนนที่กองเราใช้</button>
         <button class="btn sm" id="btnTrafficFlow" title="ซ้อนทับเส้นทางรถติดปัจจุบันจาก TomTom — กดอีกครั้งเพื่อซ่อน ไม่รีเฟรชอัตโนมัติ" onclick="toggleTrafficFlow()">🚦 จราจรสด</button>
-        <button class="btn sm" id="btnFloodCorridor" title="ทาบเส้นสีทับถนนจริงที่กองเราใช้ ช่วงที่อยู่ใกล้จุดน้ำท่วมอัตโนมัติจาก ThaiWater (รัศมี 3 กม.) — ไม่ใช่การยืนยันว่าถนนช่วงนั้นท่วมแน่นอน" onclick="toggleFloodCorridors()">🌊 น้ำท่วมตามเส้นทาง</button>
+        <button class="btn sm" id="btnFloodCorridor" title="ทาบเส้นสีทับช่วงถนนจริงที่กองเราใช้ ซึ่งตรวจพบว่าอยู่ในพื้นที่น้ำท่วมจากภาพถ่ายดาวเทียม GISTDA จริง (ไม่ใช่แค่ประมาณระยะห่าง)" onclick="toggleFloodCorridors()">🌊 น้ำท่วมตามเส้นทาง</button>
       </div>
 
       <div class="map-panel" id="hazardFocusBar" style="display:none;top:62px;left:50%;transform:translateX(-50%);z-index:951;padding:7px 12px;align-items:center;gap:10px;">
@@ -3880,7 +3880,7 @@ function hazardSpeech(h, meta, distanceKm){
   const km = distanceKm < 1
     ? Math.round(distanceKm*1000) + ' เมตร'
     : Math.round(distanceKm) + ' กิโลเมตร';
-  /* จุดน้ำท่วม (ทั้งที่คนขับแจ้งเอง และที่ดึงมาอัตโนมัติจาก ThaiWater) ใช้ประโยค
+  /* จุดน้ำท่วม (ทั้งที่คนขับแจ้งเอง และที่ดึงมาอัตโนมัติจาก GISTDA) ใช้ประโยค
      เฉพาะของตัวเอง — ประโยคทั่วไปด้านล่างพูดถึง "เคยมีผู้เสียชีวิต/อุบัติเหตุ"
      ซึ่งไม่ตรงกับสถานการณ์น้ำท่วมเลย */
   if(h.type==='flood'){
@@ -5813,52 +5813,37 @@ let roadNetOn = false;
 let roadNetLoading = false;
 let roadNetDrawnFor = null;    // ตอนนี้เส้นที่วาดไว้เป็นของโหมดแผนที่ไหน
 
-/* ---------- น้ำท่วมตามเส้นทาง (เส้นสีบนถนนจริงที่กองเราใช้ ใกล้จุดน้ำท่วมอัตโนมัติ) ----------
-   ผู้ใช้อยากได้ภาพแบบ "เส้นจราจรสด" (เส้นสีทาบไปตามถนนจริง) แทนที่จะมีแค่หมุด
-   จุดเดียวที่สถานีวัดน้ำ — วิธีทำที่ยังอิงข้อมูลจริง (ไม่ได้เดา) คือเอาแนวถนนจริง
-   ที่กองเราขับผ่านจริง (roadNetData ด้านบน จาก build_routes.py/import_routes.py)
-   มาหาว่าช่วงไหนของถนนอยู่ใกล้จุดน้ำท่วมอัตโนมัติ (รัศมีเดียวกับที่แอปคนขับใช้
-   เตือนเสียง — 3 กม. ใน checkHazardProximity) แล้วทาบเส้นสีน้ำเงินทับเฉพาะช่วงนั้น
-   ไม่ได้อ้างว่า "ถนนช่วงนี้น้ำท่วมแน่นอน" — เป็นแค่ "ถนนช่วงนี้อยู่ใกล้จุดที่มี
-   สถานการณ์น้ำท่วมจริง" ตรงกับสิ่งที่ข้อมูลบอกได้จริงๆ */
+/* ---------- น้ำท่วมตามเส้นทาง (เส้นสีบนถนนจริงที่กองเราใช้ ซึ่งทับซ้อนกับพื้นที่
+   น้ำท่วมจริงจากภาพถ่ายดาวเทียม) ----------
+   เดิมทีใช้จุดวัดระดับน้ำ ThaiWater + รัศมีเดา 3 กม. (ระบบเก่า) แต่ตอนนี้เปลี่ยนมา
+   ใช้ GISTDA ทั้งหมดแล้ว — ตัว flood_monitor.py (ฝั่งเครื่องออฟฟิศ) ดึงรูปหลาย
+   เหลี่ยมพื้นที่น้ำท่วมจริงจากดาวเทียม (Sentinel-1) ของ GISTDA มาตัดกับแนวถนนจริง
+   ที่กองเราขับผ่านจริง (roadNetData) โดยตรงด้วย shapely อยู่แล้วตั้งแต่ฝั่งเซิร์ฟเวอร์
+   แล้วเขียน "ช่วงถนนที่ทับซ้อนจริง" (affectedPath) ลงในจุดเสี่ยงแต่ละจุดมาเลย
+   ฝั่งเว็บจึงแค่เอา affectedPath มาวาดตรงๆ ไม่ต้องเดาระยะห่างเองอีกต่อไป —
+   แม่นกว่าเดิมมาก เพราะเป็น "ถนนช่วงนี้อยู่ในพื้นที่น้ำท่วมจริงตามภาพถ่ายดาวเทียม"
+   ไม่ใช่แค่ "อยู่ใกล้จุดที่มีสถานการณ์" เหมือนระบบเก่า */
 let floodCorridorOn = false;
 let floodCorridorLayer = null;      // ชั้นของ Leaflet
 let gFloodCorridorOverlays = [];    // เส้นของ Google Maps
 let floodCorridorData = null;       // แคชผลลัพธ์ล่าสุดที่คำนวณไว้
 let floodCorridorDrawnFor = null;   // วาดไว้สำหรับแผนที่โหมดไหน
-const FLOOD_CORRIDOR_RADIUS_KM = 3; // รัศมีเดียวกับที่ checkHazardProximity ใช้เตือนเสียงคนขับ
 
 function activeFloodHazards(){
-  return STATE.hazards.filter(h => h.type==='flood' && h.source==='thaiwater_auto' && h.active!==false);
+  return STATE.hazards.filter(h => h.type==='flood' && h.source==='gistda_auto' && h.active!==false);
 }
 
-/* เดินไล่ทีละจุดตามแนวถนนจริง (path) หาว่าจุดไหน "ใกล้" จุดน้ำท่วมจุดใดจุดหนึ่ง
-   ในรัศมีที่กำหนด แล้วรวมจุดที่ใกล้ติดกันเป็นช่วงๆ (แทนที่จะทาบทั้งเส้น) —
-   ทับซ้อนกัน 1 จุดระหว่างช่วงกันเส้นขาดตอนดูไม่ต่อเนื่อง */
+/* ไม่ต้องเดาระยะห่างเองแล้ว — แต่ละจุดน้ำท่วมจาก GISTDA มี affectedPath
+   (ช่วงถนนจริงที่ตัดกับรูปหลายเหลี่ยมน้ำท่วม คำนวณไว้แล้วฝั่ง flood_monitor.py)
+   ติดมาด้วยอยู่แล้ว จึงแค่ดึงมาใช้วาดตรงๆ ข้ามจุดที่ไม่มี affectedPath (ข้อมูลเก่า
+   จากรอบก่อนที่ยังไม่มีฟิลด์นี้ หรือดึงจากแหล่งอื่น) ไปเงียบๆ */
 function computeFloodCorridors(){
   const floods = activeFloodHazards();
-  if(!floods.length || !roadNetData || !roadNetData.length) return [];
+  if(!floods.length) return [];
   const segments = [];
-  roadNetData.forEach(r=>{
-    let cur = [];
-    let curNearest = null;
-    r.path.forEach((pt,i)=>{
-      let best = null;
-      floods.forEach(f=>{
-        const d = haversineKm(pt, [f.lat, f.lng]);
-        if(d <= FLOOD_CORRIDOR_RADIUS_KM && (!best || d < best.d)) best = {d, f};
-      });
-      if(best){
-        if(!cur.length && i>0) cur.push(r.path[i-1]); // ต่อจากจุดก่อนหน้าให้เส้นไม่ขาด
-        cur.push(pt);
-        if(!curNearest || best.d < curNearest.d) curNearest = best;
-      } else if(cur.length){
-        cur.push(pt); // ปิดท้ายช่วงด้วยจุดถัดไปอีก 1 จุด กันเส้นห้วนๆ
-        if(cur.length>=2) segments.push({path:cur, nearest:curNearest});
-        cur = []; curNearest = null;
-      }
-    });
-    if(cur.length>=2) segments.push({path:cur, nearest:curNearest});
+  floods.forEach(f=>{
+    if(!Array.isArray(f.affectedPath) || f.affectedPath.length < 2) return;
+    segments.push({path: f.affectedPath, nearest: {d:0, f}});
   });
   return segments;
 }
@@ -5874,20 +5859,21 @@ function drawFloodCorridors(){
   clearFloodCorridors();
   if(!floodCorridorOn) return;
   (floodCorridorData || []).forEach(seg=>{
-    const label = seg.nearest ? seg.nearest.f.label : 'จุดน้ำท่วม';
-    const distTxt = seg.nearest ? seg.nearest.d.toFixed(1)+' กม.' : '-';
-    const noteTxt = 'ห่างจากสถานี ~'+distTxt+' — ไม่ได้แปลว่าถนนนี้ท่วมแน่นอน เป็นสัญญาณเตือนบริเวณใกล้เคียง';
+    const f = seg.nearest ? seg.nearest.f : null;
+    const label = f ? (f.label || 'จุดน้ำท่วม') : 'จุดน้ำท่วม';
+    const noteTxt = (f && f.notes) ? f.notes : 'ตรวจพบจากภาพถ่ายดาวเทียม GISTDA ว่าถนนช่วงนี้ทับซ้อนกับพื้นที่น้ำท่วมจริง';
     if(mapProvider === 'leaflet'){
       if(!floodCorridorLayer) return;
-      const popupHtml = `<div class="pop-title">🌊 ถนนช่วงนี้ใกล้จุดน้ำท่วม</div>`
+      const popupHtml = `<div class="pop-title">🌊 ถนนช่วงนี้อยู่ในพื้นที่น้ำท่วมจริง</div>`
         + `<div class="pop-row">${label}</div>`
-        + `<div class="pop-row" style="color:var(--text-faint)">${noteTxt}</div>`;
+        + `<div class="pop-row" style="color:var(--text-faint)">${noteTxt}</div>`
+        + `<div class="pop-row" style="margin-top:4px;color:#3AA0FF;font-size:11px;">🛰️ ข้อมูลอัตโนมัติจากภาพถ่ายดาวเทียม GISTDA</div>`;
       L.polyline(seg.path, {
         color:'#3AA0FF', weight:7, opacity:.85, dashArray:'2,12', lineCap:'round',
       }).addTo(floodCorridorLayer).bindPopup(popupHtml);
     } else {
       if(!gMap || !window.google) return;
-      const gPopupHtml = `<div style="color:#111"><b>🌊 ถนนช่วงนี้ใกล้จุดน้ำท่วม</b><br>${label}<br><small style="color:#555">${noteTxt}</small></div>`;
+      const gPopupHtml = `<div style="color:#111"><b>🌊 ถนนช่วงนี้อยู่ในพื้นที่น้ำท่วมจริง</b><br>${label}<br>${noteTxt}<br><small style="color:#3AA0FF">🛰️ ข้อมูลอัตโนมัติจากภาพถ่ายดาวเทียม GISTDA</small></div>`;
       const pl = new google.maps.Polyline({
         path: seg.path.map(p=>({lat:p[0], lng:p[1]})),
         strokeColor:'#3AA0FF', strokeWeight:7, strokeOpacity:.85,
@@ -5914,19 +5900,15 @@ async function toggleFloodCorridors(){
     return;
   }
   if(!activeFloodHazards().length){
-    toast('ตอนนี้ไม่มีจุดน้ำท่วมที่ต้องเตือน (ยังไม่มีสถานีไหนวิกฤต) — ยังไม่ต้องเปิดชั้นนี้');
+    toast('ตอนนี้ไม่มีจุดน้ำท่วมที่ต้องเตือน (GISTDA ยังไม่ตรวจพบพื้นที่น้ำท่วมทับถนนที่กองเราใช้) — ยังไม่ต้องเปิดชั้นนี้');
     return;
   }
-  if(btn) btn.textContent = '🌊 กำลังโหลด...';
-  await loadRoadNetwork();
-  if(btn) btn.textContent = '🌊 น้ำท่วมตามเส้นทาง';
-  if(!roadNetData.length){
-    toast('ยังไม่มีแนวถนนในระบบให้จับคู่ — รัน build_routes.py แล้ว import_routes.py ที่เครื่องออฟฟิศก่อน จึงจะทาบเส้นน้ำท่วมบนถนนจริงได้');
-    return;
-  }
+  /* หมายเหตุ: computeFloodCorridors() ไม่ต้องใช้ roadNetData ฝั่งเว็บอีกต่อไป —
+     flood_monitor.py ตัดถนนจริงกับรูปหลายเหลี่ยมน้ำท่วมของ GISTDA ให้เสร็จแล้ว
+     ตั้งแต่ฝั่งเซิร์ฟเวอร์ (affectedPath ติดมากับแต่ละจุดเสี่ยงเลย) */
   floodCorridorData = computeFloodCorridors();
   if(!floodCorridorData.length){
-    toast('มีจุดน้ำท่วมอยู่ แต่ไม่มีถนนที่กองเราใช้ผ่านใกล้ๆ เลย (ในรัศมี '+FLOOD_CORRIDOR_RADIUS_KM+' กม.)');
+    toast('มีจุดน้ำท่วมอยู่ แต่ยังไม่มีช่วงถนนที่คำนวณไว้ให้วาด (ข้อมูลอาจยังไม่ครบรอบถัดไป)');
     return;
   }
   floodCorridorOn = true;
@@ -6437,18 +6419,19 @@ function drawFleetMapLeaflet(){
     /* น้ำท่วมที่ทำเครื่องหมาย "น้ำลดแล้ว" ไม่ต้องโชว์บนแผนที่สดอีก —
        ยังอยู่ในตารางจุดเสี่ยง (ประวัติ) แต่ไม่รกแผนที่หลักที่โชว์สถานการณ์ปัจจุบัน */
     if(h.type==='flood' && h.active===false) return;
+    /* จุดน้ำท่วมอัตโนมัติจาก GISTDA ไม่วาดเป็นหมุดบนแผนที่แล้ว (ตามที่ขอ
+       "เอาออกทั้งหมด เหลือแค่เส้น") — โชว์เฉพาะเป็นเส้นทับถนนจริงผ่าน
+       toggleFloodCorridors() เท่านั้น ข้อมูลดิบยังอยู่ครบใน STATE.hazards/ตาราง
+       จุดเสี่ยง เพื่อให้ยังใช้คำนวณเส้นทับถนน + โชว์ในตารางได้ */
+    if(h.type==='flood' && h.source==='gistda_auto') return;
     const meta = HAZ_META[h.type];
-    const isAutoFlood = h.type==='flood' && h.source==='thaiwater_auto';
     /* v27 — ใส่รูปที่คนขับถ่ายส่งมา + ชื่อผู้แจ้ง ลงในป๊อปอัปด้วย (เดิมไม่มีทั้งคู่) */
     const hzPhotos = objPhotosWithFallback(h);
     const hzWho = reporterLineText(h);
     const hzPhotoRow = hzPhotos.length
       ? `<div class="pop-row" style="margin-top:6px;"><img src="${hzPhotos[0].thumb||hzPhotos[0].full}" onclick="viewHazardPhoto('${h.id}')" style="width:100%;max-width:190px;border-radius:8px;cursor:pointer;display:block;" alt="รูปจากคนขับ"><span style="font-size:11px;color:var(--text-faint)">กดที่รูปเพื่อดูเต็ม${hzPhotos.length>1?' ('+hzPhotos.length+' รูป)':''}</span></div>`
       : '';
-    const autoBadgeRow = isAutoFlood
-      ? `<div class="pop-row" style="margin-top:6px;color:#3AA0FF;font-size:11px;">🛰️ ข้อมูลอัตโนมัติจากสถานีวัดระดับน้ำ ThaiWater — จะอัปเดต/หายไปเองตามสถานการณ์จริง</div>`
-      : '';
-    const popupHtml = `<div class="pop-title">${meta.icon} ${h.label}</div><div class="pop-row">ความรุนแรง: ${'★'.repeat(h.severity)}${'☆'.repeat(4-h.severity)}</div><div class="pop-row">${h.notes}</div>${hzPhotoRow}${hzWho?`<div class="pop-row" style="color:var(--text-faint)">📷 ${hzWho}</div>`:''}<div class="pop-row" style="margin-top:4px;color:var(--text-faint)">รายงานล่าสุด: ${h.date}</div>${autoBadgeRow}`;
+    const popupHtml = `<div class="pop-title">${meta.icon} ${h.label}</div><div class="pop-row">ความรุนแรง: ${'★'.repeat(h.severity)}${'☆'.repeat(4-h.severity)}</div><div class="pop-row">${h.notes}</div>${hzPhotoRow}${hzWho?`<div class="pop-row" style="color:var(--text-faint)">📷 ${hzWho}</div>`:''}<div class="pop-row" style="margin-top:4px;color:var(--text-faint)">รายงานล่าสุด: ${h.date}</div>`;
     const hzMarker = L.marker([h.lat,h.lng],{icon:dotIcon(meta.color,20,meta.icon)}).addTo(hazardLayerGroup)
       .bindPopup(popupHtml);
     if(focusList){
@@ -6516,18 +6499,17 @@ function drawFleetMapGoogle(){
   STATE.hazards.forEach(h=>{
     if(!hazardVisible(h)) return;
     if(h.type==='flood' && h.active===false) return; // น้ำลดแล้ว — ซ่อนจากแผนที่สด เหมือนฝั่ง Leaflet
+    /* จุดน้ำท่วมอัตโนมัติจาก GISTDA ไม่วาดเป็นหมุดบนแผนที่แล้ว เหมือนฝั่ง Leaflet —
+       ดูภาพรวมได้ทางปุ่ม "🌊 น้ำท่วมตามเส้นทาง" (เส้นทับถนนจริง) แทน */
+    if(h.type==='flood' && h.source==='gistda_auto') return;
     const meta = HAZ_META[h.type];
-    const isAutoFlood = h.type==='flood' && h.source==='thaiwater_auto';
     /* v27 — ป๊อปอัปฝั่ง Google Maps ก็ต้องเห็นรูป + ชื่อผู้แจ้งเหมือนกัน */
     const gPhotos = objPhotosWithFallback(h);
     const gWho = reporterLineText(h);
     const gPhotoRow = gPhotos.length
       ? `<img src="${gPhotos[0].thumb||gPhotos[0].full}" onclick="viewHazardPhoto('${h.id}')" style="width:190px;border-radius:8px;cursor:pointer;display:block;margin:6px 0 2px;" alt="รูปจากคนขับ"><small style="color:#555">กดที่รูปเพื่อดูเต็ม${gPhotos.length>1?' ('+gPhotos.length+' รูป)':''}</small><br>`
       : '';
-    const gAutoBadgeRow = isAutoFlood
-      ? '<br><small style="color:#3AA0FF">🛰️ ข้อมูลอัตโนมัติจากสถานีวัดระดับน้ำ ThaiWater</small>'
-      : '';
-    const gPopupHtml = `<div style="color:#111"><b>${meta.icon} ${h.label}</b><br>ความรุนแรง ${h.severity}/4<br>${h.notes}<br>${gPhotoRow}${gWho?'<small>📷 '+gWho+'</small><br>':''}<small>รายงานล่าสุด: ${h.date}</small>${gAutoBadgeRow}</div>`;
+    const gPopupHtml = `<div style="color:#111"><b>${meta.icon} ${h.label}</b><br>ความรุนแรง ${h.severity}/4<br>${h.notes}<br>${gPhotoRow}${gWho?'<small>📷 '+gWho+'</small><br>':''}<small>รายงานล่าสุด: ${h.date}</small></div>`;
     const gh = mk({lat:h.lat,lng:h.lng}, gDotIconUrl(meta.color,24,meta.icon), h.label, gPopupHtml);
     if(focusList){
       gFocusBounds.extend({lat:h.lat,lng:h.lng}); gFocusCount++;
@@ -6775,7 +6757,7 @@ function renderHazardView(){
       const sevBadge2 = h.severity>=4?'crit':h.severity===3?'high':h.severity===2?'mid':'low';
       const hzPhoto = photoBadgeWithFallback(h,'viewHazardPhoto');
       const hzWho = reporterLineText(h);
-      const isAutoFlood = h.type==='flood' && h.source==='thaiwater_auto';
+      const isAutoFlood = h.type==='flood' && h.source==='gistda_auto';
       const floodStatusBadge = isAutoFlood
         ? (h.active===false
             ? ' <span style="font-size:11px;color:#8C9AB5;">(✅ น้ำลดแล้ว)</span>'
@@ -6786,8 +6768,14 @@ function renderHazardView(){
         ? `<span style="font-size:11px;color:var(--text-faint);">🛰️ อัปเดตอัตโนมัติทุกรอบ</span>`
         : `<button class="btn sm" onclick="event.stopPropagation();openHazardEditModal('${h.id}')">แก้ไข</button> <button class="btn sm danger" onclick="event.stopPropagation();deleteHazard('${h.id}')">ลบ</button>`;
       /* กดที่แถวไหนก็ได้ = เด้งไปหน้าแผนที่แล้วโชว์จุดนั้นจุดเดียว
-         ปุ่มแก้ไข/ลบ มี stopPropagation อยู่แล้ว จึงไม่ไปชนกัน */
-      return `<tr class="hazard-item-row" style="cursor:pointer;" title="กดเพื่อดูจุดนี้บนแผนที่" onclick="showHazardOnMap('${h.id}')">
+         ปุ่มแก้ไข/ลบ มี stopPropagation อยู่แล้ว จึงไม่ไปชนกัน
+         ยกเว้นจุดน้ำท่วมอัตโนมัติ — ไม่มีหมุดให้ซูมไปหาแล้ว (เอาออกแล้ว เหลือแค่
+         เส้นทับถนน) จึงไม่ให้กดแถวเด้งไปหน้าแผนที่เปล่าๆ แนะนำให้ใช้ปุ่ม
+         "🌊 น้ำท่วมตามเส้นทาง" แทน */
+      const rowAttrs = isAutoFlood
+        ? `title="ดูภาพรวมได้ที่ปุ่ม 🌊 น้ำท่วมตามเส้นทาง บนแผนที่ (ไม่มีหมุดจุดเดี่ยวให้กดดูแล้ว)"`
+        : `style="cursor:pointer;" title="กดเพื่อดูจุดนี้บนแผนที่" onclick="showHazardOnMap('${h.id}')"`;
+      return `<tr class="hazard-item-row" ${rowAttrs}>
         <td class="strong" style="padding-left:32px;">${meta.icon} ${meta.label}${h.label?' — '+h.label:''}${floodStatusBadge} ${hzPhoto}${
           hzWho ? `<div style="font-size:11px;color:var(--text-faint);font-weight:400;margin-top:2px;">📷 ${hzWho}</div>` : ''
         }</td>
@@ -6817,12 +6805,12 @@ async function deleteHazard(id){
 function openHazardEditModal(id){
   const h = STATE.hazards.find(x=>x.id===id);
   if(!h){ toast('ไม่พบข้อมูลจุดเสี่ยงนี้'); return; }
-  /* จุดน้ำท่วมอัตโนมัติจาก ThaiWater ไม่ให้แก้ไขด้วยมือ — ข้อมูลถูกเขียนทับใหม่
+  /* จุดน้ำท่วมอัตโนมัติจาก GISTDA ไม่ให้แก้ไขด้วยมือ — ข้อมูลถูกเขียนทับใหม่
      ทุกรอบโดยตัวดึงข้อมูลอัตโนมัติอยู่แล้ว การแก้ไขที่นี่จะหายไปในรอบถัดไป
      จึงโชว์เป็นหน้าต่างข้อมูล (อ่านอย่างเดียว) แทนฟอร์มแก้ไข */
-  if(h.type==='flood' && h.source==='thaiwater_auto'){
+  if(h.type==='flood' && h.source==='gistda_auto'){
     openModal('จุดน้ำท่วมอัตโนมัติ', `
-      <div class="field" style="margin-bottom:10px;"><div style="padding:9px 10px;background:var(--panel-2);border:1px solid var(--border);border-radius:10px;font-size:12.5px;color:var(--text-dim);">🛰️ จุดนี้ดึงมาจากสถานีวัดระดับน้ำ ThaiWater โดยอัตโนมัติ — แก้ไข/ลบด้วยมือไม่ได้ เพราะระบบจะเขียนข้อมูลล่าสุดทับทุกรอบ ถ้าน้ำลดแล้วจุดนี้จะหายไปเอง</div></div>
+      <div class="field" style="margin-bottom:10px;"><div style="padding:9px 10px;background:var(--panel-2);border:1px solid var(--border);border-radius:10px;font-size:12.5px;color:var(--text-dim);">🛰️ จุดนี้ดึงมาจากภาพถ่ายดาวเทียม GISTDA โดยอัตโนมัติ — แก้ไข/ลบด้วยมือไม่ได้ เพราะระบบจะเขียนข้อมูลล่าสุดทับทุกรอบ ถ้าน้ำลดแล้วจุดนี้จะหายไปเอง</div></div>
       <div class="form-grid">
         <div class="field"><label>ชื่อจุด</label><div class="mono" style="padding-top:6px;">${h.label||''}</div></div>
         <div class="field"><label>ตำแหน่ง</label><div class="mono" style="padding-top:6px;">${h.lat.toFixed(4)}, ${h.lng.toFixed(4)}</div></div>
