@@ -3879,6 +3879,13 @@ function hazardSpeech(h, meta, distanceKm){
   const km = distanceKm < 1
     ? Math.round(distanceKm*1000) + ' เมตร'
     : Math.round(distanceKm) + ' กิโลเมตร';
+  /* จุดน้ำท่วม (ทั้งที่คนขับแจ้งเอง และที่ดึงมาอัตโนมัติจาก ThaiWater) ใช้ประโยค
+     เฉพาะของตัวเอง — ประโยคทั่วไปด้านล่างพูดถึง "เคยมีผู้เสียชีวิต/อุบัติเหตุ"
+     ซึ่งไม่ตรงกับสถานการณ์น้ำท่วมเลย */
+  if(h.type==='flood'){
+    const where = h.label ? (' บริเวณ' + h.label) : '';
+    return 'อีก ' + km + ' ข้างหน้ามีสถานการณ์น้ำท่วม' + where + ' โปรดชะลอความเร็วและตรวจสอบเส้นทางก่อนเดินทางต่อ';
+  }
   const what = h.severity >= 4 ? 'จุดอันตรายมาก เคยมีผู้เสียชีวิต'
              : h.severity === 3 ? 'จุดอันตราย เคยมีอุบัติเหตุบ่อยครั้ง'
              : 'จุดที่ต้องระวัง';
@@ -6293,15 +6300,23 @@ function drawFleetMapLeaflet(){
 
   STATE.hazards.forEach(h=>{
     if(!hazardVisible(h)) return;
+    /* น้ำท่วมที่ทำเครื่องหมาย "น้ำลดแล้ว" ไม่ต้องโชว์บนแผนที่สดอีก —
+       ยังอยู่ในตารางจุดเสี่ยง (ประวัติ) แต่ไม่รกแผนที่หลักที่โชว์สถานการณ์ปัจจุบัน */
+    if(h.type==='flood' && h.active===false) return;
     const meta = HAZ_META[h.type];
+    const isAutoFlood = h.type==='flood' && h.source==='thaiwater_auto';
     /* v27 — ใส่รูปที่คนขับถ่ายส่งมา + ชื่อผู้แจ้ง ลงในป๊อปอัปด้วย (เดิมไม่มีทั้งคู่) */
     const hzPhotos = objPhotosWithFallback(h);
     const hzWho = reporterLineText(h);
     const hzPhotoRow = hzPhotos.length
       ? `<div class="pop-row" style="margin-top:6px;"><img src="${hzPhotos[0].thumb||hzPhotos[0].full}" onclick="viewHazardPhoto('${h.id}')" style="width:100%;max-width:190px;border-radius:8px;cursor:pointer;display:block;" alt="รูปจากคนขับ"><span style="font-size:11px;color:var(--text-faint)">กดที่รูปเพื่อดูเต็ม${hzPhotos.length>1?' ('+hzPhotos.length+' รูป)':''}</span></div>`
       : '';
+    const autoBadgeRow = isAutoFlood
+      ? `<div class="pop-row" style="margin-top:6px;color:#3AA0FF;font-size:11px;">🛰️ ข้อมูลอัตโนมัติจากสถานีวัดระดับน้ำ ThaiWater — จะอัปเดต/หายไปเองตามสถานการณ์จริง</div>`
+      : '';
+    const popupHtml = `<div class="pop-title">${meta.icon} ${h.label}</div><div class="pop-row">ความรุนแรง: ${'★'.repeat(h.severity)}${'☆'.repeat(4-h.severity)}</div><div class="pop-row">${h.notes}</div>${hzPhotoRow}${hzWho?`<div class="pop-row" style="color:var(--text-faint)">📷 ${hzWho}</div>`:''}<div class="pop-row" style="margin-top:4px;color:var(--text-faint)">รายงานล่าสุด: ${h.date}</div>${autoBadgeRow}`;
     const hzMarker = L.marker([h.lat,h.lng],{icon:dotIcon(meta.color,20,meta.icon)}).addTo(hazardLayerGroup)
-      .bindPopup(`<div class="pop-title">${meta.icon} ${h.label}</div><div class="pop-row">ความรุนแรง: ${'★'.repeat(h.severity)}${'☆'.repeat(4-h.severity)}</div><div class="pop-row">${h.notes}</div>${hzPhotoRow}${hzWho?`<div class="pop-row" style="color:var(--text-faint)">📷 ${hzWho}</div>`:''}<div class="pop-row" style="margin-top:4px;color:var(--text-faint)">รายงานล่าสุด: ${h.date}</div>`);
+      .bindPopup(popupHtml);
     if(focusList){
       focusBounds.push([h.lat,h.lng]);
       if(hazardFocus.hazardId===h.id) focusMarkerLeaflet = hzMarker;
@@ -6366,15 +6381,20 @@ function drawFleetMapGoogle(){
 
   STATE.hazards.forEach(h=>{
     if(!hazardVisible(h)) return;
+    if(h.type==='flood' && h.active===false) return; // น้ำลดแล้ว — ซ่อนจากแผนที่สด เหมือนฝั่ง Leaflet
     const meta = HAZ_META[h.type];
+    const isAutoFlood = h.type==='flood' && h.source==='thaiwater_auto';
     /* v27 — ป๊อปอัปฝั่ง Google Maps ก็ต้องเห็นรูป + ชื่อผู้แจ้งเหมือนกัน */
     const gPhotos = objPhotosWithFallback(h);
     const gWho = reporterLineText(h);
     const gPhotoRow = gPhotos.length
       ? `<img src="${gPhotos[0].thumb||gPhotos[0].full}" onclick="viewHazardPhoto('${h.id}')" style="width:190px;border-radius:8px;cursor:pointer;display:block;margin:6px 0 2px;" alt="รูปจากคนขับ"><small style="color:#555">กดที่รูปเพื่อดูเต็ม${gPhotos.length>1?' ('+gPhotos.length+' รูป)':''}</small><br>`
       : '';
-    const gh = mk({lat:h.lat,lng:h.lng}, gDotIconUrl(meta.color,24,meta.icon), h.label,
-      `<div style="color:#111"><b>${meta.icon} ${h.label}</b><br>ความรุนแรง ${h.severity}/4<br>${h.notes}<br>${gPhotoRow}${gWho?'<small>📷 '+gWho+'</small><br>':''}<small>รายงานล่าสุด: ${h.date}</small></div>`);
+    const gAutoBadgeRow = isAutoFlood
+      ? '<br><small style="color:#3AA0FF">🛰️ ข้อมูลอัตโนมัติจากสถานีวัดระดับน้ำ ThaiWater</small>'
+      : '';
+    const gPopupHtml = `<div style="color:#111"><b>${meta.icon} ${h.label}</b><br>ความรุนแรง ${h.severity}/4<br>${h.notes}<br>${gPhotoRow}${gWho?'<small>📷 '+gWho+'</small><br>':''}<small>รายงานล่าสุด: ${h.date}</small>${gAutoBadgeRow}</div>`;
+    const gh = mk({lat:h.lat,lng:h.lng}, gDotIconUrl(meta.color,24,meta.icon), h.label, gPopupHtml);
     if(focusList){
       gFocusBounds.extend({lat:h.lat,lng:h.lng}); gFocusCount++;
       gFocusPos = {lat:h.lat,lng:h.lng};
@@ -6621,17 +6641,27 @@ function renderHazardView(){
       const sevBadge2 = h.severity>=4?'crit':h.severity===3?'high':h.severity===2?'mid':'low';
       const hzPhoto = photoBadgeWithFallback(h,'viewHazardPhoto');
       const hzWho = reporterLineText(h);
+      const isAutoFlood = h.type==='flood' && h.source==='thaiwater_auto';
+      const floodStatusBadge = isAutoFlood
+        ? (h.active===false
+            ? ' <span style="font-size:11px;color:#8C9AB5;">(✅ น้ำลดแล้ว)</span>'
+            : ' <span style="font-size:11px;color:#3AA0FF;">(🌊 กำลังท่วม · อัตโนมัติ)</span>')
+        : '';
+      const posCell = `${h.lat.toFixed(3)}, ${h.lng.toFixed(3)}`;
+      const actionsCell = isAutoFlood
+        ? `<span style="font-size:11px;color:var(--text-faint);">🛰️ อัปเดตอัตโนมัติทุกรอบ</span>`
+        : `<button class="btn sm" onclick="event.stopPropagation();openHazardEditModal('${h.id}')">แก้ไข</button> <button class="btn sm danger" onclick="event.stopPropagation();deleteHazard('${h.id}')">ลบ</button>`;
       /* กดที่แถวไหนก็ได้ = เด้งไปหน้าแผนที่แล้วโชว์จุดนั้นจุดเดียว
          ปุ่มแก้ไข/ลบ มี stopPropagation อยู่แล้ว จึงไม่ไปชนกัน */
       return `<tr class="hazard-item-row" style="cursor:pointer;" title="กดเพื่อดูจุดนี้บนแผนที่" onclick="showHazardOnMap('${h.id}')">
-        <td class="strong" style="padding-left:32px;">${meta.icon} ${meta.label}${h.label?' — '+h.label:''} ${hzPhoto}${
+        <td class="strong" style="padding-left:32px;">${meta.icon} ${meta.label}${h.label?' — '+h.label:''}${floodStatusBadge} ${hzPhoto}${
           hzWho ? `<div style="font-size:11px;color:var(--text-faint);font-weight:400;margin-top:2px;">📷 ${hzWho}</div>` : ''
         }</td>
         <td>${routeName}</td>
         <td><span class="badge ${sevBadge2}">${'★'.repeat(h.severity)} ${h.severity}/4</span></td>
-        <td class="mono">${h.lat.toFixed(3)}, ${h.lng.toFixed(3)}</td>
+        <td class="mono">${posCell}</td>
         <td>${h.date}</td>
-        <td style="white-space:nowrap;"><button class="btn sm" onclick="event.stopPropagation();openHazardEditModal('${h.id}')">แก้ไข</button> <button class="btn sm danger" onclick="event.stopPropagation();deleteHazard('${h.id}')">ลบ</button></td>
+        <td style="white-space:nowrap;">${actionsCell}</td>
       </tr>`;
     }).join('');
     return headerRow + itemRows + listMoreRow(pageKey, items.length, shown, 'renderHazardView', 6);
@@ -6653,14 +6683,29 @@ async function deleteHazard(id){
 function openHazardEditModal(id){
   const h = STATE.hazards.find(x=>x.id===id);
   if(!h){ toast('ไม่พบข้อมูลจุดเสี่ยงนี้'); return; }
+  /* จุดน้ำท่วมอัตโนมัติจาก ThaiWater ไม่ให้แก้ไขด้วยมือ — ข้อมูลถูกเขียนทับใหม่
+     ทุกรอบโดยตัวดึงข้อมูลอัตโนมัติอยู่แล้ว การแก้ไขที่นี่จะหายไปในรอบถัดไป
+     จึงโชว์เป็นหน้าต่างข้อมูล (อ่านอย่างเดียว) แทนฟอร์มแก้ไข */
+  if(h.type==='flood' && h.source==='thaiwater_auto'){
+    openModal('จุดน้ำท่วมอัตโนมัติ', `
+      <div class="field" style="margin-bottom:10px;"><div style="padding:9px 10px;background:var(--panel-2);border:1px solid var(--border);border-radius:10px;font-size:12.5px;color:var(--text-dim);">🛰️ จุดนี้ดึงมาจากสถานีวัดระดับน้ำ ThaiWater โดยอัตโนมัติ — แก้ไข/ลบด้วยมือไม่ได้ เพราะระบบจะเขียนข้อมูลล่าสุดทับทุกรอบ ถ้าน้ำลดแล้วจุดนี้จะหายไปเอง</div></div>
+      <div class="form-grid">
+        <div class="field"><label>ชื่อจุด</label><div class="mono" style="padding-top:6px;">${h.label||''}</div></div>
+        <div class="field"><label>ตำแหน่ง</label><div class="mono" style="padding-top:6px;">${h.lat.toFixed(4)}, ${h.lng.toFixed(4)}</div></div>
+      </div>
+      <div class="field" style="margin-top:10px;"><label>รายละเอียด</label><div style="padding-top:6px;">${(h.notes||'').replace(/</g,'&lt;')}</div></div>
+    `, [ {label:'ปิด',cls:'primary',action:closeModal} ]);
+    return;
+  }
   const routeOpts = STATE.routes.map(r=>`<option value="${r.id}" ${r.id===h.routeId?'selected':''}>${r.name}</option>`).join('');
   const typeOpts = Object.entries(HAZ_META).map(([k,v])=>`<option value="${k}" ${k===h.type?'selected':''}>${v.icon} ${v.label}</option>`).join('');
+  const posFields = `<div class="field"><label>ละติจูด</label><input id="fHazEditLat" type="number" step="0.0001" value="${h.lat}"></div>
+      <div class="field"><label>ลองจิจูด</label><input id="fHazEditLng" type="number" step="0.0001" value="${h.lng}"></div>`;
   openModal('แก้ไขจุดเสี่ยง', `
     <div class="form-grid">
       <div class="field"><label>ประเภท</label><select id="fHazEditType">${typeOpts}</select></div>
       <div class="field"><label>เส้นทาง</label><select id="fHazEditRoute">${routeOpts}</select></div>
-      <div class="field"><label>ละติจูด</label><input id="fHazEditLat" type="number" step="0.0001" value="${h.lat}"></div>
-      <div class="field"><label>ลองจิจูด</label><input id="fHazEditLng" type="number" step="0.0001" value="${h.lng}"></div>
+      ${posFields}
       <div class="field"><label>ความรุนแรง (1-4)</label><input id="fHazEditSev" type="number" min="1" max="4" value="${h.severity}"></div>
       <div class="field"><label>ชื่อจุดเสี่ยง</label><input id="fHazEditLabel" value="${(h.label||'').replace(/"/g,'&quot;')}"></div>
     </div>
