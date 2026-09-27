@@ -1258,6 +1258,7 @@ function themeSwatchesHtml(){
         <button class="btn sm" title="จัดกึ่งกลางกองรถ" onclick="recenterFleetMap()">🎯 จัดกึ่งกลาง</button>
         <button class="btn sm" id="btnRoadNet" title="แนวถนนที่กองรถเราใช้ซ้ำ สร้างจากรอยรถจริง" onclick="toggleRoadNetwork()">🛣️ ถนนที่กองเราใช้</button>
         <button class="btn sm" id="btnTrafficFlow" title="ซ้อนทับเส้นทางรถติดปัจจุบันจาก TomTom — กดอีกครั้งเพื่อซ่อน ไม่รีเฟรชอัตโนมัติ" onclick="toggleTrafficFlow()">🚦 จราจรสด</button>
+        <button class="btn sm" id="btnFloodCorridor" title="ทาบเส้นสีทับถนนจริงที่กองเราใช้ ช่วงที่อยู่ใกล้จุดน้ำท่วมอัตโนมัติจาก ThaiWater (รัศมี 3 กม.) — ไม่ใช่การยืนยันว่าถนนช่วงนั้นท่วมแน่นอน" onclick="toggleFloodCorridors()">🌊 น้ำท่วมตามเส้นทาง</button>
       </div>
 
       <div class="map-panel" id="hazardFocusBar" style="display:none;top:62px;left:50%;transform:translateX(-50%);z-index:951;padding:7px 12px;align-items:center;gap:10px;">
@@ -5812,6 +5813,136 @@ let roadNetOn = false;
 let roadNetLoading = false;
 let roadNetDrawnFor = null;    // ตอนนี้เส้นที่วาดไว้เป็นของโหมดแผนที่ไหน
 
+/* ---------- น้ำท่วมตามเส้นทาง (เส้นสีบนถนนจริงที่กองเราใช้ ใกล้จุดน้ำท่วมอัตโนมัติ) ----------
+   ผู้ใช้อยากได้ภาพแบบ "เส้นจราจรสด" (เส้นสีทาบไปตามถนนจริง) แทนที่จะมีแค่หมุด
+   จุดเดียวที่สถานีวัดน้ำ — วิธีทำที่ยังอิงข้อมูลจริง (ไม่ได้เดา) คือเอาแนวถนนจริง
+   ที่กองเราขับผ่านจริง (roadNetData ด้านบน จาก build_routes.py/import_routes.py)
+   มาหาว่าช่วงไหนของถนนอยู่ใกล้จุดน้ำท่วมอัตโนมัติ (รัศมีเดียวกับที่แอปคนขับใช้
+   เตือนเสียง — 3 กม. ใน checkHazardProximity) แล้วทาบเส้นสีน้ำเงินทับเฉพาะช่วงนั้น
+   ไม่ได้อ้างว่า "ถนนช่วงนี้น้ำท่วมแน่นอน" — เป็นแค่ "ถนนช่วงนี้อยู่ใกล้จุดที่มี
+   สถานการณ์น้ำท่วมจริง" ตรงกับสิ่งที่ข้อมูลบอกได้จริงๆ */
+let floodCorridorOn = false;
+let floodCorridorLayer = null;      // ชั้นของ Leaflet
+let gFloodCorridorOverlays = [];    // เส้นของ Google Maps
+let floodCorridorData = null;       // แคชผลลัพธ์ล่าสุดที่คำนวณไว้
+let floodCorridorDrawnFor = null;   // วาดไว้สำหรับแผนที่โหมดไหน
+const FLOOD_CORRIDOR_RADIUS_KM = 3; // รัศมีเดียวกับที่ checkHazardProximity ใช้เตือนเสียงคนขับ
+
+function activeFloodHazards(){
+  return STATE.hazards.filter(h => h.type==='flood' && h.source==='thaiwater_auto' && h.active!==false);
+}
+
+/* เดินไล่ทีละจุดตามแนวถนนจริง (path) หาว่าจุดไหน "ใกล้" จุดน้ำท่วมจุดใดจุดหนึ่ง
+   ในรัศมีที่กำหนด แล้วรวมจุดที่ใกล้ติดกันเป็นช่วงๆ (แทนที่จะทาบทั้งเส้น) —
+   ทับซ้อนกัน 1 จุดระหว่างช่วงกันเส้นขาดตอนดูไม่ต่อเนื่อง */
+function computeFloodCorridors(){
+  const floods = activeFloodHazards();
+  if(!floods.length || !roadNetData || !roadNetData.length) return [];
+  const segments = [];
+  roadNetData.forEach(r=>{
+    let cur = [];
+    let curNearest = null;
+    r.path.forEach((pt,i)=>{
+      let best = null;
+      floods.forEach(f=>{
+        const d = haversineKm(pt, [f.lat, f.lng]);
+        if(d <= FLOOD_CORRIDOR_RADIUS_KM && (!best || d < best.d)) best = {d, f};
+      });
+      if(best){
+        if(!cur.length && i>0) cur.push(r.path[i-1]); // ต่อจากจุดก่อนหน้าให้เส้นไม่ขาด
+        cur.push(pt);
+        if(!curNearest || best.d < curNearest.d) curNearest = best;
+      } else if(cur.length){
+        cur.push(pt); // ปิดท้ายช่วงด้วยจุดถัดไปอีก 1 จุด กันเส้นห้วนๆ
+        if(cur.length>=2) segments.push({path:cur, nearest:curNearest});
+        cur = []; curNearest = null;
+      }
+    });
+    if(cur.length>=2) segments.push({path:cur, nearest:curNearest});
+  });
+  return segments;
+}
+
+function clearFloodCorridors(){
+  if(floodCorridorLayer) floodCorridorLayer.clearLayers();
+  gFloodCorridorOverlays.forEach(o=>o.setMap(null));
+  gFloodCorridorOverlays = [];
+  floodCorridorDrawnFor = null;
+}
+
+function drawFloodCorridors(){
+  clearFloodCorridors();
+  if(!floodCorridorOn) return;
+  (floodCorridorData || []).forEach(seg=>{
+    const label = seg.nearest ? seg.nearest.f.label : 'จุดน้ำท่วม';
+    const distTxt = seg.nearest ? seg.nearest.d.toFixed(1)+' กม.' : '-';
+    const noteTxt = 'ห่างจากสถานี ~'+distTxt+' — ไม่ได้แปลว่าถนนนี้ท่วมแน่นอน เป็นสัญญาณเตือนบริเวณใกล้เคียง';
+    if(mapProvider === 'leaflet'){
+      if(!floodCorridorLayer) return;
+      const popupHtml = `<div class="pop-title">🌊 ถนนช่วงนี้ใกล้จุดน้ำท่วม</div>`
+        + `<div class="pop-row">${label}</div>`
+        + `<div class="pop-row" style="color:var(--text-faint)">${noteTxt}</div>`;
+      L.polyline(seg.path, {
+        color:'#3AA0FF', weight:7, opacity:.85, dashArray:'2,12', lineCap:'round',
+      }).addTo(floodCorridorLayer).bindPopup(popupHtml);
+    } else {
+      if(!gMap || !window.google) return;
+      const gPopupHtml = `<div style="color:#111"><b>🌊 ถนนช่วงนี้ใกล้จุดน้ำท่วม</b><br>${label}<br><small style="color:#555">${noteTxt}</small></div>`;
+      const pl = new google.maps.Polyline({
+        path: seg.path.map(p=>({lat:p[0], lng:p[1]})),
+        strokeColor:'#3AA0FF', strokeWeight:7, strokeOpacity:.85,
+        icons: [{icon:{path:'M 0,-1 0,1', strokeOpacity:1, scale:3}, offset:'0', repeat:'16px'}],
+        map: gMap, clickable:true, zIndex: 60,
+      });
+      const iw = new google.maps.InfoWindow({content:gPopupHtml});
+      pl.addListener('click', e=>{ iw.setPosition(e.latLng); iw.open(gMap); });
+      gFloodCorridorOverlays.push(pl);
+    }
+  });
+  if(mapProvider === 'leaflet' && floodCorridorLayer && map && map.hasLayer(floodCorridorLayer)){
+    floodCorridorLayer.bringToFront();
+  }
+  floodCorridorDrawnFor = mapProvider;
+}
+
+async function toggleFloodCorridors(){
+  const btn = document.getElementById('btnFloodCorridor');
+  if(floodCorridorOn){
+    floodCorridorOn = false;
+    clearFloodCorridors();
+    if(btn){ btn.style.borderColor=''; btn.style.color=''; }
+    return;
+  }
+  if(!activeFloodHazards().length){
+    toast('ตอนนี้ไม่มีจุดน้ำท่วมที่ต้องเตือน (ยังไม่มีสถานีไหนวิกฤต) — ยังไม่ต้องเปิดชั้นนี้');
+    return;
+  }
+  if(btn) btn.textContent = '🌊 กำลังโหลด...';
+  await loadRoadNetwork();
+  if(btn) btn.textContent = '🌊 น้ำท่วมตามเส้นทาง';
+  if(!roadNetData.length){
+    toast('ยังไม่มีแนวถนนในระบบให้จับคู่ — รัน build_routes.py แล้ว import_routes.py ที่เครื่องออฟฟิศก่อน จึงจะทาบเส้นน้ำท่วมบนถนนจริงได้');
+    return;
+  }
+  floodCorridorData = computeFloodCorridors();
+  if(!floodCorridorData.length){
+    toast('มีจุดน้ำท่วมอยู่ แต่ไม่มีถนนที่กองเราใช้ผ่านใกล้ๆ เลย (ในรัศมี '+FLOOD_CORRIDOR_RADIUS_KM+' กม.)');
+    return;
+  }
+  floodCorridorOn = true;
+  if(btn){ btn.style.borderColor='#3AA0FF'; btn.style.color='#3AA0FF'; }
+  if(mapProvider === 'leaflet' && floodCorridorLayer && map && !map.hasLayer(floodCorridorLayer)){
+    floodCorridorLayer.addTo(map);
+  }
+  drawFloodCorridors();
+  const totalKm = floodCorridorData.reduce((s,seg)=>{
+    let km=0; for(let i=1;i<seg.path.length;i++) km += haversineKm(seg.path[i-1], seg.path[i]);
+    return s+km;
+  },0);
+  toast(`พบถนนที่กองเราใช้ ${floodCorridorData.length} ช่วง ใกล้จุดน้ำท่วม รวม ~${totalKm.toFixed(1)} กม.`);
+}
+window.toggleFloodCorridors = toggleFloodCorridors;
+
 async function loadRoadNetwork(){
   if(roadNetData || roadNetLoading) return roadNetData;
   roadNetLoading = true;
@@ -5882,6 +6013,7 @@ function drawRoadNetwork(){
 function redrawMapLayers(){
   if(mapProvider==='leaflet') drawFleetMapLeaflet(); else drawFleetMapGoogle();
   if(roadNetOn && roadNetDrawnFor !== mapProvider) drawRoadNetwork();
+  if(floodCorridorOn && floodCorridorDrawnFor !== mapProvider) drawFloodCorridors();
 }
 
 async function toggleRoadNetwork(){
@@ -5989,6 +6121,8 @@ function initMap(){
   vehicleLayerGroup = L.layerGroup().addTo(map);
   // ชั้นถนนอยู่ใต้ชั้นอื่นทั้งหมด จะได้ไม่บังหมุดรถกับจุดเสี่ยง
   roadNetLayer = L.layerGroup();
+  // ชั้นเส้นน้ำท่วมตามเส้นทาง ตั้งใจให้อยู่เหนือชั้นถนนปกติ แต่ยังใต้หมุดรถ/จุดเสี่ยง
+  floodCorridorLayer = L.layerGroup();
   window.__leafletMap = map;
 }
 
