@@ -1333,9 +1333,10 @@ function themeSwatchesHtml(){
             <option value="3">เฉพาะ 3/4 ขึ้นไป</option>
           </select>
           <button class="btn sm" onclick="hazardCollapseAll()">▸ ยุบทุกกลุ่ม</button>
+          <button class="btn sm danger" id="hazardBulkDeleteBtn" onclick="bulkDeleteSelectedHazards()" disabled>🗑️ ลบที่เลือก (0)</button>
         </div>
         <table>
-          <thead><tr><th>ประเภท</th><th>เส้นทาง</th><th>ความรุนแรง</th><th>ตำแหน่ง</th><th>รายงานล่าสุด</th><th></th></tr></thead>
+          <thead><tr><th style="width:30px;"><input type="checkbox" id="hazardSelectAllCb" onchange="toggleSelectAllHazards(this.checked)" title="เลือกทั้งหมด (เฉพาะรายการที่ตรงกับตัวกรอง/คำค้นตอนนี้)"></th><th>ประเภท</th><th>เส้นทาง</th><th>ความรุนแรง</th><th>ตำแหน่ง</th><th>รายงานล่าสุด</th><th></th></tr></thead>
           <tbody id="hazardTable"></tbody>
         </table>
       </div>
@@ -5130,6 +5131,12 @@ async function seedIfEmpty(){
 /* ---------- Global state ---------- */
 let STATE = {routes:[],pois:[],hazards:[],vehicles:[],maintenance:[],settings:null,users:[],reports:[],trips:[],alertLogs:[],fleetGroups:[],liveRisk:{},pointRules:[],pointEvents:[]};
 let hazardGroupExpanded = {};
+/* ติ๊กเลือกหลายจุดพร้อมกันในหน้า Route Hazard เพื่อลบทีเดียว — เก็บ id ที่ติ๊กไว้
+   ตรงนี้ (ไม่ผูกกับกลุ่ม/การกรอง) ส่วน hazardLastPool คือรายการหลังกรองล่าสุดที่
+   renderHazardView() คำนวณไว้ ให้ฟังก์ชันเลือกทั้งหมด/เลือกทั้งกลุ่มหยิบไปใช้ได้เลย
+   โดยไม่ต้องคำนวณตัวกรองซ้ำ */
+let selectedHazardIds = new Set();
+let hazardLastPool = [];
 /* ---------- Points / rewards system ----------
    Three built-in rules (auto:true) are awarded automatically by the driver
    app itself: one point-event per day the driver is actually online with a
@@ -6717,13 +6724,31 @@ function renderHazardView(){
   document.getElementById('hazardCount').textContent =
     (hq||hsev) ? `(พบ ${pool.length} จาก ${STATE.hazards.length} รายการ)` : `(${STATE.hazards.length} รายการ)`;
 
+  /* เก็บรายการหลังกรองล่าสุดไว้ให้ปุ่ม "เลือกทั้งหมด" / เลือกทั้งกลุ่ม หยิบไปใช้ต่อ
+     โดยไม่ต้องคำนวณตัวกรองซ้ำ — และเอา id ที่เคยติ๊กไว้แต่จุดนั้นถูกลบไปแล้วจาก
+     ที่อื่น (เช่นลบทั้งเส้นทางไปแล้ว) ออกจากรายการเลือก กันค้างเป็นตัวเลขผีบนปุ่ม
+     "ลบที่เลือก" */
+  hazardLastPool = pool;
+  const liveIds = new Set(STATE.hazards.map(h=>h.id));
+  selectedHazardIds.forEach(id=>{ if(!liveIds.has(id)) selectedHazardIds.delete(id); });
+  const eligiblePool = pool.filter(h=>!(h.type==='flood' && h.source==='gistda_auto'));
+  const bulkBtn = document.getElementById('hazardBulkDeleteBtn');
+  if(bulkBtn){ bulkBtn.textContent = `🗑️ ลบที่เลือก (${selectedHazardIds.size})`; bulkBtn.disabled = selectedHazardIds.size===0; }
+  const selAllCb = document.getElementById('hazardSelectAllCb');
+  if(selAllCb){
+    const allSel = eligiblePool.length>0 && eligiblePool.every(h=>selectedHazardIds.has(h.id));
+    const anySel = eligiblePool.some(h=>selectedHazardIds.has(h.id));
+    selAllCb.checked = allSel;
+    selAllCb.indeterminate = !allSel && anySel;
+  }
+
   const groups = {};
   pool.forEach(h=>{
     const key = h.routeId || '__none__';
     (groups[key] = groups[key] || []).push(h);
   });
   if(!pool.length){
-    tbody.innerHTML = '<tr><td colspan="6"><div class="empty">ไม่พบจุดเสี่ยงที่ตรงกับเงื่อนไข</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty">ไม่พบจุดเสี่ยงที่ตรงกับเงื่อนไข</div></td></tr>';
     return;
   }
   const groupKeys = Object.keys(groups).sort((a,b)=>groups[b].length-groups[a].length);
@@ -6735,10 +6760,16 @@ function renderHazardView(){
     const maxSev = Math.max(...items.map(h=>h.severity));
     const sevBadge = maxSev>=4?'crit':maxSev===3?'high':maxSev===2?'mid':'low';
     const expanded = !!hazardGroupExpanded[key];
+    const groupEligible = items.filter(h=>!(h.type==='flood' && h.source==='gistda_auto'));
+    const groupAllSel = groupEligible.length>0 && groupEligible.every(h=>selectedHazardIds.has(h.id));
+    const groupCb = groupEligible.length
+      ? `<input type="checkbox" onclick="event.stopPropagation()" onchange="toggleSelectHazardGroup('${key}', this.checked)" ${groupAllSel?'checked':''} title="เลือกทั้งกลุ่มนี้ (${groupEligible.length} จุด)">`
+      : `<input type="checkbox" disabled title="กลุ่มนี้ไม่มีจุดที่ลบเองได้ (เป็นจุดน้ำท่วมอัตโนมัติจาก GISTDA ทั้งหมด)">`;
     const headerRow = `<tr class="hazard-group-row" onclick="toggleHazardGroup('${key}')" style="cursor:pointer;background:var(--panel-2);">
-      <td colspan="6">
+      <td colspan="7">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
           <div style="display:flex;align-items:center;gap:9px;">
+            ${groupCb}
             <span style="display:inline-block;width:14px;color:var(--text-faint);">${expanded?'▾':'▸'}</span>
             <strong>🛣️ ${routeName}</strong>
             <span style="color:var(--text-faint);font-size:12px;">${items.length} จุด</span>
@@ -6775,8 +6806,12 @@ function renderHazardView(){
       const rowAttrs = isAutoFlood
         ? `title="ดูภาพรวมได้ที่ปุ่ม 🌊 น้ำท่วมตามเส้นทาง บนแผนที่ (ไม่มีหมุดจุดเดี่ยวให้กดดูแล้ว)"`
         : `style="cursor:pointer;" title="กดเพื่อดูจุดนี้บนแผนที่" onclick="showHazardOnMap('${h.id}')"`;
+      const rowCb = isAutoFlood
+        ? `<input type="checkbox" disabled title="จุดน้ำท่วมอัตโนมัติ ลบเองไม่ได้">`
+        : `<input type="checkbox" onclick="event.stopPropagation()" onchange="toggleSelectHazard('${h.id}', this.checked)" ${selectedHazardIds.has(h.id)?'checked':''}>`;
       return `<tr class="hazard-item-row" ${rowAttrs}>
-        <td class="strong" style="padding-left:32px;">${meta.icon} ${meta.label}${h.label?' — '+h.label:''}${floodStatusBadge} ${hzPhoto}${
+        <td onclick="event.stopPropagation()">${rowCb}</td>
+        <td class="strong" style="padding-left:14px;">${meta.icon} ${meta.label}${h.label?' — '+h.label:''}${floodStatusBadge} ${hzPhoto}${
           hzWho ? `<div style="font-size:11px;color:var(--text-faint);font-weight:400;margin-top:2px;">📷 ${hzWho}</div>` : ''
         }</td>
         <td>${routeName}</td>
@@ -6786,7 +6821,7 @@ function renderHazardView(){
         <td style="white-space:nowrap;">${actionsCell}</td>
       </tr>`;
     }).join('');
-    return headerRow + itemRows + listMoreRow(pageKey, items.length, shown, 'renderHazardView', 6);
+    return headerRow + itemRows + listMoreRow(pageKey, items.length, shown, 'renderHazardView', 7);
   }).join('');
 }
 /* ยุบทุกกลุ่มในหน้า Hazard ทีเดียว — ใช้ตอนกางไว้หลายกลุ่มจนหาไม่เจอ */
@@ -6798,8 +6833,40 @@ function toggleHazardGroup(key){
   hazardGroupExpanded[key] = !hazardGroupExpanded[key];
   renderHazardView();
 }
+/* ---------- ติ๊กเลือกหลายจุด แล้วลบทีเดียว (Route Hazard) ----------
+   จุดน้ำท่วมอัตโนมัติจาก GISTDA (source==='gistda_auto') ไม่ให้ติ๊กเลือก/ลบเอง
+   ได้ ตรงตามที่ปุ่ม "แก้ไข/ลบ" ต่อแถวก็ปิดไว้อยู่แล้ว (ข้อมูลจะถูกเขียนทับ
+   อัตโนมัติทุกรอบ ลบเองไปก็กลับมาใหม่) */
+function toggleSelectHazard(id, checked){
+  if(checked) selectedHazardIds.add(id); else selectedHazardIds.delete(id);
+  renderHazardView();
+}
+function toggleSelectHazardGroup(key, checked){
+  hazardLastPool.filter(h=>(h.routeId||'__none__')===key).forEach(h=>{
+    if(h.type==='flood' && h.source==='gistda_auto') return;
+    if(checked) selectedHazardIds.add(h.id); else selectedHazardIds.delete(h.id);
+  });
+  renderHazardView();
+}
+function toggleSelectAllHazards(checked){
+  hazardLastPool.forEach(h=>{
+    if(h.type==='flood' && h.source==='gistda_auto') return;
+    if(checked) selectedHazardIds.add(h.id); else selectedHazardIds.delete(h.id);
+  });
+  renderHazardView();
+}
+async function bulkDeleteSelectedHazards(){
+  if(!selectedHazardIds.size) return;
+  const n = selectedHazardIds.size;
+  if(!confirm(`ยืนยันลบจุดเสี่ยงที่เลือกไว้ทั้งหมด ${n} รายการใช่หรือไม่? (ลบแล้วกู้คืนไม่ได้)`)) return;
+  for(const id of selectedHazardIds){ await idbDel('hazards', id); }
+  STATE.hazards = STATE.hazards.filter(h=>!selectedHazardIds.has(h.id));
+  selectedHazardIds.clear();
+  renderHazardView(); renderAllDependants(); toast(`ลบจุดเสี่ยงที่เลือกแล้ว ${n} รายการ`);
+}
 async function deleteHazard(id){
   await idbDel('hazards',id); STATE.hazards = STATE.hazards.filter(h=>h.id!==id);
+  selectedHazardIds.delete(id);
   renderHazardView(); renderAllDependants(); toast('ลบจุดเสี่ยงแล้ว');
 }
 function openHazardEditModal(id){
@@ -10535,11 +10602,22 @@ async function refreshRouteRoadPath(id){
 }
 async function deleteRoute(id){
   if(STATE.routes.length<=1){ toast('ต้องมีอย่างน้อย 1 เส้นทางในระบบ'); return; }
+  /* เดิมลบแค่ตัวเส้นทาง แต่จุดเสี่ยง (hazards) ที่ผูกกับ routeId นี้ไว้ยังอยู่
+     ในฐานข้อมูลกลางเหมือนเดิม — พอ STATE.routes.find(r=>r.id===h.routeId) หา
+     เส้นทางไม่เจอแล้ว มันเลยไปกองรวมกันเป็น "ไม่ระบุเส้นทาง" ในหน้า Route
+     Hazard แทนที่จะหายไปด้วย ทำให้ดูเหมือน "ลบแล้วไม่ลบ" ทั้งที่จริงๆ ลบเส้น
+     ทางสำเร็จ แค่จุดเสี่ยงของมันไม่ได้ถูกลบตาม — แก้โดยลบจุดเสี่ยงที่ผูกกับ
+     เส้นทางนี้ไปพร้อมกันเลย (ไม่แตะจุดน้ำท่วมอัตโนมัติจาก GISTDA เพราะจุดพวก
+     นั้น routeId ว่างเปล่าอยู่แล้ว ไม่มีทางตรงกับเส้นทางที่ลบ) */
+  const orphanHazards = STATE.hazards.filter(h=>h.routeId===id);
+  for(const h of orphanHazards){ await idbDel('hazards', h.id); selectedHazardIds.delete(h.id); }
+  if(orphanHazards.length) STATE.hazards = STATE.hazards.filter(h=>h.routeId!==id);
   await idbDel('routes',id); STATE.routes = STATE.routes.filter(r=>r.id!==id);
   populateRouteSelects();
   document.getElementById('restRouteSelect').value = STATE.routes[0].id;
   document.getElementById('riskRouteSelect').value = STATE.routes[0].id;
-  renderAllDependants(); toast('ลบเส้นทางแล้ว');
+  renderAllDependants();
+  toast(orphanHazards.length ? `ลบเส้นทางแล้ว (พร้อมจุดเสี่ยง ${orphanHazards.length} จุดที่ผูกกับเส้นทางนี้)` : 'ลบเส้นทางแล้ว');
 }
 
 /* ---------- แก้ไขเส้นทางที่มีอยู่แล้ว (แทรก/ลบ/สลับลำดับจังหวัดระหว่างทาง) ----------
