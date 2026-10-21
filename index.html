@@ -237,12 +237,31 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);overflo
 #driverApp .leaflet-layer.dark-tiles, #adminApp #mapLeaflet{position:relative;z-index:1;}
 #driverApp .leaflet-control-attribution, #adminApp .leaflet-control-attribution{background:rgba(10,15,28,.55) !important;color:var(--text-faint) !important;font-size:9px !important;padding:1px 5px !important;}
 #driverApp .leaflet-control-attribution a{color:var(--text-dim) !important;}
+/* ฟิลเตอร์ทำให้แผนที่ OSM เป็นโทนมืด (ใช้กับชั้น tile เท่านั้น หมุด/เส้นทางไม่โดน) */
+.leaflet-layer.osm-dark{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.92) saturate(.75);}
+/* แผนที่ตัวอย่างเส้นทางก่อนเริ่มเดินทาง */
+#driverApp #tripRoutePreviewMap{height:230px;border-radius:12px;overflow:hidden;position:relative;z-index:1;margin-top:6px;border:1px solid var(--border-soft);}
+#driverApp .route-time-tip{background:#141F35;color:#fff;border:1px solid rgba(255,255,255,.25);font-size:11px;font-weight:700;padding:1px 6px;box-shadow:none;}
+#driverApp .route-time-tip.sel{background:var(--accent);color:#06222a;border-color:var(--accent);}
+#driverApp .route-time-tip:before{display:none;}
+/* popup ของจุดพัก/จุดเสี่ยงบนแผนที่ระหว่างเดินทาง */
+#driverApp .tp-title{font-weight:700;font-size:14px;line-height:1.3;margin-bottom:2px;}
+#driverApp .tp-sub{font-size:12px;color:var(--text-dim);line-height:1.4;}
+#driverApp .tp-dist{margin-top:5px;font-size:13px;font-weight:700;color:var(--accent);}
 #driverApp .dest-suggest{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--panel);border:1px solid var(--border-soft);border-radius:10px;overflow:hidden;z-index:20;max-height:220px;overflow-y:auto;display:none;}
 #driverApp .dest-suggest.show{display:block;}
 #driverApp .dest-suggest-item{padding:10px 12px;font-size:12.5px;color:var(--text-dim);border-bottom:1px solid var(--border-soft);cursor:pointer;}
 #driverApp .dest-suggest-item:last-child{border:none;}
 #driverApp .dest-suggest-item:hover, #driverApp .dest-suggest-item.hl{background:rgba(var(--accent-rgb),.08);color:var(--text);}
 #driverApp .dest-suggest-loading{padding:10px 12px;font-size:12px;color:var(--text-faint);}
+/* การ์ดตัวเลือกเส้นทาง (คล้าย Google Maps ตอนเลือกปลายทาง) — ให้คนขับเลือกเอง
+   ก่อนเริ่มเดินทางจริง แทนที่จะคำนวณมาเส้นเดียวแล้วขับเลยเหมือนเดิม */
+#driverApp .trip-route-options{margin-top:6px;display:flex;flex-direction:column;gap:8px;}
+#driverApp .route-opt-card{padding:10px 12px;border-radius:12px;border:1.5px solid var(--border-soft);background:var(--panel);cursor:pointer;}
+#driverApp .route-opt-card.sel{border-color:var(--accent);background:rgba(var(--accent-rgb),.10);}
+#driverApp .route-opt-top{display:flex;align-items:center;gap:8px;font-size:14px;}
+#driverApp .route-opt-sub{font-size:12px;color:var(--text-faint);margin-top:2px;}
+#driverApp .route-badge{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:20px;background:rgba(46,196,142,.15);color:#2EC48E;}
 #driverApp .trip-topbar{
   position:absolute;top:0;left:0;right:0;padding:calc(var(--safe-top) + 10px) 16px 10px;
   display:flex;align-items:center;justify-content:space-between;z-index:20;
@@ -1858,6 +1877,44 @@ function themeSwatchesHtml(){
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* แผนที่พื้นหลังกลาง (ใช้ทั้งหน้าแอดมิน แผนที่คนขับ และแผนที่ตัวอย่างเส้นทาง)
+
+   เดิมใช้ CARTO dark_all ซึ่งตอนนี้บังคับต้องมี API key — ถ้าไม่มีคีย์จะส่งภาพที่มี
+   ลายน้ำ "API KEY REQUIRED" มาแทนภาพแผนที่ (ไม่ error จึงสลับแหล่งอัตโนมัติไม่ได้)
+   เลยเลิกใช้ แล้วใช้แหล่งที่ไม่ต้องมีคีย์แทน:
+     1) OpenStreetMap มาตรฐาน + ฟิลเตอร์ CSS กลับสีให้เป็นโทนมืด (class osm-dark)
+     2) ถ้า tile ชุดแรกโหลดไม่ได้เลย (ถูกบล็อก/ล่ม) สลับเป็น Esri Dark Gray อัตโนมัติ
+     3) ถ้ายังไม่ได้อีก สลับเป็น Esri Street (ใช้ฟิลเตอร์มืดเช่นกัน)  */
+window.rfsmBaseTileLayer = function(){
+  const SOURCES = [
+    {url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png', dark:true, maxNative:19,
+     attr:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'},
+    {url:'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', dark:false, maxNative:16,
+     attr:'Tiles &copy; Esri'},
+    {url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', dark:true, maxNative:19,
+     attr:'Tiles &copy; Esri'}
+  ];
+  let idx = 0, ok = 0, err = 0;
+  const layer = L.tileLayer(SOURCES[0].url, {
+    maxZoom:20, maxNativeZoom:SOURCES[0].maxNative, className:'dark-tiles osm-dark', attribution:SOURCES[0].attr
+  });
+  layer.on('tileload', ()=>{ ok++; });
+  layer.on('tileerror', ()=>{
+    err++;
+    if(ok === 0 && err >= 4 && idx < SOURCES.length-1){
+      idx++; ok = 0; err = 0;
+      const src = SOURCES[idx];
+      layer.options.maxNativeZoom = src.maxNative;
+      layer.options.attribution = src.attr;
+      const c = layer.getContainer && layer.getContainer();
+      if(c) c.classList.toggle('osm-dark', !!src.dark);
+      layer.setUrl(src.url);
+    }
+  });
+  return layer;
+};
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ================= UNIFIED GPS BRIDGE =================
@@ -3308,11 +3365,15 @@ function openSheet(html){
   document.getElementById('sheetBody').innerHTML = '<div class="sheet-topbar"><button type="button" class="sheet-back" onclick="closeSheet()">← ปิด</button><div class="sheet-handle"></div><span style="width:52px"></span></div>'+html;
   document.getElementById('sheetRoot').classList.add('show');
 }
-function closeSheet(){ document.getElementById('sheetRoot').classList.remove('show'); }
+function closeSheet(){ document.getElementById('sheetRoot').classList.remove('show'); destroyTripPreviewMap(); }
 document.getElementById('sheetRoot').addEventListener('click',e=>{ if(e.target.id==='sheetRoot') closeSheet(); });
 
 /* ---------- Start trip: GPS start + searched destination ---------- */
 let startTripPos = null, startTripDest = null; // dest = {label, lat, lng} | null
+/* ตัวเลือกเส้นทาง (เหมือน Google Maps ตอนเลือกปลายทาง) — คำนวณไว้ล่วงหน้าทันที
+   ที่เลือกปลายทางเสร็จ เรียงจากเร็วที่สุดไปช้าที่สุดเสมอ (ตัวแรก = เร็วที่สุด =
+   ตัวที่ติ๊กไว้ให้อัตโนมัติ) คนขับแตะเลือกเส้นอื่นได้ก่อนกด "เริ่มเดินทาง" จริง */
+let startTripRouteOptions = [], startTripSelectedRouteIdx = 0;
 let gPlacesLoading = null, gAutocomplete = null;
 
 function loadGooglePlaces(apiKey){
@@ -3344,8 +3405,11 @@ function openStartTripSheet(){
       <input id="tripDestInput" type="text" autocomplete="off" placeholder="ค้นหาปลายทาง เช่น ชื่อสถานที่ / ที่อยู่">
       <div id="tripDestSuggest" class="dest-suggest"></div>
     </div>
-    <button class="cta" id="btnConfirmStartTrip" onclick="confirmStartTrip()" disabled>🚀 เริ่มเดินทาง</button>
+    <div id="tripRoutePreviewWrap" style="display:none;"><div id="tripRoutePreviewMap"></div></div>
+    <div id="tripRouteOptions" class="trip-route-options"></div>
+    <button class="cta" id="btnConfirmStartTrip" onclick="confirmStartTrip()" disabled style="margin-top:14px;">🚀 เริ่มเดินทาง</button>
   `);
+  startTripRouteOptions = []; startTripSelectedRouteIdx = 0;
   locateStartTripPos();
   setupDestAutocomplete();
 }
@@ -3423,10 +3487,17 @@ function setupFreeDestSearch(input, suggestBox){
     startTripDest = {label: it.display_name.split(',').slice(0,2).join(','), lat:+it.lat, lng:+it.lon};
     input.value = startTripDest.label;
     hide(); refreshConfirmStartBtn();
+    fetchAndRenderRouteOptions();
   }
   input.addEventListener('input', ()=>{
     const q = input.value.trim();
     startTripDest = null; refreshConfirmStartBtn();
+    // พิมพ์ใหม่ = ปลายทางเดิมใช้ไม่ได้แล้ว เคลียร์ตัวเลือกเส้นทางเก่าทิ้งไปด้วย
+    // กันคนขับกดเริ่มเดินทางด้วยเส้นทางที่คำนวณไว้ให้ปลายทางอื่น
+    startTripRouteOptions = []; startTripSelectedRouteIdx = 0;
+    const optBox = document.getElementById('tripRouteOptions');
+    if(optBox) optBox.innerHTML = '';
+    renderTripRoutePreview();
     clearTimeout(nominatimDebounce);
     if(q.length<3){ hide(); return; }
     renderItems('<div class="dest-suggest-loading">🔎 กำลังค้นหา...</div>');
@@ -3459,7 +3530,7 @@ async function setupDestAutocomplete(){
      picking a destination never silently fails to Google Places issues
      (invalid key, wrong domain/referrer restriction, Places API not enabled, etc).
      A configured Google Maps API key is still used separately for turn-by-turn
-     road routing in fetchRoadRoute() below — it just no longer gates whether
+     road routing in fetchRoadRoutesMulti() below — it just no longer gates whether
      the destination search box works at all. */
   setupFreeDestSearch(input, suggestBox);
 }
@@ -3467,77 +3538,193 @@ async function setupDestAutocomplete(){
 function refreshConfirmStartBtn(){
   const btn = document.getElementById('btnConfirmStartTrip');
   if(!btn) return;
-  btn.disabled = !(startTripPos && startTripDest && startTripDest.label);
+  btn.disabled = !(startTripPos && startTripDest && startTripDest.label && startTripRouteOptions.length);
 }
 
-/* Fetch a real driving route (road-following polyline + distance/duration).
-   Uses Google Directions when a valid API key is configured; otherwise falls back
-   to OSRM's free public routing demo (no key required — fine for light/internal use,
-   not guaranteed uptime for production traffic).
-   Returns null if no route could be found at all — callers fall back to a straight line. */
-async function fetchRoadRouteOSRM(startPos, destPos){
+/* ---------- ตัวเลือกเส้นทาง (คล้าย Google Maps ตอนเลือกปลายทาง) ----------
+   เดิมคำนวณเส้นทางมาเส้นเดียวแล้วเริ่มขับทันที คนขับหลายคนแจ้งว่าอยากได้ตัว
+   เลือกเหมือน Google Maps (2-3 เส้น เทียบเวลา/ระยะทางกันได้ก่อนเลือก) จึงแยก
+   ขั้นตอน "หาเส้นทาง" ออกจาก "เริ่มเดินทาง": พอเลือกปลายทางเสร็จ ระบบดึงมา
+   หลายเส้นก่อน โชว์ให้เลือก ค่อยกด "เริ่มเดินทาง" ทีหลัง
+
+   ไม่ใช้ TomTom ในฟีเจอร์นี้ตามที่ตกลงไว้ (TomTom สงวนไว้ใช้เฉพาะเรื่องจราจร/
+   จุดเสี่ยงเท่านั้น) — ใช้ Google Directions ก่อน (มี provideRouteAlternatives
+   ในตัว และบอกชื่อถนนที่ผ่านมาด้วย) ถ้าไม่มีคีย์ตั้งไว้หรือคำขอไม่สำเร็จ ค่อย
+   fallback ไป OSRM ฟรี (ก็ขอเส้นทางเลือกได้เหมือนกันแต่ไม่มีชื่อถนน) ถ้าหาไม่
+   เจอเลยจริงๆ (เน็ตหลุด/บริการล่ม) ให้เส้นตรงมาเส้นเดียวแทน กันปุ่มเริ่มเดินทาง
+   ใช้งานไม่ได้เลย เรียงผลลัพธ์จากเร็วที่สุดไปช้าที่สุดเสมอ (ตัวแรก = เร็วสุด) */
+async function fetchRoadRoutesGoogle(startPos, destPos, maxRoutes){
+  const key = STATE.settings && STATE.settings.gmapApiKey;
+  if(!key) return null;
   try{
-    const url = `https://router.project-osrm.org/route/v1/driving/${startPos[1]},${startPos[0]};${destPos[1]},${destPos[0]}?overview=full&geometries=geojson`;
+    await loadGooglePlaces(key);
+    if(!(window.google && window.google.maps && google.maps.DirectionsService)) return null;
+    const directionsService = new google.maps.DirectionsService();
+    const result = await new Promise((resolve,reject)=>{
+      directionsService.route({
+        origin: {lat:startPos[0], lng:startPos[1]},
+        destination: {lat:destPos[0], lng:destPos[1]},
+        travelMode: google.maps.TravelMode.DRIVING,
+        provideRouteAlternatives: true,
+      }, (res, status)=>{
+        if(status==='OK' && res.routes && res.routes.length) resolve(res); else reject(new Error(status));
+      });
+    });
+    return result.routes.slice(0, maxRoutes).map(route=>{
+      const leg = route.legs[0];
+      return {
+        path: route.overview_path.map(p=>[p.lat(), p.lng()]),
+        distanceKm: leg && leg.distance ? Math.round(leg.distance.value/1000) : null,
+        durationHr: leg && leg.duration ? Math.round((leg.duration.value/3600)*10)/10 : null,
+        via: route.summary || null,
+      };
+    });
+  }catch(err){ return null; }
+}
+async function fetchRoadRoutesOSRM(startPos, destPos, maxRoutes){
+  try{
+    const url = `https://router.project-osrm.org/route/v1/driving/${startPos[1]},${startPos[0]};${destPos[1]},${destPos[0]}?overview=full&geometries=geojson&alternatives=true`;
     const res = await fetch(url);
     if(!res.ok) return null;
     const data = await res.json();
-    if(data.code!=='Ok' || !data.routes || !data.routes[0]) return null;
-    const route = data.routes[0];
-    const path = route.geometry.coordinates.map(([lng,lat])=>[lat,lng]);
-    return {
-      path,
+    if(data.code!=='Ok' || !data.routes || !data.routes.length) return null;
+    return data.routes.slice(0, maxRoutes).map(route=>({
+      path: route.geometry.coordinates.map(([lng,lat])=>[lat,lng]),
       distanceKm: Math.round(route.distance/1000),
       durationHr: Math.round((route.duration/3600)*10)/10,
-    };
+      via: null,
+    }));
   }catch(e){ return null; }
 }
-async function fetchRoadRoute(startPos, destPos){
-  const key = STATE.settings && STATE.settings.gmapApiKey;
-  if(key){
-    try{
-      await loadGooglePlaces(key);
-      if(window.google && window.google.maps && google.maps.DirectionsService){
-        const directionsService = new google.maps.DirectionsService();
-        const result = await new Promise((resolve,reject)=>{
-          directionsService.route({
-            origin: {lat:startPos[0], lng:startPos[1]},
-            destination: {lat:destPos[0], lng:destPos[1]},
-            travelMode: google.maps.TravelMode.DRIVING,
-          }, (res, status)=>{
-            if(status==='OK' && res.routes && res.routes[0]) resolve(res); else reject(new Error(status));
-          });
-        });
-        const route = result.routes[0];
-        const leg = route.legs[0];
-        const path = route.overview_path.map(p=>[p.lat(), p.lng()]);
-        return {
-          path,
-          distanceKm: leg && leg.distance ? Math.round(leg.distance.value/1000) : null,
-          durationHr: leg && leg.duration ? Math.round((leg.duration.value/3600)*10)/10 : null,
-        };
-      }
-    }catch(err){ /* fall through to OSRM below */ }
+async function fetchRoadRoutesMulti(startPos, destPos, maxRoutes){
+  maxRoutes = maxRoutes || 3;
+  let routes = await fetchRoadRoutesGoogle(startPos, destPos, maxRoutes);
+  if(!routes || !routes.length) routes = await fetchRoadRoutesOSRM(startPos, destPos, maxRoutes);
+  if(!routes || !routes.length){
+    const straightKm = haversineKm(startPos, destPos);
+    routes = [{
+      path: [startPos, destPos],
+      distanceKm: Math.round(straightKm),
+      durationHr: Math.round((straightKm/60)*10)/10,
+      via: null, straight: true,
+    }];
   }
-  return await fetchRoadRouteOSRM(startPos, destPos);
+  routes.sort((a,b)=> (a.durationHr==null?1e9:a.durationHr) - (b.durationHr==null?1e9:b.durationHr));
+  return routes.slice(0, maxRoutes);
+}
+async function fetchAndRenderRouteOptions(){
+  const box = document.getElementById('tripRouteOptions');
+  if(!startTripPos || !startTripDest || !box) return;
+  box.innerHTML = `<div class="dest-suggest-loading">🔎 กำลังหาเส้นทาง...</div>`;
+  const destPos = [startTripDest.lat, startTripDest.lng];
+  const myPos = startTripPos, myDest = startTripDest; // กันกรณีคนขับพิมพ์ปลายทางใหม่ระหว่างรอ
+  const routes = await fetchRoadRoutesMulti(myPos, destPos, 3);
+  if(startTripDest !== myDest) return; // ปลายทางเปลี่ยนไปแล้วระหว่างรอ ผลนี้ใช้ไม่ได้แล้ว ทิ้งไปเงียบๆ
+  startTripRouteOptions = routes;
+  startTripSelectedRouteIdx = 0; // เรียงเร็วสุดไว้ตัวแรกแล้ว = ติ๊กให้อัตโนมัติ
+  renderRouteOptions();
+  refreshConfirmStartBtn();
+}
+function renderRouteOptions(){
+  const box = document.getElementById('tripRouteOptions');
+  if(!box) return;
+  if(!startTripRouteOptions.length){ box.innerHTML = ''; renderTripRoutePreview(); return; }
+  box.innerHTML = startTripRouteOptions.map((r,i)=>{
+    const hrs = Math.floor(r.durationHr||0), mins = Math.round(((r.durationHr||0)-hrs)*60);
+    const timeTxt = hrs>0 ? `${hrs} ชม. ${mins} นาที` : `${mins} นาที`;
+    const sub = [r.distanceKm!=null ? r.distanceKm+' กม.' : null, r.via ? 'ผ่าน '+r.via : null, r.straight ? '(หาเส้นทางถนนไม่สำเร็จ ใช้ระยะทางเส้นตรงประมาณ)' : null]
+      .filter(Boolean).join(' · ');
+    return `<div class="route-opt-card ${i===startTripSelectedRouteIdx?'sel':''}" onclick="selectRouteOption(${i})">
+      <div class="route-opt-top"><b>🕐 ${timeTxt}</b>${i===0 ? '<span class="route-badge">เร็วที่สุด</span>' : ''}</div>
+      <div class="route-opt-sub">${sub}</div>
+    </div>`;
+  }).join('');
+  renderTripRoutePreview();
+}
+function selectRouteOption(i){
+  startTripSelectedRouteIdx = i;
+  renderRouteOptions();
+}
+
+/* ---------- แผนที่ตัวอย่างเส้นทาง (แสดงทุกเส้นที่เลือกได้ ก่อนกดเริ่มเดินทาง) ----------
+   เส้นที่เลือกอยู่ = สีหลัก หนา / เส้นอื่น = สีเทา กดที่เส้นหรือป้ายเวลาเพื่อเลือกเส้นนั้นได้ */
+let tripPreviewMap = null, tripPreviewLayer = null, tripPreviewKey = '';
+function destroyTripPreviewMap(){
+  if(tripPreviewMap){ try{ tripPreviewMap.remove(); }catch(e){} }
+  tripPreviewMap = null; tripPreviewLayer = null; tripPreviewKey = '';
+}
+function fmtDurationTh(durationHr){
+  const hrs = Math.floor(durationHr||0), mins = Math.round(((durationHr||0)-hrs)*60);
+  return hrs>0 ? `${hrs} ชม. ${mins} นาที` : `${mins} นาที`;
+}
+function renderTripRoutePreview(){
+  const wrap = document.getElementById('tripRoutePreviewWrap');
+  const el = document.getElementById('tripRoutePreviewMap');
+  if(!wrap || !el){ destroyTripPreviewMap(); return; }
+  if(!startTripRouteOptions.length || !startTripPos || !startTripDest){
+    wrap.style.display = 'none'; destroyTripPreviewMap(); return;
+  }
+  wrap.style.display = 'block';
+  // openSheet() สร้าง DOM ใหม่ทุกครั้ง — ถ้า container เปลี่ยน ต้องสร้างแผนที่ใหม่
+  if(tripPreviewMap && tripPreviewMap.getContainer() !== el) destroyTripPreviewMap();
+  if(!tripPreviewMap){
+    tripPreviewMap = L.map(el,{zoomControl:false,attributionControl:false});
+    window.rfsmBaseTileLayer().addTo(tripPreviewMap);
+    tripPreviewLayer = L.layerGroup().addTo(tripPreviewMap);
+    tripPreviewMap.setView(startTripPos, 8);
+  }
+  const key = startTripRouteOptions.map(r=>r.path.length+':'+r.durationHr).join('|');
+  tripPreviewLayer.clearLayers();
+  const accent = cssVar('--accent','#22D3C7');
+  const order = startTripRouteOptions.map((r,i)=>i).filter(i=>i!==startTripSelectedRouteIdx).concat([startTripSelectedRouteIdx]);
+  const all = [];
+  order.forEach(i=>{
+    const r = startTripRouteOptions[i];
+    if(!r.path || r.path.length<2) return;
+    const sel = i===startTripSelectedRouteIdx;
+    const line = L.polyline(r.path,{
+      color: sel ? accent : '#8D9BB8', weight: sel ? 6 : 5, opacity: sel ? .95 : .8,
+      dashArray: r.straight ? '6,8' : null
+    }).addTo(tripPreviewLayer);
+    line.on('click', ()=>selectRouteOption(i));
+    all.push(...r.path);
+    // ป้ายเวลาบนเส้น (กระจายตำแหน่งไม่ให้ซ้อนกัน)
+    const at = r.path[Math.min(r.path.length-1, Math.floor(r.path.length*(0.35+0.15*i)))];
+    const tip = L.tooltip({permanent:true,direction:'top',className:'route-time-tip'+(sel?' sel':''),interactive:true})
+      .setLatLng(at).setContent('🕐 '+fmtDurationTh(r.durationHr)).addTo(tripPreviewLayer);
+    if(tip.getElement) { const te = tip.getElement(); if(te) te.addEventListener('click', ()=>selectRouteOption(i)); }
+  });
+  L.marker(startTripPos,{icon:dotIcon('#34D399',18,'A')}).addTo(tripPreviewLayer);
+  L.marker([startTripDest.lat,startTripDest.lng],{icon:dotIcon('#F0475A',18,'B')}).addTo(tripPreviewLayer);
+  all.push(startTripPos, [startTripDest.lat,startTripDest.lng]);
+  const refit = key !== tripPreviewKey;
+  tripPreviewKey = key;
+  setTimeout(()=>{
+    if(!tripPreviewMap) return;
+    tripPreviewMap.invalidateSize();
+    if(refit) tripPreviewMap.fitBounds(L.latLngBounds(all),{padding:[28,28]});
+  }, 60);
+  // sheet เลื่อนขึ้นมาพร้อม animation — คำนวณขนาดซ้ำอีกรอบหลังเลื่อนเสร็จ
+  setTimeout(()=>{ if(tripPreviewMap){ tripPreviewMap.invalidateSize(); if(refit) tripPreviewMap.fitBounds(L.latLngBounds(all),{padding:[28,28]}); } }, 450);
 }
 
 async function confirmStartTrip(){
   if(!startTripPos){ toast('ยังไม่ได้ตำแหน่ง GPS เริ่มต้น'); return; }
   if(!startTripDest || !startTripDest.label){ toast('กรุณาระบุปลายทาง'); return; }
+  if(!startTripRouteOptions.length){ toast('กำลังหาเส้นทาง กรุณารอสักครู่'); return; }
   const btn = document.getElementById('btnConfirmStartTrip');
-  if(btn){ btn.disabled=true; btn.textContent='⏳ กำลังคำนวณเส้นทาง...'; }
+  if(btn){ btn.disabled=true; btn.textContent='⏳ กำลังเริ่มเดินทาง...'; }
   const pos = startTripPos, dest = startTripDest;
-  toast('กำลังคำนวณเส้นทางถนนจริง...');
-  await startFreeTrip(pos, dest);
+  const chosen = startTripRouteOptions[startTripSelectedRouteIdx] || startTripRouteOptions[0];
+  await startFreeTrip(pos, dest, chosen);
   closeSheet();
 }
 
 /* ---------- Trip lifecycle ---------- */
 let tripMap, tripLayer;
-async function startFreeTrip(startPos, dest){
+async function startFreeTrip(startPos, dest, chosenRoute){
   const destPos = (dest.lat!=null && dest.lng!=null) ? [dest.lat, dest.lng] : null;
-  let roadRoute = null;
-  if(destPos) roadRoute = await fetchRoadRoute(startPos, destPos);
+  const roadRoute = (chosenRoute && chosenRoute.path) ? chosenRoute : null;
   const straightKm = destPos ? haversineKm(startPos, destPos) : null;
   const distanceKm = roadRoute ? roadRoute.distanceKm : (straightKm!=null ? Math.round(straightKm) : null);
   const avgTimeHr = roadRoute ? roadRoute.durationHr : (distanceKm!=null ? Math.round((distanceKm/60)*10)/10 : null);
@@ -3565,7 +3752,7 @@ async function startFreeTrip(startPos, dest){
   toggleDrivePanel(true);
   loadMyDriving(false).then(renderDriveScore);
   tripTimerInterval = setInterval(tripTick,1000);
-  toast(roadRoute ? ('เริ่มเดินทาง ('+distanceKm+' กม. ตามถนนจริง) ไปยัง: '+dest.label) : ('เริ่มเดินทางไปยัง: '+dest.label));
+  toast(roadRoute && !roadRoute.straight ? ('เริ่มเดินทาง ('+distanceKm+' กม. ตามถนนจริง) ไปยัง: '+dest.label) : ('เริ่มเดินทางไปยัง: '+dest.label));
   vibrate([80]);
   const veh0 = STATE.vehicles.find(v=>v.id===session.vehicleId);
   /* ตัดระบบสัญญาณมือถือ: ไม่ตั้ง lat/lng จากมือถืออีกแล้ว ตำแหน่งมาจากกล่อง GPS
@@ -4208,10 +4395,7 @@ function updateTripStats(pos){
 function initTripMap(route){
   if(tripMap){ tripMap.remove(); tripMap=null; }
   tripMap = L.map('tripMap',{zoomControl:false,attributionControl:true}).setView(route.waypoints[0],route.waypoints.length>1?7:12);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
-    maxZoom:20, className:'dark-tiles', subdomains:'abcd',
-    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-  }).addTo(tripMap);
+  window.rfsmBaseTileLayer().addTo(tripMap);
   tripLayer = L.layerGroup().addTo(tripMap);
   tripMap.on('dragstart', ()=>{ followMyPosition = false; });
   let bounds;
@@ -4229,14 +4413,46 @@ function initTripMap(route){
     L.marker(route.waypoints[0],{icon:dotIcon('#34D399',18,'A')}).addTo(tripLayer).bindPopup('จุดเริ่มต้น');
     bounds = null;
   }
-  const nearHazards = [...STATE.hazards].map(h=>({h,d:haversineKm(route.waypoints[0],[h.lat,h.lng])})).sort((a,b)=>a.d-b.d).slice(0,15);
-  nearHazards.forEach(({h})=>{
-    const meta = HAZ_META[h.type];
-    L.circleMarker([h.lat,h.lng],{radius:7,color:'#F0475A',fillColor:'#F0475A',fillOpacity:.8}).addTo(tripLayer).bindPopup(meta.icon+' '+meta.label);
+  /* จุดเสี่ยง/จุดพักที่แสดงบนแผนที่ = จุดที่อยู่ "ริมเส้นทาง" (ห่างจากเส้นไม่เกิน TRIP_MAP_CORRIDOR_KM)
+     ไม่ใช่แค่ 15 จุดใกล้ต้นทาง — ไม่งั้นพอขับไปไกลแล้วแผนที่จะไม่มีจุดอะไรเหลือ
+     แตะที่จุดแล้วขึ้นชื่อ + ระยะห่างจากตำแหน่งปัจจุบัน (คำนวณตอนเปิด popup ให้ตรงตำแหน่งล่าสุดเสมอ) */
+  const TRIP_MAP_CORRIDOR_KM = 6, TRIP_MAP_MAX_EACH = 80;
+  const linePts = (route.roadPath && route.roadPath.length>1) ? route.roadPath : route.waypoints;
+  const step = Math.max(1, Math.floor(linePts.length/400));   // ลดจุดเส้นทางตอนเช็คระยะ ให้เบาเครื่อง
+  const sampled = linePts.filter((_,i)=>i%step===0 || i===linePts.length-1);
+  const distToRoute = (lat,lng)=>{ let m=Infinity; const q=[lat,lng]; for(const pt of sampled){ const d=haversineKm(q,pt); if(d<m) m=d; } return m; };
+  // กรองคร่าวๆ ด้วยกรอบสี่เหลี่ยมรอบเส้นทางก่อน (เร็ว) ค่อยวัดระยะจริงเฉพาะที่เหลือ
+  const padDeg = TRIP_MAP_CORRIDOR_KM/111 + 0.02;
+  const bLat0 = Math.min(...sampled.map(q=>q[0]))-padDeg, bLat1 = Math.max(...sampled.map(q=>q[0]))+padDeg;
+  const bLng0 = Math.min(...sampled.map(q=>q[1]))-padDeg, bLng1 = Math.max(...sampled.map(q=>q[1]))+padDeg;
+  const pick = (arr)=>{
+    arr = arr.filter(x=>x && x.lat!=null && x.lng!=null && x.active!==false);
+    const inBox = arr.filter(x=>x.lat>=bLat0 && x.lat<=bLat1 && x.lng>=bLng0 && x.lng<=bLng1);
+    const withD = (inBox.length?inBox:arr).map(x=>({x, d:distToRoute(x.lat,x.lng)}));
+    let inCorr = withD.filter(o=>o.d<=TRIP_MAP_CORRIDOR_KM).sort((a,b)=>a.d-b.d).slice(0,TRIP_MAP_MAX_EACH);
+    if(!inCorr.length) inCorr = withD.sort((a,b)=>a.d-b.d).slice(0,15);
+    return inCorr.map(o=>o.x);
+  };
+  const meNow = ()=> (activeTrip && activeTrip.curPos) ? activeTrip.curPos : route.waypoints[0];
+  const fmtKm = (km)=> km<1 ? (Math.round(km*1000/10)*10)+' ม.' : (km<10 ? km.toFixed(1) : Math.round(km))+' กม.';
+  const esc = (t)=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const popupFor = (icon, title, sub, lat, lng)=> ()=>{
+    const d = haversineKm(meNow(),[lat,lng]);
+    return `<div class="tp-title">${icon} ${esc(title)}</div>${sub?`<div class="tp-sub">${sub}</div>`:''}<div class="tp-dist">📏 ห่างจากคุณ ${fmtKm(d)}</div>`;
+  };
+  // ขอบวงใหญ่โปร่งใสเพิ่มพื้นที่แตะบนมือถือ (จุดเล็กแตะยาก)
+  const dotOpts = (color,r)=>({radius:r,color:color,weight:14,opacity:.22,fillColor:color,fillOpacity:.95,bubblingMouseEvents:false});
+  pick(STATE.hazards).forEach(h=>{
+    const meta = HAZ_META[h.type] || {icon:'⚠️',label:h.type};
+    const sub = esc(meta.label) + (h.severity?(' · ความรุนแรง '+h.severity+'/4'):'') + (h.notes?('<br>'+esc(h.notes)):'');
+    L.circleMarker([h.lat,h.lng],dotOpts('#F0475A',6)).addTo(tripLayer)
+      .bindPopup(popupFor(meta.icon, h.label||meta.label, sub, h.lat, h.lng), {maxWidth:240});
   });
-  const nearPois = [...STATE.pois].map(p=>({p,d:haversineKm(route.waypoints[0],[p.lat,p.lng])})).sort((a,b)=>a.d-b.d).slice(0,15);
-  nearPois.forEach(({p})=>{
-    L.circleMarker([p.lat,p.lng],{radius:6,color:cssVar('--accent','#22D3C7'),fillColor:cssVar('--accent','#22D3C7'),fillOpacity:.8}).addTo(tripLayer).bindPopup(POI_META[p.type].icon+' '+p.name);
+  pick(STATE.pois).forEach(p=>{
+    const meta = POI_META[p.type] || {icon:'📍',label:'จุดพัก'};
+    const sub = esc(meta.label) + (p.notes?('<br>'+esc(p.notes)):'');
+    L.circleMarker([p.lat,p.lng],dotOpts(cssVar('--accent','#22D3C7'),6)).addTo(tripLayer)
+      .bindPopup(popupFor(meta.icon, p.name||meta.label, sub, p.lat, p.lng), {maxWidth:240});
   });
   if(bounds) tripMap.fitBounds(bounds,{padding:[30,30]});
 }
@@ -4749,7 +4965,7 @@ window.__bootDriver = boot;
    same reason as the admin IIFE below: inline onclick can't see this closure's locals. */
 Object.assign(window, {
   showScreen, // เดิมไม่ได้เปิดไว้ onclick="showScreen(...)" (ปุ่มย้อนกลับ, การ์ดคะแนนการขับ) เลยกดไม่ติด
-  doLogin, doLogout, openStartTripSheet, confirmStartTrip, locateStartTripPos, minimizeTrip, resumeTrip, endTrip,
+  doLogin, doLogout, openStartTripSheet, confirmStartTrip, locateStartTripPos, selectRouteOption, minimizeTrip, resumeTrip, endTrip,
   cancelTripFromHome, toggleRest, triggerSOS, recenterTrip, openReportSheet, submitReport, logSOS, saveDriverPrefs,
   openReportChooser, openRestReportSheet, submitRestReport, toggleRestOtherLabel, handleReportPhoto, clearReportPhoto,
   toggleHelperMode, closeSheet, testAlertSound, openTripRiskDetail,
@@ -6100,10 +6316,7 @@ let leafletFleetFitted = false, googleFleetFitted = false;
 function initMap(){
   map = L.map('mapLeaflet',{zoomControl:false,attributionControl:true}).setView([15.5,100.6],6.4);
   L.control.zoom({position:'bottomleft'}).addTo(map);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
-    maxZoom:20, className:'dark-tiles', subdomains:'abcd',
-    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-  }).addTo(map);
+  window.rfsmBaseTileLayer().addTo(map);
   routeLayer = L.layerGroup().addTo(map);
   hazardLayerGroup = L.layerGroup().addTo(map);
   poiLayerGroup = L.layerGroup().addTo(map);
@@ -8168,10 +8381,7 @@ function initRestMiniMapLeaflet(){
   if(!el) return Promise.resolve();
   el.innerHTML = '';
   restMiniMapLeaflet = L.map(el, {zoomControl:true, attributionControl:true}).setView([15.5,100.6], 6);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
-    maxZoom:20, className:'dark-tiles', subdomains:'abcd',
-    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-  }).addTo(restMiniMapLeaflet);
+  window.rfsmBaseTileLayer().addTo(restMiniMapLeaflet);
   restMiniMapLeafletLayer = L.layerGroup().addTo(restMiniMapLeaflet);
   return Promise.resolve();
 }
