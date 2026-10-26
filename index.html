@@ -7353,6 +7353,7 @@ function setReportHistRange(kind){
 }
 function reportStatusBadge(r){
   const st = r.status || 'pending';
+  if(st==='approved' && r.mergedIntoPoiId) return '<span class="badge" style="background:rgba(58,160,255,.15);color:#3AA0FF;">➕ เพิ่มรูปเข้าจุดเดิม</span>';
   if(st==='approved') return '<span class="badge" style="background:rgba(52,211,153,.15);color:#34D399;">✅ อนุมัติแล้ว</span>';
   if(st==='dismissed') return '<span class="badge" style="background:rgba(140,154,181,.18);color:#8C9AB5;">🗑️ ไม่อนุมัติ</span>';
   return '<span class="badge" style="background:rgba(240,71,90,.15);color:#F0475A;">⏳ รอตรวจสอบ</span>';
@@ -7476,8 +7477,50 @@ function reporterLineText(obj){
    ให้ย้อนไปดึงจากรายงานต้นทางแทน */
 function objPhotosWithFallback(obj){
   const own = reportPhotos(obj);
-  if(own.length) return own;
-  return reportPhotos(sourceReportOf(obj));
+  const base = own.length ? own : reportPhotos(sourceReportOf(obj));
+  /* จุดพักที่มีรถคันอื่นมาแจ้งซ้ำแล้วแอดมินเลือก "เพิ่มรูปเข้าจุดเดิม" —
+     ต่อรูปของคันหลังท้ายรูปเดิม พร้อมป้ายทะเบียน/วัน/เวลา (อ่านจากรายงานของคันนั้น ไม่ได้เขียนอะไรลงจุดพัก) */
+  if(obj && String(obj.id||'').indexOf('poi_')===0){
+    const extra = poiSightingPhotos(obj);
+    if(extra.length){
+      const src = sourceReportOf(obj);
+      const plate0 = obj.plate || (src && reportPlateOf(src)) || '';
+      const ts0 = obj.reportedAt || obj.stopTs || (src && src.ts) || 0;
+      const cap0 = '📌 จุดที่บันทึกไว้เดิม'+(plate0?' · 🚛 '+plateHtml(plate0):'')+(ts0?' · 🕒 '+fmtThaiDT(ts0):'');
+      return base.map(ph=>Object.assign({}, ph, {cap: ph.cap || cap0})).concat(extra);
+    }
+  }
+  return base;
+}
+/* ---------- จุดพักซ้ำ: รวมรูปของรถคันใหม่เข้าจุดเดิม ----------
+   รายงานของคันใหม่ยังเก็บรูปไว้ในที่เดิม (ประวัติรายงานคนขับ) แค่ติดธง mergedIntoPoiId
+   ชี้ไปที่จุดพักเดิม — จุดพักเดิมไม่ถูกแก้/ลบ และไม่มีการเขียนจุดพักซ้ำไปหามือถือคนขับ */
+const POI_DUP_RADIUS_M = 150;
+function plateHtml(t){ return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtThaiDT(ts){ return new Date(ts).toLocaleString('th-TH',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+function reportPlateOf(r){
+  if(!r) return '';
+  const v = (STATE.vehicles||[]).find(x=>x.id===r.vehicleId);
+  return (v && v.plate) || r.plate || '';
+}
+function poiNearList(lat,lng,radiusM){
+  return (STATE.pois||[])
+    .filter(p=>typeof p.lat==='number' && typeof p.lng==='number')
+    .map(p=>({p, m:Math.round(haversineKm([lat,lng],[p.lat,p.lng])*1000)}))
+    .filter(x=>x.m<=radiusM).sort((a,b)=>a.m-b.m);
+}
+function poiSightings(poiId){
+  return (STATE.reports||[]).filter(r=>r.mergedIntoPoiId===poiId).sort((a,b)=>(a.ts||0)-(b.ts||0));
+}
+function poiSightingPhotos(poi){
+  const out = [];
+  poiSightings(poi.id).forEach(r=>{
+    const plate = reportPlateOf(r);
+    const cap = '🆕 รถที่แจ้งซ้ำ'+(plate?' · 🚛 '+plateHtml(plate):'')+(r.ts?' · 🕒 '+fmtThaiDT(r.ts):'')
+      + (r.notes ? '<br><span style="color:var(--text-faint);">'+plateHtml(r.notes)+'</span>' : '');
+    reportPhotos(r).forEach(ph=>out.push(Object.assign({}, ph, {cap})));
+  });
+  return out;
 }
 /* ป้ายรูปเล็กที่ย้อนไปหารูปจากรายงานต้นทางให้ด้วย */
 function photoBadgeWithFallback(obj, viewFn){
@@ -7496,7 +7539,8 @@ function galleryBodyHtml(){
   const thumbs = galleryPhotos.length>1 ? `<div class="gallery-thumbrow">${
     galleryPhotos.map((ph,i)=>`<img src="${ph.thumb||ph.full}" class="gallery-thumb${i===galleryIdx?' active':''}" onclick="galleryGoto(${i})" alt="รูปที่ ${i+1}">`).join('')
   }</div><div style="text-align:center;font-size:11.5px;color:var(--text-faint);margin-top:5px;">รูปที่ ${galleryIdx+1} / ${galleryPhotos.length}</div>` : '';
-  return `<img src="${p.full}" style="width:100%;border-radius:12px;display:block;" alt="รูปที่ ${galleryIdx+1}">${thumbs}`;
+  const cap = p.cap ? `<div style="margin-top:8px;font-size:13px;color:var(--text-dim);line-height:1.5;">${p.cap}</div>` : '';
+  return `<img src="${p.full}" style="width:100%;border-radius:12px;display:block;" alt="รูปที่ ${galleryIdx+1}">${cap}${thumbs}`;
 }
 function galleryGoto(i){
   galleryIdx = Math.max(0, Math.min(galleryPhotos.length-1, i));
@@ -7578,6 +7622,11 @@ function promoteReportToHazard(id){
     }}
   ]);
 }
+function promoteDupChanged(){
+  const pick = document.querySelector('input[name="fPromoteDupPick"]:checked');
+  const b = document.getElementById('modalBtn1');
+  if(b) b.textContent = (pick && pick.value) ? 'เพิ่มรูปเข้าจุดเดิม' : 'ยืนยันเพิ่มจุดพัก';
+}
 function promoteReportToPoi(id){
   const r = STATE.reports.find(x=>x.id===id);
   if(!r){ toast('ไม่พบรายงาน'); return; }
@@ -7590,8 +7639,30 @@ function promoteReportToPoi(id){
     <div style="margin-bottom:10px;padding:10px 12px;border-radius:10px;background:rgba(251,146,60,.1);border:1px solid rgba(251,146,60,.3);font-size:12.5px;color:#F5C08A;">
       ⚠️ ${r.posSource==='default' ? 'ตอนส่งรายงานนี้ยังไม่พบสัญญาณจากกล่อง GPS เลย พิกัดด้านล่างเป็น <b>ค่าสำรอง ไม่ใช่ตำแหน่งจริงของรถ</b>' : 'ตอนส่งรายงานนี้กล่อง GPS ไม่ได้ตอบสด ใช้ตำแหน่งล่าสุดระหว่างทริปแทน อาจคลาดเคลื่อนจากจุดจริงเล็กน้อย'} — กรุณาตรวจสอบ/แก้ไขละติจูด-ลองจิจูดก่อนกดยืนยัน
     </div>` : '';
+  /* v36 — เตือนจุดซ้ำ: มีจุดพักที่บันทึกไว้แล้วอยู่ใกล้พิกัดนี้ → ให้เลือกเพิ่มรูปของรถคันนี้เข้าจุดเดิมได้ */
+  const dupList = poiNearList(r.lat, r.lng, POI_DUP_RADIUS_M).slice(0,3);
+  const dupHtml = dupList.length ? `
+    <div id="fPromoteDup" style="margin-bottom:12px;padding:10px 12px;border-radius:10px;background:rgba(245,194,107,.10);border:1px solid rgba(245,194,107,.40);font-size:12.5px;line-height:1.6;">
+      <div style="color:#F5C26B;font-weight:600;">⚠️ มีจุดที่บันทึกไว้แล้วอยู่ใกล้ตรงนี้ (ภายใน ${POI_DUP_RADIUS_M} ม.)</div>
+      ${dupList.map((x,i)=>{
+        const pm = poiDisplayMeta(x.p), org = sourceReportOf(x.p);
+        const plate0 = x.p.plate || (org && reportPlateOf(org)) || '';
+        const ts0 = x.p.reportedAt || x.p.stopTs || (org && org.ts) || 0;
+        const n = poiSightings(x.p.id).length;
+        return `<label style="display:block;margin-top:6px;cursor:pointer;">
+          <input type="radio" name="fPromoteDupPick" value="${x.p.id}" ${i===0?'checked':''} onchange="promoteDupChanged()">
+          ${pm.icon} <b>${plateHtml(x.p.name)}</b> · ห่าง ${x.m} ม.
+          <span style="color:var(--text-faint);">${plate0?' · บันทึกโดย 🚛 '+plateHtml(plate0):''}${ts0?' · '+fmtThaiDT(ts0):''}${n?' · มีรถแจ้งซ้ำแล้ว '+n+' คัน':''}</span>
+        </label>`;
+      }).join('')}
+      <label style="display:block;margin-top:6px;cursor:pointer;">
+        <input type="radio" name="fPromoteDupPick" value="" onchange="promoteDupChanged()"> ไม่ใช่จุดเดียวกัน — สร้างเป็นจุดใหม่
+      </label>
+      <div style="margin-top:6px;color:var(--text-faint);">ถ้าเลือกจุดเดิม ระบบจะเพิ่มรูปของรถคันนี้ (ทะเบียน วันที่ เวลา) เข้าไปในจุดนั้น โดย<b>ไม่แก้และไม่ลบ</b>ข้อมูลเดิมของจุด</div>
+    </div>` : '';
   openModal('ยืนยันเพิ่มเป็นจุดพัก/สิ่งอำนวยความสะดวก — '+meta.label, `
     ${posWarning}
+    ${dupHtml}
     <div class="form-grid">
       <div class="field"><label>ประเภท</label><select id="fPromotePoiType">${Object.entries(POI_META).map(([k,v])=>`<option value="${k}" ${k===defaultType?'selected':''}>${v.icon} ${v.label}</option>`).join('')}</select></div>
       <div class="field"><label>เส้นทาง</label><select id="fPromotePoiRoute">${routeOpts}</select></div>
@@ -7602,7 +7673,19 @@ function promoteReportToPoi(id){
     <div class="field" style="margin-top:10px;"><label>รายละเอียด</label><textarea id="fPromotePoiNote" rows="2">${(r.notes||'').replace(/</g,'&lt;')}</textarea></div>
   `, [
     {label:'ยกเลิก',cls:'',action:closeModal},
-    {label:'ยืนยันเพิ่มจุดพัก',cls:'primary',action: async ()=>{
+    {label: dupList.length ? 'เพิ่มรูปเข้าจุดเดิม' : 'ยืนยันเพิ่มจุดพัก',cls:'primary',action: async ()=>{
+      /* เลือกรวมเข้าจุดเดิม: ไม่สร้างจุดพักใหม่ ไม่แตะจุดเดิม — แค่ติดธงที่รายงานนี้ */
+      const pick = document.querySelector('input[name="fPromoteDupPick"]:checked');
+      if(pick && pick.value){
+        const target = STATE.pois.find(x=>x.id===pick.value);
+        if(!target){ toast('ไม่พบจุดเดิม ลองใหม่อีกครั้ง'); return; }
+        r.status = 'approved'; r.resolvedAt = Date.now(); r.resolvedAs = 'poi-merge'; r.mergedIntoPoiId = target.id;
+        await idbPut('driverReports', r);
+        closeModal(); renderAllDependants();
+        const pl = reportPlateOf(r);
+        toast('เพิ่มรูป'+(pl?'ของ '+pl+' ':'')+'เข้าจุด "'+target.name+'" แล้ว');
+        return;
+      }
       const p = {
         id: uid('poi'), type:document.getElementById('fPromotePoiType').value,
         routeId:document.getElementById('fPromotePoiRoute').value,
@@ -11686,7 +11769,7 @@ Object.assign(window, {
   toggleStopDetect, fillPoiProvinces, mergeDuplicateStopEvents,
   renderStopEventQueue, openStopEventMap, approveStopAsPoi, markStopAskDriver,
   markStopNoStop, dismissStopEvent, deleteStopEvent, saveStopSettings,
-  promoteReportToHazard, dismissDriverReport, promoteReportToPoi, viewReportPhoto, viewPoiPhoto, viewHazardPhoto,
+  promoteReportToHazard, dismissDriverReport, promoteReportToPoi, promoteDupChanged, viewReportPhoto, viewPoiPhoto, viewHazardPhoto,
   toggleMapFilter, focusVehicleOnMap, renderGpsVehList,
   triggerHazardImport, handleHazardImportFile, exportHazardsExcel, toggleHazardGroup,
   toggleSelectHazard, toggleSelectHazardGroup, toggleSelectAllHazards, bulkDeleteSelectedHazards,
