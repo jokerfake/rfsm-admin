@@ -1228,6 +1228,10 @@ function themeSwatchesHtml(){
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
       <span class="tip">ประวัติการแจ้งเตือน</span>
     </button>
+    <button class="rail-btn" data-view="nearstoreview">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v11h16V9"/><path d="M9 20v-6h6v6"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/></svg>
+      <span class="tip">ใกล้ถึงร้าน</span>
+    </button>
     <button class="rail-btn" data-view="restview">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 8v8M9 12h4a2 2 0 0 0 0-4H9"/></svg>
       <span class="tip">วางแผนพักรถ</span>
@@ -1560,6 +1564,59 @@ function themeSwatchesHtml(){
           <thead><tr><th>เวลา</th><th>ทะเบียนรถ</th><th>คนขับ</th><th>จุดเสี่ยงที่ผ่าน</th><th>ระดับความรุนแรง</th><th>เส้นทาง</th><th>ระยะที่แจ้งเตือน</th></tr></thead>
           <tbody id="alertLogTable"></tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- 4c. NEAR-STORE VIEW (v35) -->
+    <div class="view scroll" id="nearstoreview">
+      <div class="section-hd">
+        <div><h2>🏪 รถใกล้ถึงร้าน</h2><p>เฝ้าดูรถที่กำลังวิ่งเข้าหาจุดขึ้น/ลงสินค้า 📦 แจ้งเตือนเมื่อใกล้ถึง/ถึงแล้ว พร้อมเวลาโดยประมาณและประวัติ</p></div>
+      </div>
+      <div class="grid-3" id="nsKpis" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin-bottom:14px;"></div>
+      <div class="card">
+        <h3>การแจ้งเตือน / ตั้งค่า</h3>
+        <div id="nsSettings"></div>
+        <p style="font-size:11.5px;color:var(--text-faint);margin:10px 0 0;">ระบบตรวจทุกครั้งที่ได้ตำแหน่งรถรอบใหม่ (~30 วินาที) และทำงานเฉพาะตอนเปิดหน้าแอดมินไว้ · เวลาที่แสดงเป็นค่าประมาณจากความเร็วล่าสุด ไม่ใช่เวลาจากแผนที่นำทาง</p>
+      </div>
+      <div class="card">
+        <h3>ตั้งค่ารายร้าน <small>รัศมีเตือน · เวลาเปิด-ปิด</small></h3>
+        <div id="nsStoreSettingsBox"></div>
+      </div>
+      <div class="card">
+        <h3>รถที่กำลังเข้าใกล้ / อยู่ที่ร้านตอนนี้</h3>
+        <div id="nsLiveBox"></div>
+      </div>
+      <div class="card">
+        <h3>สรุปรายวันต่อร้าน</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+          <button class="btn sm" onclick="nsDayShift(-1)">◀</button>
+          <input type="date" id="nsDayPick" onchange="nsRenderDaily()" style="background:var(--panel-2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:10px;font-size:13px;">
+          <button class="btn sm" onclick="nsDayShift(1)">▶</button>
+          <button class="btn sm" onclick="document.getElementById('nsDayPick').value='';nsRenderDaily()">วันนี้</button>
+          <button class="btn sm primary" onclick="nsCopyDaily()">คัดลอกสรุป (วางใน LINE)</button>
+          <button class="btn sm" onclick="nsExportDailyCsv()">ส่งออก CSV</button>
+        </div>
+        <div id="nsDailyBox"></div>
+      </div>
+      <div class="card">
+        <h3>ประวัติรถถึงร้าน <small id="nsHistCount"></small></h3>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+          <input type="text" class="gps-veh-search" id="nsSearch" placeholder="ค้นหาทะเบียน / คนขับ / ร้าน..." oninput="nsRenderHistory()" style="max-width:260px;">
+          <select id="nsStoreSel" onchange="nsRenderHistory()" style="background:var(--panel-2);border:1px solid var(--border);color:var(--text);padding:9px 10px;border-radius:10px;font-size:13px;"><option value="">ทุกร้าน</option></select>
+          <select id="nsRange" onchange="nsRenderHistory()" style="background:var(--panel-2);border:1px solid var(--border);color:var(--text);padding:9px 10px;border-radius:10px;font-size:13px;">
+            <option value="today">วันนี้</option><option value="7d">7 วัน</option><option value="30d">30 วัน</option><option value="all">ทั้งหมด</option>
+          </select>
+          <button class="btn sm" onclick="loadNearStoreVisits()">รีเฟรช</button>
+          <button class="btn sm" onclick="nsExportCsv()">ส่งออก CSV</button>
+        </div>
+        <table>
+          <thead><tr><th>สถานะ</th><th>ทะเบียนรถ</th><th>คนขับ</th><th>ร้าน</th><th>เริ่มเข้าใกล้</th><th>ถึงร้าน</th><th>ออกจากร้าน</th><th>อยู่นาน</th></tr></thead>
+          <tbody id="nsHistTable"></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h3>สรุปรายร้าน (ตามช่วงที่เลือก)</h3>
+        <table><thead><tr><th>ร้าน</th><th>จำนวนครั้งที่ถึง</th><th>อยู่เฉลี่ย</th></tr></thead><tbody id="nsSummary"></tbody></table>
       </div>
     </div>
 
@@ -5715,6 +5772,8 @@ function redrawLiveViews(){
   /* ตรวจจับจุดจอดผิดปกติทุกครั้งที่ได้ข้อมูลสดรอบใหม่ (ทุก ~30 วิ)
      วางไว้นอก try ของการวาดหน้าจอ เพราะการเฝ้าดูต้องทำงานแม้อยู่หน้าอื่น */
   try{ stopDetectTick(); }catch(e){ console.warn('ตรวจจับจุดจอดล้มเหลว:', e); }
+  /* v35 — เฝ้ารถใกล้ถึงร้าน (ฝั่งแอดมินล้วน อ่านอย่างเดียวจาก POI) */
+  try{ nsTick(); const nv = document.getElementById('nearstoreview'); if(nv && nv.classList.contains('active')) nsRender(); }catch(e){ console.warn('ตรวจรถใกล้ถึงร้านล้มเหลว:', e); }
   try{
     const hv = document.getElementById('hazardview');
     if(hv && hv.classList.contains('active')) renderStopEventQueue();
@@ -6003,6 +6062,7 @@ document.querySelectorAll('.rail-btn[data-view]').forEach(btn=>{
        ไม่ต้องรอรอบถัดไป ไม่งั้นคะแนน/ชื่อถนนจะว่างอยู่ถึง 30 วินาที */
     if(LIVE_MODE_RANK[liveColumnMode()] > LIVE_MODE_RANK[liveColMode]) pollGpsBox(true);
     if(btn.dataset.view==='alertsview') renderAlertLogsView();
+    if(btn.dataset.view==='nearstoreview') openNearStoreView();
     if(btn.dataset.view==='pointsview') renderPointsView();
     if(btn.dataset.view==='speedview') openSpeedView();
     if(btn.dataset.view==='mapview'){
@@ -9309,6 +9369,645 @@ function renderStopSettings(){
   set('setStopSameSpotM', cfg.sameSpotM);
   set('setStopMergeGapMin', cfg.mergeGapMin);
 }
+/* =====================================================================
+   v35 — หน้า "ใกล้ถึงร้าน" (รถกำลังเข้าใกล้จุดขึ้น/ลงสินค้า 📦)
+   ทำงานฝั่งแอดมินล้วนๆ:
+   - ร้าน = POI ที่ติดธง loadPoint (และไม่ใช่ noStop) — อ่านอย่างเดียว ไม่เขียนกลับ POI
+   - ประวัติเก็บใน fleet_sync store='storeVisits' (เหมือน stopEvents) ไม่ผ่าน IndexedDB
+     และไม่อยู่ในรายชื่อ store ที่แอปมือถือดึง → แอป Android ไม่รู้จัก ไม่กระทบ
+   - ค่าตั้ง (รัศมี/เสียง/แจ้งเตือน) เก็บใน localStorage ของเบราว์เซอร์แอดมิน ไม่เขียน
+     STATE.settings เพราะ settings ถูกส่งไปที่มือถือด้วย
+   สถานะต่อ (รถ,ร้าน): far → approaching → arrived → (ออกจากร้าน) far
+   ===================================================================== */
+const NS_STORE = 'storeVisits';
+const NS_DEFAULTS = { nearKm:10, arriveM:300, minSpeed:5, roadFactor:1.3, sound:true, popup:true, notif:false };
+const NS_LS_CFG = 'rfsm.nearStore.cfg';
+const NS_LS_FIRED = 'rfsm.nearStore.fired';
+const NS_STALE_APPROACH_MIN = 120;     // เข้าใกล้แล้วไม่ถึงภายใน 2 ชม. = ผ่านไป
+const NS_REUSE_MS = 6*3600*1000;       // ต่อยอดรายการเดิมถ้าเป็นรถ+ร้านเดียวกันภายใน 6 ชม.
+let nsVisits = null;                   // null = ยังไม่โหลด
+const nsTrack = new Map();             // `${plateKey}|${poiId}` -> สถานะ
+let nsLive = [];                       // รายการที่แสดงบนหน้า (คำนวณทุกรอบ)
+let nsWatching = 0, nsStoreCount = 0;
+let nsAudioCtx = null;
+const nsPopups = [];
+
+function nsCfg(){
+  let o = {};
+  try{ o = JSON.parse(localStorage.getItem(NS_LS_CFG)||'{}') || {}; }catch(e){}
+  const num = (v,d)=>{ const n = Number(v); return isFinite(n) && n>0 ? n : d; };
+  return {
+    nearKm: num(o.nearKm, NS_DEFAULTS.nearKm),
+    arriveM: num(o.arriveM, NS_DEFAULTS.arriveM),
+    minSpeed: NS_DEFAULTS.minSpeed, roadFactor: NS_DEFAULTS.roadFactor,
+    sound: o.sound===undefined ? NS_DEFAULTS.sound : !!o.sound,
+    popup: o.popup===undefined ? NS_DEFAULTS.popup : !!o.popup,
+    notif: !!o.notif && typeof Notification!=='undefined' && Notification.permission==='granted',
+  };
+}
+function nsCfgSave(patch){
+  let o = {};
+  try{ o = JSON.parse(localStorage.getItem(NS_LS_CFG)||'{}') || {}; }catch(e){}
+  Object.assign(o, patch);
+  try{ localStorage.setItem(NS_LS_CFG, JSON.stringify(o)); }catch(e){}
+}
+function nsStores(){
+  return (STATE.pois||[]).filter(p=>p && p.loadPoint && !p.noStop && typeof p.lat==='number' && typeof p.lng==='number');
+}
+function nsDriverOf(v){
+  const u = (STATE.users||[]).find(x=>x.vehicleId===v.id);
+  return u ? u.name : '';
+}
+function nsFmtDist(km){ return km<1 ? Math.round(km*1000)+' ม.' : (km<10 ? km.toFixed(1) : Math.round(km))+' กม.'; }
+function nsFmtEta(min){
+  if(min==null) return '-';
+  if(min<1) return '< 1 นาที';
+  if(min<60) return '~'+Math.round(min)+' นาที';
+  return '~'+Math.floor(min/60)+' ชม. '+Math.round(min%60)+' นาที';
+}
+function nsFmtTime(ts){
+  return ts ? new Date(ts).toLocaleString('th-TH',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'}) : '-';
+}
+/* เวลาโดยประมาณ: ระยะ × ตัวคูณถนน ÷ ความเร็วเฉลี่ยล่าสุด (ไม่ต่ำกว่า 25 ไม่เกิน 70 กม./ชม.
+   เพราะความเร็วตอนติดไฟแดง/ชะลอ จะทำให้ ETA เพี้ยนมาก) — ประมาณการเท่านั้น ไม่ได้รู้เส้นทางจริง */
+function nsEtaMin(distKm, speeds, cfg){
+  const mv = (speeds||[]).filter(s=>s>=cfg.minSpeed);
+  const avg = mv.length ? mv.reduce((a,b)=>a+b,0)/mv.length : 40;
+  const sp = Math.min(70, Math.max(25, avg));
+  return (distKm * cfg.roadFactor / sp) * 60;
+}
+
+/* ---------- ฐานข้อมูล ---------- */
+async function nsPush(rec){
+  if(!window.__supa) return;
+  try{
+    const { error } = await window.__supa.from('fleet_sync')
+      .upsert({ store:NS_STORE, id:rec.id, data:rec, updated_at:new Date().toISOString() }, { onConflict:'store,id' });
+    if(error) throw error;
+  }catch(e){ console.warn('บันทึกประวัติใกล้ถึงร้านไม่สำเร็จ:', e); }
+}
+async function nsLoadVisits(){
+  if(!window.__supa){ nsVisits = nsVisits || []; return; }
+  try{
+    const { data, error } = await window.__supa.from('fleet_sync').select('data')
+      .eq('store', NS_STORE).order('updated_at',{ascending:false}).limit(1000);
+    if(error) throw error;
+    const loaded = (data||[]).map(r=>r.data).filter(Boolean);
+    /* ผสมกับที่สร้างระหว่างรอโหลด (กันรายการหาย) */
+    const have = new Set(loaded.map(x=>x.id));
+    (nsVisits||[]).forEach(x=>{ if(!have.has(x.id)) loaded.push(x); });
+    nsVisits = loaded;
+  }catch(e){ console.warn('โหลดประวัติใกล้ถึงร้านไม่สำเร็จ:', e); nsVisits = nsVisits || []; }
+  nsRender();
+}
+
+/* ---------- แจ้งเตือน ---------- */
+function nsFiredGet(){ try{ return JSON.parse(localStorage.getItem(NS_LS_FIRED)||'{}')||{}; }catch(e){ return {}; } }
+function nsFiredSet(m){ try{ localStorage.setItem(NS_LS_FIRED, JSON.stringify(m)); }catch(e){} }
+/* กันเตือนซ้ำตอนรีเฟรชหน้า: รถ+ร้าน+ชนิดเดียวกัน ภายใน 30 นาที ไม่เตือนซ้ำ */
+function nsShouldAlert(key, kind){
+  const m = nsFiredGet(), k = key+'|'+kind, now = Date.now();
+  if(m[k] && now - m[k] < 30*60000) return false;
+  m[k] = now;
+  Object.keys(m).forEach(x=>{ if(now - m[x] > 6*3600000) delete m[x]; });
+  nsFiredSet(m);
+  return true;
+}
+function nsBeep(kind){
+  try{
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return;
+    nsAudioCtx = nsAudioCtx || new AC();
+    if(nsAudioCtx.state==='suspended') nsAudioCtx.resume();
+    const t0 = nsAudioCtx.currentTime;
+    const notes = kind==='arrive' ? [880,1175] : [660,880];
+    notes.forEach((f,i)=>{
+      const o = nsAudioCtx.createOscillator(), g = nsAudioCtx.createGain();
+      o.type='sine'; o.frequency.value=f;
+      g.gain.setValueAtTime(0.0001, t0+i*0.22);
+      g.gain.exponentialRampToValueAtTime(0.18, t0+i*0.22+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0+i*0.22+0.2);
+      o.connect(g); g.connect(nsAudioCtx.destination);
+      o.start(t0+i*0.22); o.stop(t0+i*0.22+0.21);
+    });
+  }catch(e){}
+}
+function nsPopupStack(){
+  let el = document.getElementById('nsPopupStack');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'nsPopupStack';
+    el.style.cssText = 'position:fixed;top:70px;right:18px;z-index:2000;display:flex;flex-direction:column;gap:10px;width:min(340px,calc(100vw - 36px));';
+    const root = document.getElementById('adminApp') || document.body;
+    root.appendChild(el);
+  }
+  return el;
+}
+function nsClosePopup(id){
+  const i = nsPopups.indexOf(id); if(i>=0) nsPopups.splice(i,1);
+  const el = document.getElementById(id); if(el) el.remove();
+}
+function nsShowOnMap(vehicleId){
+  const btn = document.querySelector('.rail-btn[data-view="mapview"]');
+  if(btn) btn.click();
+  setTimeout(()=>{ try{ focusVehicleOnMap(vehicleId); }catch(e){} }, 120);
+}
+function nsEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function nsAlert(kind, info){
+  const cfg = nsCfg();
+  const arrive = kind==='arrive';
+  const title = arrive ? '📍 ถึงร้านแล้ว' : '🚚 รถกำลังจะถึงร้าน';
+  const line = arrive
+    ? `${info.plate} ถึง ${info.poiName} แล้ว`
+    : `${info.plate} ห่าง ${info.poiName} ${nsFmtDist(info.distKm)} · ถึงในอีก ${nsFmtEta(info.etaMin)}`;
+  const warn = info.closedNote ? ('⚠ '+info.closedNote) : '';
+  if(cfg.sound) nsBeep(kind);
+  if(cfg.notif){
+    try{ new Notification(title, { body: line + (warn?(' · '+warn):'') + (info.driver?(' · '+info.driver):''), tag:'ns-'+info.key+'-'+kind }); }catch(e){}
+  }
+  if(cfg.popup){
+    const id = 'nsp_'+Math.random().toString(36).slice(2,8);
+    const el = document.createElement('div');
+    el.id = id;
+    el.style.cssText = 'background:var(--panel);border:1px solid '+(arrive?'var(--risk-low)':'var(--accent)')+';border-radius:12px;padding:12px 14px;box-shadow:0 12px 32px rgba(0,0,0,.45);animation:slidein .2s;';
+    el.innerHTML = `<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
+        <strong style="font-size:14px;">${title}</strong>
+        <button class="btn sm" onclick="nsClosePopup('${id}')" style="padding:2px 8px;">✕</button></div>
+      <div style="margin:6px 0 4px;font-size:13px;">${nsEsc(line)}</div>
+      ${warn?`<div style="font-size:12.5px;color:var(--risk-mid);margin-bottom:4px;">${nsEsc(warn)}</div>`:''}
+      <div style="font-size:11.5px;color:var(--text-faint);">${info.driver?('คนขับ '+nsEsc(info.driver)+' · '):''}${nsFmtTime(Date.now())}</div>
+      <div style="margin-top:8px;display:flex;gap:6px;"><button class="btn sm" onclick="nsShowOnMap('${info.vehicleId}');nsClosePopup('${id}')">ดูบนแผนที่</button></div>`;
+    nsPopupStack().appendChild(el);
+    nsPopups.push(id);
+    while(nsPopups.length>5) nsClosePopup(nsPopups[0]);
+    setTimeout(()=>nsClosePopup(id), 90000);
+  }
+}
+async function nsEnableNotif(){
+  if(typeof Notification==='undefined'){ toast('เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือน'); return; }
+  let p = Notification.permission;
+  if(p==='default'){ try{ p = await Notification.requestPermission(); }catch(e){} }
+  if(p==='granted'){ nsCfgSave({notif:true}); toast('เปิดแจ้งเตือนเบราว์เซอร์แล้ว'); }
+  else{ nsCfgSave({notif:false}); toast('เบราว์เซอร์ไม่อนุญาตการแจ้งเตือน — ตั้งค่าที่ไอคอนกุญแจข้าง URL'); }
+  nsRender();
+}
+function nsToggle(key){
+  const c = nsCfg();
+  if(key==='notif'){ if(c.notif){ nsCfgSave({notif:false}); nsRender(); } else nsEnableNotif(); return; }
+  nsCfgSave({[key]: !c[key]});
+  if(key==='sound' && !c.sound) nsBeep('approach');   // เสียงตัวอย่าง (และปลดล็อกเสียงของเบราว์เซอร์)
+  nsRender();
+}
+function nsSaveRadius(){
+  const nk = Number(document.getElementById('nsNearKm')?.value);
+  const am = Number(document.getElementById('nsArriveM')?.value);
+  if(!(nk>0 && am>0)){ toast('กรอกตัวเลขมากกว่า 0'); return; }
+  if(am/1000 >= nk){ toast('รัศมีถึงร้านต้องน้อยกว่าระยะเริ่มเตือน'); return; }
+  nsCfgSave({nearKm:nk, arriveM:am});
+  toast('บันทึกค่าแล้ว');
+  nsTick(); nsRender();
+}
+function nsTestAlert(){
+  const s = nsStores()[0];
+  nsAlert('approach', { key:'test', vehicleId:'', plate:'(ทดสอบ)', poiName: s?s.name:'ร้านตัวอย่าง', distKm:8.4, etaMin:14, driver:'' });
+}
+
+/* ---------- ตรวจจับ ---------- */
+function nsFindVisit(plate, poiId, now){
+  return (nsVisits||[]).filter(x=>x.poiId===poiId && x.plate===plate
+      && (x.status==='approaching'||x.status==='arrived')
+      && now - (x.lastTs||x.approachTs||0) < NS_REUSE_MS)
+    .sort((a,b)=>(b.lastTs||0)-(a.lastTs||0))[0] || null;
+}
+function nsNewVisit(v, s, now, distKm, etaMin){
+  const rec = { id:'nv_'+now.toString(36)+Math.random().toString(36).slice(2,6),
+    poiId:s.id, poiName:s.name, plate:v.plate, vehicleId:v.id, driverName:nsDriverOf(v)||null,
+    status:'approaching', approachTs:now, approachDistKm:Math.round(distKm*10)/10, approachEtaMin:Math.round(etaMin),
+    arriveTs:null, departTs:null, dwellMin:null, lastTs:now };
+  nsVisits.push(rec);
+  return rec;
+}
+function nsTick(){
+  if(!Array.isArray(nsVisits) || nsStoreSet===null) return;   // ยังโหลดประวัติ/ตั้งค่าไม่เสร็จ — รอรอบหน้า กันสร้างซ้ำ
+  const cfg = nsCfg();
+  const stores = nsStores();
+  nsStoreCount = stores.length;
+  const now = Date.now();
+  const live = [];
+  let watching = 0;
+  const seenKeys = new Set();
+  (STATE.vehicles||[]).forEach(v=>{
+    const pk = normPlate(v.plate);
+    if(!pk) return;
+    const r = liveOf(v);
+    if(!r || typeof r.lat!=='number' || typeof r.lng!=='number') return;
+    if(!isVehicleOnline(v)) return;            // กล่องเงียบ = ข้อมูลเก่า ไม่เชื่อ
+    const gpsTs = Number(v.lastSeenTs) || now;
+    const spd = Number(r.speed)||0;
+    const moving = spd >= cfg.minSpeed;
+    if(moving) watching++;
+    stores.forEach(s=>{
+      const key = pk+'|'+s.id;
+      seenKeys.add(key);
+      const d = haversineKm([r.lat,r.lng],[s.lat,s.lng]);
+      let t = nsTrack.get(key);
+      if(!t){ t = { state:'far', prevD:null, minD:Infinity, speeds:[], lastGps:0, visit:null }; nsTrack.set(key,t); }
+      const fresh = gpsTs > t.lastGps;         // ข้อมูลใหม่จริงเท่านั้นถึงนับ (กล่องส่งซ้ำไม่ทำให้ "ใกล้ขึ้น")
+      if(fresh){
+        t.speeds.push(spd); if(t.speeds.length>6) t.speeds.shift();
+      }
+      const sc = nsStoreCfg(s.id);            // v36 — รัศมี/เวลาเปิดรายร้าน (ว่าง = ค่ากลาง)
+      const arriveKm = sc.arriveM/1000, departKm = Math.max(arriveKm*1.7, 0.5);
+      const info = { key, vehicleId:v.id, plate:v.plate, poiName:s.name, driver:nsDriverOf(v), distKm:d };
+
+      if(t.state==='far'){
+        const closing = t.prevD!=null && d < t.prevD - 0.03;
+        if(fresh && d<=arriveKm && (moving||closing||t.prevD==null)){
+          /* เปิดหน้ามาตอนรถถึงร้านพอดี หรือไม่เคยเห็นช่วงเข้าใกล้ — นับเป็นถึงร้านเลย */
+          const ex = nsFindVisit(v.plate, s.id, now);
+          t.visit = ex || nsNewVisit(v, s, now, d, 0);
+          if(!ex){ t.visit.approachEtaMin = 0; }
+          t.state='arrived'; t.minD=d;
+          if(t.visit.status!=='arrived'){
+            t.visit.status='arrived'; t.visit.arriveTs=gpsTs; t.visit.lastTs=now;
+            const cn = nsClosedNote(s.id, gpsTs); t.visit.arriveClosed = !!cn;
+            nsPush(t.visit);
+            if(nsShouldAlert(key,'arrive')) nsAlert('arrive', Object.assign({closedNote:cn}, info));
+          }
+        } else if(fresh && moving && closing && d<=sc.nearKm){
+          const eta = nsEtaMin(d, t.speeds, cfg);
+          const ex = nsFindVisit(v.plate, s.id, now);
+          t.visit = ex || nsNewVisit(v, s, now, d, eta);
+          t.state = t.visit.status==='arrived' ? 'arrived' : 'approaching';
+          t.minD = d;
+          if(!ex){ nsPush(t.visit); }
+          if(t.state==='approaching' && nsShouldAlert(key,'approach')) nsAlert('approach', Object.assign({etaMin:eta, closedNote:nsClosedNote(s.id, now+eta*60000)}, info));
+        }
+      } else if(t.state==='approaching'){
+        if(fresh){
+          t.minD = Math.min(t.minD, d);
+          if(d<=arriveKm){
+            t.state='arrived';
+            if(t.visit){
+              t.visit.status='arrived'; t.visit.arriveTs=gpsTs; t.visit.lastTs=now;
+              const cn = nsClosedNote(s.id, gpsTs); t.visit.arriveClosed = !!cn;
+              nsPush(t.visit);
+              if(nsShouldAlert(key,'arrive')) nsAlert('arrive', Object.assign({closedNote:cn}, info));
+            }
+          } else if(d > t.minD + 1.5 || d > sc.nearKm*1.3 ||
+                    (t.visit && now - t.visit.approachTs > NS_STALE_APPROACH_MIN*60000)){
+            /* หันหลังกลับ/ผ่านไป ไม่ถึงร้าน */
+            if(t.visit){ t.visit.status='passed'; t.visit.lastTs=now; nsPush(t.visit); }
+            t.state='far'; t.visit=null; t.minD=Infinity;
+          } else if(t.visit){ t.visit.lastTs = now; }
+        }
+      } else if(t.state==='arrived'){
+        if(fresh){
+          if(t.visit) t.visit.lastTs = now;
+          if(d > departKm){
+            if(t.visit){
+              t.visit.status='departed'; t.visit.departTs=gpsTs; t.visit.lastTs=now;
+              t.visit.dwellMin = t.visit.arriveTs ? Math.max(0, Math.round((gpsTs - t.visit.arriveTs)/60000)) : null;
+              nsPush(t.visit);
+            }
+            t.state='far'; t.visit=null; t.minD=Infinity;
+          }
+        }
+      }
+      if(fresh){ t.prevD = d; t.lastGps = gpsTs; }
+
+      if(t.state!=='far'){
+        live.push({ vehicleId:v.id, plate:v.plate, driver:nsDriverOf(v), poiId:s.id, poiName:s.name,
+          state:t.state, distKm:d, speed:spd,
+          etaMin: t.state==='approaching' ? nsEtaMin(d, t.speeds, cfg) : 0,
+          since: t.state==='arrived' ? (t.visit && t.visit.arriveTs) : (t.visit && t.visit.approachTs),
+          closedNote: t.state==='approaching' ? nsClosedNote(s.id, now + nsEtaMin(d, t.speeds, cfg)*60000) : '' });
+      }
+    });
+  });
+  /* ล้างสถานะของรถ/ร้านที่หายไป (เช่น ลบร้าน) */
+  nsTrack.forEach((_,k)=>{ if(!seenKeys.has(k)) nsTrack.delete(k); });
+  nsWatching = watching;
+  nsLive = live.sort((a,b)=> (a.state===b.state ? a.distKm-b.distKm : (a.state==='approaching'?-1:1)));
+}
+
+/* ---------- แสดงผล ---------- */
+function nsStatusBadge(st){
+  return {
+    approaching:'<span class="badge mid">🚚 กำลังเข้าใกล้</span>',
+    arrived:'<span class="badge low">📍 อยู่ที่ร้าน</span>',
+    departed:'<span class="badge accentb">✔ ออกแล้ว</span>',
+    passed:'<span class="badge gray">ผ่านไป ไม่ถึงร้าน</span>',
+  }[st] || '<span class="badge gray">'+nsEsc(st)+'</span>';
+}
+function nsRangeStart(){
+  const sel = document.getElementById('nsRange')?.value || 'today';
+  const d = new Date();
+  if(sel==='all') return 0;
+  if(sel==='today'){ d.setHours(0,0,0,0); return d.getTime(); }
+  const days = sel==='7d' ? 7 : 30;
+  d.setHours(0,0,0,0); return d.getTime() - (days-1)*86400000;
+}
+function nsRender(){
+  const box = document.getElementById('nsLiveBox');
+  if(!box) return;
+  const cfg = nsCfg();
+  const stores = nsStores();
+  const todayStart = new Date().setHours(0,0,0,0);
+  const visits = nsVisits || [];
+  const arrivedToday = visits.filter(x=>x.arriveTs && x.arriveTs>=todayStart).length;
+
+  /* KPI */
+  document.getElementById('nsKpis').innerHTML = `
+    <div class="kpi-card"><div class="lbl">ร้านที่เฝ้าดู</div><div class="val">${stores.length}</div><div class="delta">จุดขึ้น/ลงสินค้า 📦</div></div>
+    <div class="kpi-card"><div class="lbl">รถกำลังเข้าใกล้ร้าน</div><div class="val" style="color:var(--risk-mid)">${nsLive.filter(x=>x.state==='approaching').length}</div><div class="delta">รถที่วิ่งอยู่ตอนนี้ ${nsWatching} คัน</div></div>
+    <div class="kpi-card"><div class="lbl">อยู่ที่ร้านตอนนี้</div><div class="val" style="color:var(--risk-low)">${nsLive.filter(x=>x.state==='arrived').length}</div><div class="delta">ในรัศมีถึงร้าน</div></div>
+    <div class="kpi-card"><div class="lbl">ถึงร้านวันนี้</div><div class="val">${arrivedToday}</div><div class="delta">ครั้ง</div></div>`;
+
+  /* ตั้งค่า */
+  const tog = (k,label)=>`<label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+      <input type="checkbox" ${cfg[k]?'checked':''} onchange="nsToggle('${k}')"> ${label}</label>`;
+  const notifNote = (typeof Notification==='undefined') ? ' (ไม่รองรับ)'
+    : (Notification.permission==='denied' ? ' (ถูกบล็อก)' : '');
+  document.getElementById('nsSettings').innerHTML = `
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
+      ${tog('popup','ป็อปอัพเด้งเตือน')}${tog('sound','เสียงเตือน')}${tog('notif','แจ้งเตือนเบราว์เซอร์'+notifNote)}
+      <button class="btn sm" onclick="nsTestAlert()">ทดสอบการแจ้งเตือน</button>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px;font-size:13px;">
+      ค่ากลาง — เริ่มเตือนเมื่อห่างร้าน <input type="number" id="nsNearKm" min="1" step="1" value="${cfg.nearKm}" style="width:70px;background:var(--panel-2);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:8px;"> กม.
+      นับว่าถึงร้านเมื่อห่างไม่เกิน <input type="number" id="nsArriveM" min="50" step="50" value="${cfg.arriveM}" style="width:80px;background:var(--panel-2);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:8px;"> เมตร
+      <button class="btn sm primary" onclick="nsSaveRadius()">บันทึก</button>
+      <span style="font-size:11.5px;color:var(--text-faint);">ค่านี้เก็บในเบราว์เซอร์เครื่องนี้ (ไม่กระทบแอปคนขับ)</span>
+    </div>`;
+
+  /* สด */
+  if(!stores.length){
+    box.innerHTML = `<div class="empty">ยังไม่มีร้านให้เฝ้าดู<br>
+      <span style="font-size:12px;">เพิ่มได้ที่หน้า "วางแผนพักรถ" → + เพิ่มจุด (หรือนำเข้าจาก Excel) แล้วเลือกการใช้งานเป็น <b>📦 จุดขึ้น/ลงสินค้า</b><br>
+      หรืออนุมัติจุดจอดที่ระบบตรวจจับ แล้วเลือกเป็น 📦 — เพิ่มแล้วหน้านี้เริ่มทำงานเองทันที</span></div>`;
+  } else if(!nsLive.length){
+    box.innerHTML = `<div class="empty">ตอนนี้ยังไม่มีรถเข้าใกล้ร้านใด<br>
+      <span style="font-size:12px;">ระบบเฝ้าดูรถที่กำลังวิ่งอยู่ ${nsWatching} คัน · เปิดหน้าแอดมินค้างไว้เพื่อให้ระบบตรวจต่อเนื่อง</span></div>`;
+  } else {
+    box.innerHTML = `<table><thead><tr><th>สถานะ</th><th>ทะเบียนรถ</th><th>คนขับ</th><th>ร้าน</th><th>ระยะ</th><th>ถึงในอีก (ประมาณ)</th><th>ความเร็ว</th><th></th></tr></thead><tbody>${
+      nsLive.map(x=>`<tr>
+        <td>${nsStatusBadge(x.state)}</td>
+        <td class="strong">${nsEsc(x.plate)}</td>
+        <td>${nsEsc(x.driver)||'-'}</td>
+        <td>📦 ${nsEsc(x.poiName)}</td>
+        <td class="mono">${nsFmtDist(x.distKm)}</td>
+        <td class="mono">${x.state==='arrived' ? ('ถึงเมื่อ '+nsFmtTime(x.since)) : nsFmtEta(x.etaMin)}${x.closedNote?`<br><span style="font-size:11px;color:var(--risk-mid);">⚠ ${nsEsc(x.closedNote)}</span>`:''}</td>
+        <td class="mono">${Math.round(x.speed)} กม./ชม.</td>
+        <td><button class="btn sm" onclick="nsShowOnMap('${x.vehicleId}')">แผนที่</button></td></tr>`).join('')}</tbody></table>`;
+  }
+  const ss = document.getElementById('nsStoreSettingsBox'); if(ss) ss.innerHTML = nsStoreSettingsHtml();
+  nsRenderDaily();
+  nsRenderHistory();
+}
+function nsRenderHistory(){
+  const tb = document.getElementById('nsHistTable');
+  if(!tb) return;
+  const q = (document.getElementById('nsSearch')?.value||'').trim().toLowerCase();
+  const from = nsRangeStart();
+  const storeSel = document.getElementById('nsStoreSel');
+  if(storeSel){
+    const cur = storeSel.value;
+    storeSel.innerHTML = '<option value="">ทุกร้าน</option>' + nsStores().map(s=>`<option value="${nsEsc(s.id)}">${nsEsc(s.name)}</option>`).join('');
+    storeSel.value = cur;
+  }
+  const sid = storeSel ? storeSel.value : '';
+  let items = (nsVisits||[]).filter(x=>(x.approachTs||0) >= from);
+  if(sid) items = items.filter(x=>x.poiId===sid);
+  if(q) items = items.filter(x=>((x.plate||'')+' '+(x.driverName||'')+' '+(x.poiName||'')).toLowerCase().includes(q));
+  items.sort((a,b)=>(b.approachTs||0)-(a.approachTs||0));
+  document.getElementById('nsHistCount').textContent = '('+items.length+' รายการ)';
+  if(!items.length){ tb.innerHTML = '<tr><td colspan="8" class="empty">ยังไม่มีประวัติในช่วงที่เลือก</td></tr>'; return; }
+  const shown = items.slice(0, 300);
+  let html = '', lastDay = '';
+  shown.forEach(x=>{
+    const dk = dayKeyOf(x.approachTs);
+    if(dk!==lastDay){ lastDay = dk; html += `<tr style="background:var(--panel-2);"><td colspan="8"><strong>${dayLabelOf(dk)}</strong></td></tr>`; }
+    html += `<tr>
+      <td>${nsStatusBadge(x.status)}</td>
+      <td class="strong">${nsEsc(x.plate)}</td>
+      <td>${nsEsc(x.driverName)||'-'}</td>
+      <td>📦 ${nsEsc(x.poiName)}</td>
+      <td class="mono">${nsFmtTime(x.approachTs)}${x.approachDistKm?`<br><span style="font-size:11px;color:var(--text-faint);">ห่าง ${x.approachDistKm} กม.</span>`:''}</td>
+      <td class="mono">${nsFmtTime(x.arriveTs)}${x.arriveClosed?'<br><span style="font-size:11px;color:var(--risk-mid);">⚠ ร้านปิด</span>':''}</td>
+      <td class="mono">${nsFmtTime(x.departTs)}</td>
+      <td class="mono">${x.dwellMin!=null ? x.dwellMin+' นาที' : (x.status==='arrived'?'กำลังอยู่':'-')}</td></tr>`;
+  });
+  if(items.length>shown.length) html += `<tr><td colspan="8" class="empty">แสดง ${shown.length} จาก ${items.length} — ใช้ตัวกรองเพื่อดูเฉพาะที่ต้องการ</td></tr>`;
+  tb.innerHTML = html;
+
+  /* สรุปรายร้าน (ตามช่วงที่เลือก) */
+  const sumEl = document.getElementById('nsSummary');
+  if(sumEl){
+    const by = {};
+    items.forEach(x=>{ const o = by[x.poiId] = by[x.poiId] || {name:x.poiName, n:0, dw:[]}; if(x.arriveTs){ o.n++; if(x.dwellMin!=null) o.dw.push(x.dwellMin); } });
+    const rows = Object.values(by).filter(o=>o.n).sort((a,b)=>b.n-a.n);
+    sumEl.innerHTML = rows.length ? rows.map(o=>`<tr><td>📦 ${nsEsc(o.name)}</td><td class="mono">${o.n}</td><td class="mono">${o.dw.length?Math.round(o.dw.reduce((a,b)=>a+b,0)/o.dw.length)+' นาที':'-'}</td></tr>`).join('')
+      : '<tr><td colspan="3" class="empty">ยังไม่มีรถถึงร้านในช่วงนี้</td></tr>';
+  }
+}
+function nsExportCsv(){
+  const rows = (nsVisits||[]).slice().sort((a,b)=>(b.approachTs||0)-(a.approachTs||0)).filter(x=>(x.approachTs||0)>=nsRangeStart());
+  const head = ['ร้าน','ทะเบียน','คนขับ','สถานะ','เริ่มเข้าใกล้','ถึงร้าน','ออกจากร้าน','อยู่นาน(นาที)'];
+  const f = t=>t?new Date(t).toLocaleString('th-TH'):'';
+  const esc = s=>'"'+String(s==null?'':s).replace(/"/g,'""')+'"';
+  const csv = '﻿'+[head].concat(rows.map(x=>[x.poiName,x.plate,x.driverName,x.status,f(x.approachTs),f(x.arriveTs),f(x.departTs),x.dwellMin])).map(r=>r.map(esc).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download = 'near-store-'+dayKeyOf(Date.now())+'.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+function openNearStoreView(){
+  nsRender();
+  if(nsVisits===null) nsLoadVisits();
+  if(nsStoreSet===null) nsLoadStoreSettings();
+}
+
+/* ---------- v36 — ตั้งค่ารายร้าน (รัศมี + เวลาเปิด-ปิด) เก็บใน fleet_sync store='storeSettings'
+   ไม่เขียนลง POI (POI ถูกส่งไปมือถือ) — ว่าง = ใช้ค่ากลางของหน้า ---------- */
+const NS_SET_STORE = 'storeSettings';
+let nsStoreSet = null;                  // null = ยังไม่โหลด; map poiId -> {nearKm,arriveM,open,close,days}
+const NS_DAY_TH = ['อา','จ','อ','พ','พฤ','ศ','ส'];
+function nsStoreCfg(poiId){
+  const g = nsCfg(), o = (nsStoreSet && nsStoreSet[poiId]) || {};
+  const num = v=>{ const n = Number(v); return isFinite(n) && n>0 ? n : null; };
+  const nearKm = num(o.nearKm) || g.nearKm;
+  let arriveM = num(o.arriveM) || g.arriveM;
+  if(arriveM/1000 >= nearKm) arriveM = Math.max(50, Math.round(nearKm*1000/2));
+  const hm = s=>/^\d{1,2}:\d{2}$/.test(s||'') ? s : '';
+  const days = Array.isArray(o.days) && o.days.length && o.days.length<7 ? o.days.map(Number) : null;
+  return { nearKm, arriveM, open:hm(o.open), close:hm(o.close), days,
+           custom: !!(num(o.nearKm)||num(o.arriveM)||hm(o.open)||hm(o.close)||days) };
+}
+/* ร้านเปิดอยู่ตอน ts หรือไม่ — ไม่ได้ตั้งเวลา = ไม่รู้ (คืน null) */
+function nsIsOpenAt(poiId, ts){
+  const c = nsStoreCfg(poiId);
+  if(!c.open || !c.close) return (c.days ? (c.days.includes(new Date(ts).getDay())) : null);
+  const d = new Date(ts);
+  if(c.days && !c.days.includes(d.getDay())) return false;
+  const toM = s=>{ const [h,m] = s.split(':').map(Number); return h*60+m; };
+  const mins = d.getHours()*60+d.getMinutes(), o = toM(c.open), cl = toM(c.close);
+  if(o===cl) return true;
+  return cl>o ? (mins>=o && mins<cl) : (mins>=o || mins<cl);
+}
+function nsHoursLabel(poiId){
+  const c = nsStoreCfg(poiId);
+  const h = (c.open&&c.close) ? (c.open+'–'+c.close) : '';
+  const d = c.days ? ' ('+c.days.slice().sort().map(i=>NS_DAY_TH[i]).join(' ')+')' : '';
+  return (h||c.days) ? ((h||'ทั้งวัน')+d) : '';
+}
+function nsClosedNote(poiId, ts){
+  return nsIsOpenAt(poiId, ts)===false ? ('ร้านปิดตอนนั้น (เปิด '+nsHoursLabel(poiId)+')') : '';
+}
+async function nsLoadStoreSettings(){
+  if(!window.__supa){ nsStoreSet = nsStoreSet || {}; return; }
+  try{
+    const { data, error } = await window.__supa.from('fleet_sync').select('data').eq('store', NS_SET_STORE);
+    if(error) throw error;
+    const m = {};
+    (data||[]).forEach(r=>{ if(r.data && r.data.poiId) m[r.data.poiId] = r.data; });
+    nsStoreSet = Object.assign(m, nsStoreSet||{});
+  }catch(e){ console.warn('โหลดตั้งค่ารายร้านไม่สำเร็จ:', e); nsStoreSet = nsStoreSet || {}; }
+  nsRender();
+}
+async function nsStoreSetPush(rec){
+  if(!window.__supa) return;
+  try{
+    const { error } = await window.__supa.from('fleet_sync')
+      .upsert({ store:NS_SET_STORE, id:rec.poiId, data:rec, updated_at:new Date().toISOString() }, { onConflict:'store,id' });
+    if(error) throw error;
+  }catch(e){ console.warn('บันทึกตั้งค่ารายร้านไม่สำเร็จ:', e); toast('บันทึกขึ้นฐานข้อมูลกลางไม่สำเร็จ'); }
+}
+function nsOpenStoreEdit(poiId){
+  const s = nsStores().find(x=>x.id===poiId); if(!s) return;
+  const o = (nsStoreSet && nsStoreSet[poiId]) || {}, g = nsCfg();
+  const days = Array.isArray(o.days) && o.days.length ? o.days.map(Number) : [0,1,2,3,4,5,6];
+  const inp = 'background:var(--panel-2);border:1px solid var(--border);color:var(--text);padding:7px 9px;border-radius:8px;font-size:13px;';
+  openModal('ตั้งค่าร้าน: '+nsEsc(s.name), `
+    <p style="font-size:12px;color:var(--text-faint);margin:0 0 12px;">เว้นว่าง = ใช้ค่ากลาง (เตือนที่ ${g.nearKm} กม. · ถึงร้านที่ ${g.arriveM} ม.) · ค่านี้ไม่ไปแก้จุดบนแผนที่และไม่ส่งไปแอปคนขับ</p>
+    <div class="form-grid">
+      <div class="field"><label>เริ่มเตือนเมื่อห่าง (กม.)</label><input type="number" id="nsEdNear" min="1" step="1" value="${o.nearKm||''}" placeholder="${g.nearKm}" style="${inp}"></div>
+      <div class="field"><label>นับว่าถึงร้านเมื่อห่าง (เมตร)</label><input type="number" id="nsEdArrive" min="50" step="50" value="${o.arriveM||''}" placeholder="${g.arriveM}" style="${inp}"></div>
+      <div class="field"><label>ร้านเปิด</label><input type="time" id="nsEdOpen" value="${o.open||''}" style="${inp}"></div>
+      <div class="field"><label>ร้านปิด</label><input type="time" id="nsEdClose" value="${o.close||''}" style="${inp}"></div>
+    </div>
+    <div class="field" style="margin-top:12px;"><label>วันที่ร้านเปิด</label>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:13px;">${NS_DAY_TH.map((n,i)=>`<label style="display:inline-flex;gap:4px;align-items:center;text-transform:none;letter-spacing:0;font-size:13px;color:var(--text);"><input type="checkbox" class="nsEdDay" value="${i}" ${days.includes(i)?'checked':''}> ${n}</label>`).join('')}</div></div>
+    <p style="font-size:11.5px;color:var(--text-faint);margin:12px 0 0;">ถ้าใส่เวลาเปิด-ปิด ระบบจะเตือนเพิ่มเมื่อคาดว่ารถจะถึงตอนร้านปิด รองรับร้านที่ปิดข้ามคืน (เช่น 20:00–04:00)</p>`,
+    [{label:'ยกเลิก', cls:'', action:closeModal},
+     {label:'ล้างค่า (ใช้ค่ากลาง)', cls:'', action:()=>nsSaveStoreEdit(poiId, true)},
+     {label:'บันทึก', cls:'primary', action:()=>nsSaveStoreEdit(poiId, false)}]);
+}
+async function nsSaveStoreEdit(poiId, clear){
+  const v = id=>(document.getElementById(id)||{}).value||'';
+  let rec = { poiId, nearKm:null, arriveM:null, open:'', close:'', days:null, updatedTs:Date.now() };
+  if(!clear){
+    const nk = Number(v('nsEdNear'))||null, am = Number(v('nsEdArrive'))||null;
+    const open = v('nsEdOpen'), close = v('nsEdClose');
+    if((open && !close) || (!open && close)){ toast('ใส่เวลาเปิดและปิดให้ครบทั้งคู่'); return; }
+    const eff = { nk: nk || nsCfg().nearKm, am: am || nsCfg().arriveM };
+    if(eff.am/1000 >= eff.nk){ toast('รัศมีถึงร้านต้องน้อยกว่าระยะเริ่มเตือน'); return; }
+    const ds = [...document.querySelectorAll('.nsEdDay:checked')].map(x=>Number(x.value));
+    if(!ds.length){ toast('เลือกวันที่ร้านเปิดอย่างน้อย 1 วัน'); return; }
+    rec = { poiId, nearKm:nk, arriveM:am, open, close, days: ds.length<7 ? ds : null, updatedTs:Date.now() };
+  }
+  nsStoreSet = nsStoreSet || {};
+  nsStoreSet[poiId] = rec;
+  closeModal(); nsRender(); toast(clear?'ล้างค่าแล้ว':'บันทึกแล้ว');
+  await nsStoreSetPush(rec);
+}
+function nsStoreSettingsHtml(){
+  const stores = nsStores();
+  if(!stores.length) return '<div class="empty" style="padding:16px;">ยังไม่มีร้าน</div>';
+  return `<table><thead><tr><th>ร้าน</th><th>เริ่มเตือน</th><th>ถึงร้านที่</th><th>เวลาเปิด</th><th></th></tr></thead><tbody>${
+    stores.map(s=>{ const c = nsStoreCfg(s.id); const h = nsHoursLabel(s.id);
+      return `<tr><td class="strong">📦 ${nsEsc(s.name)}</td><td class="mono">${c.nearKm} กม.</td><td class="mono">${c.arriveM} ม.</td>
+        <td class="mono">${h?nsEsc(h):'<span style="color:var(--text-faint)">ไม่ได้ตั้ง</span>'}</td>
+        <td><button class="btn sm" onclick="nsOpenStoreEdit('${nsEsc(s.id)}')">แก้ไข</button>${c.custom?' <span class="badge accentb">ตั้งเฉพาะ</span>':''}</td></tr>`; }).join('')}</tbody></table>`;
+}
+
+/* ---------- v36 — สรุปรายวันต่อร้าน ---------- */
+function nsDayRange(){
+  const el = document.getElementById('nsDayPick');
+  let d = el && el.value ? new Date(el.value+'T00:00:00') : new Date();
+  d.setHours(0,0,0,0);
+  return { start:d.getTime(), end:d.getTime()+86400000, key:dayKeyOf(d.getTime()) };
+}
+function nsDaySummary(){
+  const r = nsDayRange(), visits = nsVisits||[];
+  const rows = nsStores().map(s=>{
+    const arr = visits.filter(x=>x.poiId===s.id && x.arriveTs && x.arriveTs>=r.start && x.arriveTs<r.end)
+                      .sort((a,b)=>a.arriveTs-b.arriveTs);
+    const passed = visits.filter(x=>x.poiId===s.id && x.status==='passed' && x.approachTs>=r.start && x.approachTs<r.end).length;
+    const dw = arr.filter(x=>x.dwellMin!=null).map(x=>x.dwellMin);
+    return { poiId:s.id, name:s.name, n:arr.length, plates:[...new Set(arr.map(x=>x.plate))],
+      first:arr.length?arr[0].arriveTs:null, last:arr.length?arr[arr.length-1].arriveTs:null,
+      avgDwell:dw.length?Math.round(dw.reduce((a,b)=>a+b,0)/dw.length):null, maxDwell:dw.length?Math.max.apply(null,dw):null,
+      closed:arr.filter(x=>x.arriveClosed).length, passed, arr };
+  });
+  return { range:r, rows };
+}
+function nsTimeOnly(ts){ return ts ? new Date(ts).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) : '-'; }
+function nsRenderDaily(){
+  const box = document.getElementById('nsDailyBox'); if(!box) return;
+  const el = document.getElementById('nsDayPick');
+  if(el && !el.value) el.value = dayKeyOf(Date.now());
+  const sm = nsDaySummary();
+  if(!sm.rows.length){ box.innerHTML = '<div class="empty" style="padding:16px;">ยังไม่มีร้าน</div>'; return; }
+  const tot = sm.rows.reduce((a,x)=>a+x.n,0);
+  box.innerHTML = `<div style="font-size:12.5px;color:var(--text-dim);margin-bottom:8px;">รวมถึงร้าน ${tot} ครั้ง · ร้านที่ไม่มีรถมา ${sm.rows.filter(x=>!x.n).length} ร้าน</div>
+  <table><thead><tr><th>ร้าน</th><th>จำนวนครั้ง</th><th>รถ (คัน)</th><th>ถึงแรก</th><th>ถึงล่าสุด</th><th>อยู่เฉลี่ย</th><th>นานสุด</th><th>ถึงตอนร้านปิด</th><th>ผ่านไป</th></tr></thead><tbody>${
+    sm.rows.map(x=>`<tr><td class="strong">📦 ${nsEsc(x.name)}</td><td class="mono">${x.n||'<span style="color:var(--text-faint)">ไม่มีรถมา</span>'}</td>
+      <td class="mono" title="${nsEsc(x.plates.join(', '))}">${x.plates.length||'-'}</td>
+      <td class="mono">${nsTimeOnly(x.first)}</td><td class="mono">${nsTimeOnly(x.last)}</td>
+      <td class="mono">${x.avgDwell!=null?x.avgDwell+' นาที':'-'}</td><td class="mono">${x.maxDwell!=null?x.maxDwell+' นาที':'-'}</td>
+      <td class="mono">${x.closed?('<span style="color:var(--risk-mid)">⚠ '+x.closed+'</span>'):'-'}</td><td class="mono">${x.passed||'-'}</td></tr>`).join('')}</tbody></table>`;
+}
+function nsDayShift(n){
+  const el = document.getElementById('nsDayPick'); if(!el) return;
+  const d = new Date((el.value||dayKeyOf(Date.now()))+'T00:00:00'); d.setDate(d.getDate()+n);
+  el.value = dayKeyOf(d.getTime()); nsRenderDaily();
+}
+function nsDayText(){
+  const sm = nsDaySummary();
+  const lines = ['สรุปรถถึงร้าน '+dayLabelOf(sm.range.key)];
+  sm.rows.forEach(x=>{
+    if(!x.n){ lines.push('📦 '+x.name+': ไม่มีรถมา'); return; }
+    lines.push('📦 '+x.name+': '+x.n+' ครั้ง ('+x.plates.join(', ')+') ถึงแรก '+nsTimeOnly(x.first)+' ล่าสุด '+nsTimeOnly(x.last)
+      +(x.avgDwell!=null?(' อยู่เฉลี่ย '+x.avgDwell+' นาที'):'')+(x.closed?(' ⚠ ถึงตอนร้านปิด '+x.closed+' ครั้ง'):''));
+  });
+  return lines.join('\n');
+}
+function nsCopyDaily(){
+  const t = nsDayText();
+  const done = ()=>toast('คัดลอกสรุปแล้ว — วางใน LINE ได้เลย');
+  if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(done, ()=>nsCopyFallback(t,done)); }
+  else nsCopyFallback(t, done);
+}
+function nsCopyFallback(t, done){
+  const ta = document.createElement('textarea'); ta.value = t; ta.style.cssText='position:fixed;opacity:0;';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); done(); }catch(e){ toast('คัดลอกไม่สำเร็จ'); }
+  ta.remove();
+}
+function nsExportDailyCsv(){
+  const sm = nsDaySummary();
+  const esc = s=>'"'+String(s==null?'':s).replace(/"/g,'""')+'"';
+  const head = ['วันที่','ร้าน','จำนวนครั้ง','ทะเบียน','ถึงแรก','ถึงล่าสุด','อยู่เฉลี่ย(นาที)','นานสุด(นาที)','ถึงตอนร้านปิด','ผ่านไป'];
+  const rows = sm.rows.map(x=>[sm.range.key,x.name,x.n,x.plates.join(' '),nsTimeOnly(x.first),nsTimeOnly(x.last),x.avgDwell,x.maxDwell,x.closed,x.passed]);
+  const csv = '﻿'+[head].concat(rows).map(r=>r.map(esc).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download = 'near-store-daily-'+sm.range.key+'.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+function loadNearStoreVisits(){ Promise.all([nsLoadVisits(), nsLoadStoreSettings()]).then(()=>toast("โหลดข้อมูลแล้ว")); }
 async function loadStopEvents(force){
   if(stopDetectOff() && !force){
     /* ปิดอยู่ = ไม่ต้องดึงรายการเก่าลงมาเลย ประหยัดการโหลดตอนเปิดหน้าทุกครั้ง */
@@ -11224,6 +11923,7 @@ async function boot(){
   renderStopSettings();
   /* จุดจอดที่ตรวจพบ เก็บใน fleet_sync โดยตรง (ไม่ผ่าน IndexedDB) — ดูเหตุผลที่บล็อก v23 */
   loadStopEvents();
+  nsLoadVisits(); nsLoadStoreSettings();
   document.getElementById('setGmapKey').value = STATE.settings.gmapApiKey || '';
   document.getElementById('setTomtomKey').value = STATE.settings.tomtomApiKey || '';
   const adminSwEl = document.getElementById('adminThemeSwatches');
@@ -11767,6 +12467,7 @@ Object.assign(window, {
   showRouteHazardsOnMap, showHazardOnMap, clearHazardFocus,
   listMore, listToggleGroup, hazardCollapseAll, userCollapseAll, setStopEventRange,
   toggleStopDetect, fillPoiProvinces, mergeDuplicateStopEvents,
+  nsToggle, nsSaveRadius, nsOpenStoreEdit, nsDayShift, nsRenderDaily, nsCopyDaily, nsExportDailyCsv, nsTestAlert, nsClosePopup, nsShowOnMap, nsRenderHistory, nsExportCsv, loadNearStoreVisits,
   renderStopEventQueue, openStopEventMap, approveStopAsPoi, markStopAskDriver,
   markStopNoStop, dismissStopEvent, deleteStopEvent, saveStopSettings,
   promoteReportToHazard, dismissDriverReport, promoteReportToPoi, promoteDupChanged, viewReportPhoto, viewPoiPhoto, viewHazardPhoto,
