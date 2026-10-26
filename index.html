@@ -7201,6 +7201,99 @@ function fillGeoCell(id, lat, lng){
   });
 }
 
+/* ---------- สถานที่ใกล้จุดจอด จากฐานข้อมูล OpenStreetMap (store 'osmPoi') ----------
+   ข้อมูลนำเข้าด้วย import_osm_poi.py (ปั๊ม ร้านวัสดุ ห้างค้าส่ง ฯลฯ) แบ่งเป็นช่อง 1/20 องศา
+   หน้านี้ดึงเฉพาะช่องที่จุดจอดอยู่ แล้วคำนวณระยะในเครื่อง — ไม่เรียกเว็บภายนอก ไม่มีโควตา
+   อ่านอย่างเดียว ไม่เขียนอะไรกลับ และไม่เกี่ยวกับฝั่งแอปคนขับ */
+const OSM_STORE = 'osmPoi';
+const OSM_RADIUS_M = { fuel:100, rest:100, _:50 };     // ปั๊ม/จุดพักให้รัศมีกว้างกว่า เพราะรถมักจอดที่ลานข้างปั๊ม
+const OSM_KIND_META = {
+  fuel:{icon:'⛽',label:'ปั๊มน้ำมัน',cls:'fuel'},        rest:{icon:'🅿️',label:'จุดพักริมทาง',cls:'fuel'},
+  doityourself:{icon:'🏗️',label:'โฮมเซ็นเตอร์/วัสดุ',cls:'shop'}, hardware:{icon:'🔧',label:'ร้านฮาร์ดแวร์',cls:'shop'},
+  building:{icon:'🧱',label:'วัสดุก่อสร้าง',cls:'shop'},   wholesale:{icon:'📦',label:'ค้าส่ง',cls:'shop'},
+  supermarket:{icon:'🛒',label:'ซูเปอร์มาร์เก็ต',cls:'shop'}, department:{icon:'🏬',label:'ห้างสรรพสินค้า',cls:'shop'},
+  mall:{icon:'🏬',label:'ศูนย์การค้า',cls:'shop'},       convenience:{icon:'🏪',label:'ร้านสะดวกซื้อ',cls:'shop'},
+  restaurant:{icon:'🍽️',label:'ร้านอาหาร',cls:'shop'},
+};
+const osmTileCache = new Map();     // key -> Promise<array>
+let osmMetaPromise = null;
+function osmTileKey(lat,lng){ return 't'+Math.floor(lat*20)+'_'+Math.floor(lng*20); }   // ต้องตรงกับ tile_of() ในสคริปต์นำเข้า
+function osmHtml(t){ return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function osmLsGet(k){ try{ const j=JSON.parse(localStorage.getItem(k)||'null'); return (j && Date.now()-j.t < 7*864e5) ? j.p : null; }catch(e){ return null; } }
+function osmLsSet(k,p){ try{ localStorage.setItem(k, JSON.stringify({t:Date.now(),p})); }catch(e){ /* เต็ม/ปิดไว้ — ข้าม */ } }
+function osmPoiReady(){
+  if(!window.__supa) return Promise.resolve(false);
+  if(!osmMetaPromise){
+    osmMetaPromise = window.__supa.from('fleet_sync').select('data').eq('store',OSM_STORE).eq('id','_meta').limit(1)
+      .then(({data,error})=> !error && !!(data && data[0] && data[0].data))
+      .catch(()=>false);
+    osmMetaPromise.then(ok=>{ if(!ok) osmMetaPromise = null; });   // ยังไม่มี/พลาด → ลองใหม่รอบหน้า
+  }
+  return osmMetaPromise;
+}
+function osmLoadTile(key){
+  if(osmTileCache.has(key)) return osmTileCache.get(key);
+  const cached = osmLsGet('osmtile:'+key);
+  const pr = cached ? Promise.resolve(cached)
+    : (window.__supa
+        ? window.__supa.from('fleet_sync').select('data').eq('store',OSM_STORE).eq('id',key).limit(1)
+            .then(({data,error})=>{
+              if(error) throw error;
+              const p = (data && data[0] && data[0].data && data[0].data.p) || [];
+              osmLsSet('osmtile:'+key, p);
+              return p;
+            })
+        : Promise.resolve([]));
+  const safe = pr.catch(()=>{ osmTileCache.delete(key); return []; });
+  osmTileCache.set(key, safe);
+  return safe;
+}
+/* คืนรายการสถานที่ในรัศมี เรียงใกล้→ไกล: [{name,kind,brand,m}] */
+async function osmNearby(lat,lng){
+  if(!(await osmPoiReady())) return null;     // null = ยังไม่ได้นำเข้าข้อมูล
+  const d = 0.0015;                            // ~165 ม. กันจุดที่อยู่ติดขอบช่อง
+  const keys = [...new Set([[lat-d,lng-d],[lat-d,lng+d],[lat+d,lng-d],[lat+d,lng+d],[lat,lng]].map(([a,b])=>osmTileKey(a,b)))];
+  const tiles = await Promise.all(keys.map(osmLoadTile));
+  const out = [];
+  tiles.forEach(list=>list.forEach(r=>{
+    const kind = r[3], lim = OSM_RADIUS_M[kind] || OSM_RADIUS_M._;
+    const m = Math.round(haversineKm([lat,lng],[r[0],r[1]])*1000);
+    if(m <= lim) out.push({name:r[2], kind, brand:r[4]||'', m});
+  }));
+  return out.sort((a,b)=>a.m-b.m);
+}
+function fillNearCell(id, lat, lng){
+  osmNearby(lat,lng).then(list=>{
+    const el = document.getElementById(id);
+    if(!el) return;                            // แถวถูกวาดใหม่ไปแล้ว
+    if(list===null){
+      el.innerHTML = '<span style="color:var(--text-faint);">ยังไม่ได้นำเข้าฐานข้อมูลสถานที่ (รัน import_osm_poi.py)</span>';
+      return;
+    }
+    const top = list.slice(0,3).map(x=>{
+      const k = OSM_KIND_META[x.kind]||{icon:'📍',label:x.kind};
+      return `<div title="${osmHtml(k.label)}">${k.icon} <b>${osmHtml(x.name)}</b> <span style="color:var(--text-faint);">· ${x.m} ม.</span></div>`;
+    }).join('');
+    const hasFuel = list.some(x=>(OSM_KIND_META[x.kind]||{}).cls==='fuel');
+    const hasShop = list.some(x=>(OSM_KIND_META[x.kind]||{}).cls==='shop');
+    const tag = hasFuel ? '<div style="color:#34D399;">⛽ น่าจะเป็นปั๊ม/จุดพัก</div>'
+              : hasShop ? '<div style="color:#F5C26B;">🏪 น่าจะเป็นร้านค้า/จุดส่งของ</div>'
+              : '<div style="color:var(--text-faint);">— ไม่พบปั๊ม/ร้านค้าใกล้จุดนี้ (น่าจะริมทาง/ที่โล่ง)</div>';
+    el.innerHTML = top + tag;
+  }).catch(()=>{});
+}
+/* ตอนกด "เป็นปั๊ม/จุดพัก" เติมชื่อและประเภทที่น่าจะใช่ให้ก่อน (แอดมินแก้ได้ ถ้าช่องชื่อยังว่างอยู่) */
+function osmPrefillApprove(e){
+  osmNearby(e.lat,e.lng).then(list=>{
+    const top = list && list[0]; if(!top) return;
+    const nameEl = document.getElementById('fStopPoiName'), typeEl = document.getElementById('fStopPoiType');
+    if(!nameEl || nameEl.value) return;
+    nameEl.value = top.name;
+    const cls = (OSM_KIND_META[top.kind]||{}).cls;
+    if(typeEl) typeEl.value = top.kind==='rest' ? 'rest' : cls==='fuel' ? 'fuel' : 'load';
+  }).catch(()=>{});
+}
+
 function renderDriverReportsQueue(){
   const tbody = document.getElementById('driverReportQueue');
   if(!tbody) return;
@@ -8935,7 +9028,7 @@ function renderStopEventQueue(){
       }${
         (e.estimated && !e.uncertainEnd) ? '<div style="font-size:11px;color:var(--text-faint);font-family:var(--font);">⏳ รวมช่วงที่กล่องเงียบแล้ว (ประเมิน)</div>' : ''
       }</td>
-      <td>${geoCellHtml(geoId)}</td>
+      <td>${geoCellHtml(geoId)}<div id="stopnear-${e.id}" style="margin-top:5px;font-size:11.5px;line-height:1.5;"></div></td>
       <td style="font-size:12px;">${route?route.name:'<span style="color:var(--text-faint)">ไม่อยู่ใกล้เส้นทางไหน</span>'}</td>
       <td><span class="badge ${meta.cls}">${meta.icon} ${meta.label}</span></td>
       <td style="font-size:12px;color:var(--text-dim);">${e.note||'-'}</td>
@@ -8962,6 +9055,7 @@ function renderStopEventQueue(){
   }).join('');
   /* เรียกหาชื่อจังหวัด/ตำบล เฉพาะแถวที่แสดงอยู่จริง — เดิมยิงทุกแถวแม้ยังไม่ได้ดู */
   rendered.forEach(e=>fillGeoCell('stopgeo-'+e.id, e.lat, e.lng));
+  rendered.forEach(e=>fillNearCell('stopnear-'+e.id, e.lat, e.lng));
 }
 function setStopEventRange(kind){
   const {from,to} = quickDateBounds(kind);
@@ -9034,6 +9128,7 @@ function approveStopAsPoi(id){
       await saveStopEvent(e, 'บันทึกเป็นจุดพักแล้ว: '+name);
     }}
   ]);
+  osmPrefillApprove(e);
 }
 function markStopAskDriver(id){
   const e = findStopEvent(id);
