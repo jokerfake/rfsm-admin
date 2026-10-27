@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
 --bg:#0A0F1C; --panel:#111A2C; --panel-2:#0D1524; --border:#22304A; --border-soft:#1A2438;
@@ -595,6 +595,161 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);overflo
 }
 .theme-swatch-dot span{width:16px;height:16px;border-radius:50%;display:block;}
 .theme-swatch-lb{font-size:11px;font-weight:600;}
+
+/* ===== ADMIN SKIN "Glass Bento" (admin เท่านั้น — ไม่แตะแอปคนขับ) =====
+   รวมพื้นมืดโปร่งแสง/เรืองแสงของแบบ A กับการ์ดมนใหญ่+แท็บบนของแบบ B
+   ทุกกฎผูกกับ #adminApp.skin-glass เท่านั้น ปิดได้จาก Admin > "รูปแบบหน้าตา"
+   (เลือก Classic = เอา class ออก กลับไปหน้าตาเดิมทุกอย่าง)
+   สีทุกจุดอ้างอิงตัวแปรธีม (--accent, --panel, --bg ...) จึงใช้ร่วมกับ 5 ธีมเดิมได้ */
+#adminApp.skin-glass{
+  --radius:22px;
+  --glass:color-mix(in srgb,var(--panel) 72%,transparent);
+  --glass-2:color-mix(in srgb,var(--panel-2) 70%,transparent);
+  --glass-bd:color-mix(in srgb,var(--text) 9%,transparent);
+  --font-display:'Prompt','Space Grotesk',sans-serif;
+  --font-body:'Prompt','Inter',sans-serif;
+  font-size:14px;
+  background:
+    radial-gradient(1100px 700px at 12% -8%,rgba(var(--accent-rgb),.13),transparent 60%),
+    radial-gradient(900px 600px at 100% 0,rgba(26,165,255,.09),transparent 55%),
+    var(--bg);
+  background-attachment:fixed;
+}
+/* ---- โครง: แถบเมนูแนวนอนด้านบน แทนแถบไอคอนด้านซ้าย ---- */
+#adminApp.skin-glass .app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);}
+#adminApp.skin-glass .rail{
+  flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;
+  margin:12px 16px 0;padding:8px 12px;gap:4px;
+  background:var(--glass);border:1px solid var(--glass-bd);border-radius:24px;
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  position:relative;z-index:1000;padding-right:150px; /* เว้นที่ให้ปุ่ม ⇄ สลับโหมด ที่ลอยอยู่มุมขวาบน */
+}
+#adminApp.skin-glass .rail-logo{margin:0 10px 0 2px;width:40px;height:40px;border-radius:14px;flex:none;}
+#adminApp.skin-glass .rail-spacer{flex:1 1 0;min-width:8px;}
+#adminApp.skin-glass .rail-btn{
+  width:auto;min-width:42px;height:42px;padding:0 11px;border-radius:99px;gap:8px;
+  border:1px solid transparent;flex:none;
+}
+#adminApp.skin-glass .rail-btn:hover{background:rgba(var(--accent-rgb),.08);}
+#adminApp.skin-glass .rail-btn.active{
+  background:rgba(var(--accent-rgb),.16);border-color:rgba(var(--accent-rgb),.45);color:var(--accent);
+  box-shadow:0 0 18px rgba(var(--accent-rgb),.25);padding:0 16px 0 13px;
+}
+#adminApp.skin-glass .rail-btn.active::before{display:none;}
+/* ป้ายชื่อ: ปุ่มที่เลือกแสดงข้อความต่อท้ายไอคอน ปุ่มอื่นเป็น tooltip ด้านล่าง */
+#adminApp.skin-glass .rail-btn .tip{
+  top:calc(100% + 10px);left:50%;transform:translateX(-50%) translateY(-4px);
+  background:var(--panel);border:1px solid var(--border);box-shadow:0 10px 28px rgba(0,0,0,.45);
+}
+#adminApp.skin-glass .rail-btn:hover .tip{opacity:1;transform:translateX(-50%) translateY(0);}
+#adminApp.skin-glass .rail-btn.active .tip{
+  position:static;transform:none;opacity:1;background:none;border:0;box-shadow:none;padding:0;
+  font-size:13px;font-weight:500;color:inherit;pointer-events:none;
+}
+#adminApp.skin-glass .rail-btn.active:hover .tip{transform:none;}
+/* ---- หัวหน้า: ชื่อหน้าใหญ่ ไม่มีแถบทึบ ---- */
+#adminApp.skin-glass .topbar{
+  height:auto;min-height:56px;padding:10px 26px 4px;background:transparent;border:0;gap:14px;flex-wrap:wrap;
+}
+#adminApp.skin-glass .topbar h1{font-size:18px;font-weight:600;letter-spacing:0;}
+#adminApp.skin-glass .topbar .sub{font-family:var(--font-body);font-size:13px;}
+#adminApp.skin-glass .pill{background:var(--glass);border-color:var(--glass-bd);padding:8px 14px;}
+#adminApp.skin-glass .view.scroll{padding:8px 26px 60px;}
+/* ---- แผนที่: การ์ดมนใหญ่ ---- */
+#adminApp.skin-glass #mapview{
+  margin:6px 16px 16px;border-radius:26px;overflow:hidden;border:1px solid var(--glass-bd);
+  box-shadow:0 20px 50px -20px rgba(0,0,0,.6);
+}
+#adminApp.skin-glass .map-panel{
+  background:var(--glass);border-color:var(--glass-bd);border-radius:20px;
+  -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
+}
+#adminApp.skin-glass .panel-topleft{max-height:calc(100% - 32px);}
+#adminApp.skin-glass .panel-bottomleft{max-height:min(420px,calc(100% - 200px));}
+#adminApp.skin-glass .route-stat{background:var(--glass-2);border-color:var(--glass-bd);border-radius:14px;padding:10px 12px;}
+#adminApp.skin-glass .route-stat .val{font-size:20px;}
+#adminApp.skin-glass .gps-veh-item,#adminApp.skin-glass .gps-chip{border-color:var(--glass-bd);background:var(--glass-2);}
+#adminApp.skin-glass .gps-veh-item{border-radius:14px;}
+#adminApp.skin-glass .leaflet-popup-content-wrapper{border-radius:16px;}
+/* ---- การ์ด / ตัวเลข ---- */
+#adminApp.skin-glass .card,
+#adminApp.skin-glass .kpi-card,
+#adminApp.skin-glass .fleet-group{
+  background:var(--glass);border-color:var(--glass-bd);border-radius:var(--radius);
+}
+#adminApp.skin-glass .card{padding:20px 22px;}
+#adminApp.skin-glass .kpi-card{padding:18px 20px;}
+#adminApp.skin-glass .kpi-card .lbl{text-transform:none;letter-spacing:0;font-size:12.5px;}
+#adminApp.skin-glass .kpi-card .val{font-size:34px;font-weight:600;letter-spacing:-.5px;line-height:1.1;}
+#adminApp.skin-glass .card h3{font-size:16px;}
+#adminApp.skin-glass .section-hd h2{font-size:24px;}
+#adminApp.skin-glass .fleet-row{background:var(--glass-2);border-color:var(--glass-bd);border-radius:18px;}
+#adminApp.skin-glass .fleet-group-hd{background:var(--glass-2);}
+#adminApp.skin-glass .fleet-ic{border-radius:12px;}
+#adminApp.skin-glass .progress{height:8px;border-radius:8px;border:0;background:rgba(255,255,255,.07);}
+#adminApp.skin-glass .progress i{border-radius:8px;}
+/* ---- ตาราง ---- */
+#adminApp.skin-glass th{text-transform:none;letter-spacing:0;font-size:12px;border-bottom-color:var(--glass-bd);padding:10px 12px;}
+#adminApp.skin-glass td{padding:12px;border-bottom-color:var(--glass-bd);}
+#adminApp.skin-glass tr:hover td{background:rgba(var(--accent-rgb),.05);}
+/* ---- ปุ่ม / ช่องกรอก / แท็บ ---- */
+#adminApp.skin-glass .btn{border-radius:99px;background:var(--glass);border-color:var(--glass-bd);padding:9px 18px;}
+#adminApp.skin-glass .btn.sm{padding:6px 13px;}
+#adminApp.skin-glass .btn:hover{background:rgba(var(--accent-rgb),.10);}
+#adminApp.skin-glass .btn.primary{
+  background:var(--accent);border-color:var(--accent);color:var(--accent-ink);
+  box-shadow:0 0 18px rgba(var(--accent-rgb),.30);
+}
+#adminApp.skin-glass .btn.primary:hover{background:var(--accent-hover);}
+#adminApp.skin-glass .field input,
+#adminApp.skin-glass .field select,
+#adminApp.skin-glass .field textarea,
+#adminApp.skin-glass .gps-veh-search,
+#adminApp.skin-glass .panel-route-select select{
+  background:var(--glass-2);border-color:var(--glass-bd);border-radius:14px;padding:10px 13px;
+}
+#adminApp.skin-glass .gps-veh-search{border-radius:12px;padding:8px 11px;}
+/* ช่องกรอกทั่วไปนอก .field (ช่องค้นหา/วันที่/ตัวกรอง) ให้เข้าธีมเดียวกัน — ตัวที่ตั้ง style ของตัวเองยังชนะตามเดิม */
+#adminApp.skin-glass input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]),
+#adminApp.skin-glass select,#adminApp.skin-glass textarea{
+  background-color:var(--glass-2);color:var(--text);border:1px solid var(--glass-bd);border-radius:12px;
+  font-family:inherit;color-scheme:dark;
+}
+html[data-theme="paper"] #adminApp.skin-glass input,html[data-theme="paper"] #adminApp.skin-glass select{color-scheme:light;}
+#adminApp.skin-glass input::placeholder,#adminApp.skin-glass textarea::placeholder{color:var(--text-faint);}
+#adminApp.skin-glass input:focus,#adminApp.skin-glass select:focus,#adminApp.skin-glass textarea:focus{outline:none;border-color:var(--accent);}
+#adminApp.skin-glass .map-panel .btn{white-space:nowrap;padding:7px 12px;}
+#adminApp.skin-glass #mapProviderBar{width:max-content;max-width:calc(100% - 640px);flex-wrap:wrap;justify-content:center;}
+#adminApp.skin-glass .tabs{border-bottom:0;gap:8px;flex-wrap:wrap;}
+#adminApp.skin-glass .tab-btn{
+  border:1px solid var(--glass-bd);border-radius:99px;padding:8px 18px;background:var(--glass);
+}
+#adminApp.skin-glass .tab-btn.active{
+  border-color:rgba(var(--accent-rgb),.45);background:rgba(var(--accent-rgb),.14);color:var(--accent);
+}
+#adminApp.skin-glass .badge{border-radius:99px;}
+/* ---- กล่องโต้ตอบ / toast ---- */
+#adminApp.skin-glass .two-col-modal{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
+#adminApp.skin-glass .modal-box{background:var(--panel);border-color:var(--glass-bd);border-radius:26px;}
+#adminApp.skin-glass .toast{border-radius:16px;background:var(--panel);}
+#adminApp.skin-glass .admin-list-item{border-bottom-color:var(--glass-bd);}
+/* ---- ตัวเลือกรูปแบบหน้าตา (Admin > รูปแบบหน้าตา) ---- */
+.skin-opt-row{display:flex;gap:10px;flex-wrap:wrap;}
+.skin-opt{
+  display:flex;flex-direction:column;gap:4px;padding:12px 16px;min-width:190px;text-align:left;
+  background:var(--panel-2);border:1.5px solid var(--border-soft);border-radius:14px;cursor:pointer;
+  font:inherit;color:var(--text-dim);transition:.15s;
+}
+.skin-opt b{color:var(--text);font-size:13.5px;font-weight:600;}
+.skin-opt span{font-size:11.5px;color:var(--text-faint);}
+.skin-opt:hover{border-color:var(--border);}
+.skin-opt.active{border-color:var(--accent);}
+/* จอแคบ: ให้เมนูบนห่อลงบรรทัดใหม่ และลดขอบ */
+@media(max-width:900px){
+  #adminApp.skin-glass .rail{margin:8px 8px 0;}
+  #adminApp.skin-glass .topbar,#adminApp.skin-glass .view.scroll{padding-left:14px;padding-right:14px;}
+  #adminApp.skin-glass #mapview{margin:6px 8px 8px;}
+}
 </style>
 <script>
 /* Apply the saved theme (if any) before first paint, so switching themes
@@ -626,6 +781,26 @@ function setTheme(id){
 function getTheme(){
   try{ return localStorage.getItem('rfsm_theme') || 'midnight'; }catch(e){ return 'midnight'; }
 }
+
+/* ===== รูปแบบหน้าตาแดชบอร์ดแอดมิน (admin เท่านั้น) =====
+   'glass' = Glass Bento (ค่าเริ่มต้น) · 'classic' = หน้าตาเดิม
+   เก็บใน localStorage ของเบราว์เซอร์นี้ ไม่ซิงค์ไปที่อื่น และไม่กระทบแอปคนขับ */
+function getAdminSkin(){
+  try{ return localStorage.getItem('rfsm_admin_skin') === 'classic' ? 'classic' : 'glass'; }catch(e){ return 'glass'; }
+}
+function applyAdminSkin(){
+  const el = document.getElementById('adminApp');
+  if(!el) return;
+  el.classList.toggle('skin-glass', getAdminSkin()==='glass');
+  document.querySelectorAll('.skin-opt').forEach(b=>b.classList.toggle('active', b.dataset.skin===getAdminSkin()));
+}
+function setAdminSkin(id){
+  try{ localStorage.setItem('rfsm_admin_skin', id==='classic' ? 'classic' : 'glass'); }catch(e){}
+  applyAdminSkin();
+  /* เลย์เอาต์เปลี่ยน แผนที่ต้องคำนวณขนาดใหม่ */
+  setTimeout(()=>{ try{ if(window.__leafletMap) window.__leafletMap.invalidateSize(); }catch(e){} },80);
+}
+document.addEventListener('DOMContentLoaded', applyAdminSkin);
 function themeSwatchesHtml(){
   return THEME_LIST.map(t=>`
     <button type="button" class="theme-swatch-btn${getTheme()===t.id?' active':''}" data-theme="${t.id}" onclick="setTheme('${t.id}')" title="${t.label}">
@@ -1189,7 +1364,7 @@ function themeSwatchesHtml(){
 <div class="toast-wrap" id="toastWrap"></div>
 </div>
 
-<div id="adminApp">
+<div id="adminApp" class="skin-glass">
 
 <!-- ===== ADMIN LOGIN GATE ===== -->
 <div id="adminLoginScreen">
@@ -1570,7 +1745,7 @@ function themeSwatchesHtml(){
     <!-- 4c. NEAR-STORE VIEW (v35) -->
     <div class="view scroll" id="nearstoreview">
       <div class="section-hd">
-        <div><h2>🏪 ติดตามรถขนส่งที่กำลังวิ่งเข้าหาจุดรับ-ส่งสินค้า</h2><p>เฝ้าดูรถที่กำลังวิ่งเข้าหาจุดขึ้น/ลงสินค้า 📦 แจ้งเตือนเมื่อใกล้ถึง/ถึงแล้ว พร้อมเวลาโดยประมาณและประวัติ</p></div>
+        <div><h2>🏪 รถใกล้ถึงร้าน</h2><p>เฝ้าดูรถที่กำลังวิ่งเข้าหาจุดขึ้น/ลงสินค้า 📦 แจ้งเตือนเมื่อใกล้ถึง/ถึงแล้ว พร้อมเวลาโดยประมาณและประวัติ</p></div>
       </div>
       <div class="grid-3" id="nsKpis" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin-bottom:14px;"></div>
       <div class="card">
@@ -1819,6 +1994,14 @@ function themeSwatchesHtml(){
         <h3>🎨 ธีมสี</h3>
         <p style="font-size:12.5px;color:var(--text-faint);margin-bottom:10px;">เปลี่ยนหน้าตาแดชบอร์ดได้ตามใจ เผื่อเบื่อธีมเดิม (มีผลเฉพาะเบราว์เซอร์นี้)</p>
         <div class="theme-swatch-row" id="adminThemeSwatches"></div>
+      </div>
+      <div class="card">
+        <h3>✨ รูปแบบหน้าตา</h3>
+        <p style="font-size:12.5px;color:var(--text-faint);margin-bottom:10px;">สลับระหว่างหน้าตาใหม่กับหน้าตาเดิมของแดชบอร์ด (มีผลเฉพาะเบราว์เซอร์นี้ ไม่กระทบแอปคนขับ)</p>
+        <div class="skin-opt-row">
+          <button type="button" class="skin-opt" data-skin="glass" onclick="setAdminSkin('glass')"><b>Glass Bento</b><span>พื้นมืดโปร่งแสง การ์ดมนใหญ่ เมนูแท็บด้านบน</span></button>
+          <button type="button" class="skin-opt" data-skin="classic" onclick="setAdminSkin('classic')"><b>Classic</b><span>หน้าตาเดิม เมนูไอคอนด้านซ้าย</span></button>
+        </div>
       </div>
       <div class="grid-2">
         <div class="card">
