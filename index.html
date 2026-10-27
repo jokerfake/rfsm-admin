@@ -5646,6 +5646,13 @@ const POI_META = {
 const MAP_FILTERS = { haz:{}, poi:{} };
 Object.keys(HAZ_META).forEach(k=>MAP_FILTERS.haz[k]=true);
 Object.keys(POI_META).forEach(k=>MAP_FILTERS.poi[k]=true);
+/* ร้านค้า = จุดขึ้น/ลงสินค้า (📦, p.loadPoint) ไม่ได้อยู่ในประเภทของ POI_META จึงมีสวิตช์ของตัวเองชื่อ 'load'
+   (ไม่ได้ใส่ใน POI_META เพราะ POI_META ถูกใช้ทำตัวเลือกประเภทในฟอร์มด้วย) */
+MAP_FILTERS.poi.load = true;
+const LOAD_POI_LEGEND = { label:'ร้านค้า / จุดขึ้น-ลงสินค้า', icon:'📦', color:'#FBBF24' };
+function poiHiddenByFilter(p){
+  return (p && p.loadPoint) ? MAP_FILTERS.poi.load===false : MAP_FILTERS.poi[p.type]===false;
+}
 function toggleMapFilter(cat,key,checked){
   MAP_FILTERS[cat][key] = checked;
   redrawMapLayers();
@@ -6696,6 +6703,11 @@ function renderLegend(){
       <span class="legend-swatch" style="background:${v.color}22;color:${v.color}">${v.icon}</span>${v.label}
     </label>`;
   });
+  const loadOn = MAP_FILTERS.poi.load!==false;
+  poiRows.unshift(`<label class="legend-row legend-check${loadOn?'':' off'}">
+      <input type="checkbox" ${loadOn?'checked':''} onchange="toggleMapFilter('poi','load',this.checked)">
+      <span class="legend-swatch" style="background:${LOAD_POI_LEGEND.color}22;color:${LOAD_POI_LEGEND.color}">${LOAD_POI_LEGEND.icon}</span>${LOAD_POI_LEGEND.label}
+    </label>`);
   document.getElementById('legendRows').innerHTML =
     '<div class="legend-group-title">จุดสำคัญ (POI)</div>' + poiRows.join('') +
     '<div class="legend-group-title">จุดเสี่ยงบนเส้นทาง</div>' + hazRows.join('');
@@ -6912,7 +6924,7 @@ function drawFleetMapLeaflet(){
 
   /* ระหว่างโฟกัสจุดเสี่ยง ซ่อนจุดพักไว้ก่อน ไม่งั้นหมุดเต็มจอจนหาจุดที่ต้องการดูไม่เจอ */
   if(!focusList) STATE.pois.forEach(p=>{
-    if(MAP_FILTERS.poi[p.type]===false) return;
+    if(poiHiddenByFilter(p)) return;
     const meta = poiDisplayMeta(p);
     L.marker([p.lat,p.lng],{icon:dotIcon(meta.color,18,meta.icon)}).addTo(poiLayerGroup)
       .bindPopup(`<div class="pop-title">${meta.icon} ${p.name}</div><div class="pop-row">${meta.label}</div><div class="pop-row">${p.notes}</div>${poiReporterPopupHtml(p)}`);
@@ -6990,7 +7002,7 @@ function drawFleetMapGoogle(){
 
   /* ระหว่างโฟกัสจุดเสี่ยง ซ่อนจุดพักไว้ก่อน เหมือนฝั่ง Leaflet */
   if(!focusList) STATE.pois.forEach(p=>{
-    if(MAP_FILTERS.poi[p.type]===false) return;
+    if(poiHiddenByFilter(p)) return;
     const meta = poiDisplayMeta(p);
     mk({lat:p.lat,lng:p.lng}, gDotIconUrl(meta.color,20,meta.icon), p.name,
       `<div style="color:#111"><b>${meta.icon} ${p.name}</b><br>${meta.label}<br>${p.notes}${poiReporterPopupHtml(p)}</div>`);
