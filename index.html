@@ -733,6 +733,165 @@ html[data-theme="paper"] #adminApp.skin-glass input,html[data-theme="paper"] #ad
 #adminApp.skin-glass .modal-box{background:var(--panel);border-color:var(--glass-bd);border-radius:26px;}
 #adminApp.skin-glass .toast{border-radius:16px;background:var(--panel);}
 #adminApp.skin-glass .admin-list-item{border-bottom-color:var(--glass-bd);}
+/* ===== ADMIN SKIN "Atlas" (admin เท่านั้น — ไม่แตะแอปคนขับ) =====
+   พื้นสว่าง สบายตา เมนูซ้ายแบ่งกลุ่มพร้อมชื่อ การ์ดมนลอยบนแผนที่ (แบบ E ในชุดตัวอย่าง)
+   ทุกกฎผูกกับ #adminApp.skin-atlas เท่านั้น เลือก Classic/Glass ใน Admin > "รูปแบบหน้าตา" เพื่อกลับ
+   สกินนี้กำหนดชุดสีสว่างของตัวเองเสมอ (ไม่ขึ้นกับธีมที่เลือก) */
+.rail-brand,.rail-grp{display:none;}
+#adminApp.skin-atlas{
+  --bg:#F4F6F8; --panel:#FFFFFF; --panel-2:#F7F9FB; --border:#DDE3EB; --border-soft:#E8ECF1;
+  --text:#111827; --text-dim:#4B5563; --text-faint:#6B7280;
+  --accent:#1F5FE0; --accent-2:#1B4FC9; --accent-ink:#FFFFFF; --accent-hover:#3B7BF0; --accent-rgb:31,95,224; --accent-dim:#C9DAFB;
+  --radius:20px;
+  --font-display:'Prompt','Space Grotesk',sans-serif;
+  --font-body:'Prompt','Inter',sans-serif;
+  --atlas-shadow:0 2px 10px rgba(17,24,39,.06);
+  --atlas-float:0 8px 28px rgba(17,24,39,.14);
+  background:var(--bg);color:var(--text);font-size:14px;
+}
+/* ---- โครง: เมนูซ้ายกว้าง แบ่งกลุ่ม ---- */
+#adminApp.skin-atlas .app{grid-template-columns:232px minmax(0,1fr);}
+#adminApp.skin-atlas .rail{
+  align-items:stretch;padding:20px 14px 16px;gap:2px;background:#fff;border-right:1px solid #E5E9EE;
+  overflow-y:auto;overflow-x:hidden;
+}
+#adminApp.skin-atlas .rail::-webkit-scrollbar{width:0;}
+#adminApp.skin-atlas .rail-logo{
+  order:-1;width:auto;height:auto;margin:0 0 6px;padding:0 8px 14px;background:none;box-shadow:none;border-radius:0;
+  display:flex;align-items:center;gap:12px;justify-content:flex-start;color:var(--text);
+}
+#adminApp.skin-atlas .rl-mark{
+  width:40px;height:40px;border-radius:12px;background:var(--accent);color:#fff;flex:none;
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;
+}
+#adminApp.skin-atlas .rail-brand{display:block;line-height:1.25;}
+#adminApp.skin-atlas .rail-brand b{display:block;font-size:16px;font-weight:700;color:var(--text);}
+#adminApp.skin-atlas .rail-brand small{display:block;font-size:12px;font-weight:400;color:var(--text-faint);}
+#adminApp.skin-atlas .rail-grp{
+  display:block;padding:14px 10px 6px;font-size:11.5px;font-weight:600;color:var(--text-faint);letter-spacing:.3px;
+}
+#adminApp.skin-atlas .rail-btn{
+  width:100%;height:auto;min-height:40px;padding:9px 10px;border-radius:12px;gap:12px;
+  justify-content:flex-start;color:#374151;border:0;
+}
+#adminApp.skin-atlas .rail-btn:hover{background:#F1F4F8;color:var(--text);}
+#adminApp.skin-atlas .rail-btn.active{background:#EAF1FF;color:#1B4FC9;font-weight:600;}
+#adminApp.skin-atlas .rail-btn.active::before{display:none;}
+#adminApp.skin-atlas .rail-btn svg{flex:none;}
+#adminApp.skin-atlas .rail-btn .tip{
+  position:static;transform:none;opacity:1;background:none;border:0;box-shadow:none;padding:0;
+  font-size:14px;color:inherit;pointer-events:none;white-space:nowrap;
+}
+#adminApp.skin-atlas .rail-btn:hover .tip{transform:none;}
+/* จัดกลุ่มเมนูด้วย order (ไม่ย้าย DOM) */
+#adminApp.skin-atlas .rail-grp[data-g="a"]{order:0;}
+#adminApp.skin-atlas .rail-btn[data-view="mapview"]{order:1;}
+#adminApp.skin-atlas .rail-btn[data-view="fleetview"]{order:2;}
+#adminApp.skin-atlas .rail-btn[data-view="nearstoreview"]{order:3;}
+#adminApp.skin-atlas .rail-grp[data-g="b"]{order:9;}
+#adminApp.skin-atlas .rail-btn[data-view="hazardview"]{order:10;}
+#adminApp.skin-atlas .rail-btn[data-view="riskview"]{order:11;}
+#adminApp.skin-atlas .rail-btn[data-view="alertsview"]{order:12;}
+#adminApp.skin-atlas .rail-btn[data-view="speedview"]{order:13;}
+#adminApp.skin-atlas .rail-btn[data-view="pointsview"]{order:14;}
+#adminApp.skin-atlas .rail-grp[data-g="c"]{order:19;}
+#adminApp.skin-atlas .rail-btn[data-view="restview"]{order:20;}
+#adminApp.skin-atlas .rail-btn[data-view="maintview"]{order:21;}
+#adminApp.skin-atlas .rail-btn[data-view="reportview"]{order:22;}
+#adminApp.skin-atlas .rail-spacer{order:30;}
+#adminApp.skin-atlas .rail-btn[data-view="adminview"]{order:31;border-top:1px solid #EEF1F4;border-radius:0 0 12px 12px;margin-top:6px;}
+/* ---- หัวหน้า ---- */
+#adminApp.skin-atlas .topbar{
+  height:auto;min-height:64px;padding:18px 32px 8px;padding-right:160px;background:transparent;border:0;gap:14px;flex-wrap:wrap;
+}
+#adminApp.skin-atlas .topbar h1{font-size:24px;font-weight:700;letter-spacing:0;}
+#adminApp.skin-atlas .topbar .sub{font-family:var(--font-body);font-size:13.5px;color:var(--text-dim);}
+#adminApp.skin-atlas .pill{background:#fff;border-color:#E1E6EC;padding:7px 14px;border-radius:22px;}
+#adminApp.skin-atlas .view.scroll{padding:8px 32px 60px;}
+/* ---- แผนที่สว่าง + การ์ดลอย ---- */
+#adminApp.skin-atlas #map,#adminApp.skin-atlas .leaflet-container{background:#E8ECF1;}
+#adminApp.skin-atlas .leaflet-layer.osm-dark{filter:none;}
+#adminApp.skin-atlas .map-panel{
+  background:#fff;border:1px solid #E8ECF1;border-radius:20px;box-shadow:var(--atlas-float);
+  -webkit-backdrop-filter:none;backdrop-filter:none;
+}
+#adminApp.skin-atlas .panel-topleft{max-height:calc(100% - 32px);}
+#adminApp.skin-atlas .panel-bottomleft{max-height:min(420px,calc(100% - 200px));}
+#adminApp.skin-atlas .map-panel.dragging{box-shadow:0 18px 40px rgba(17,24,39,.22);}
+#adminApp.skin-atlas .panel-drag-handle:hover{background:#F1F4F8;}
+#adminApp.skin-atlas .route-stat{background:var(--panel-2);border-color:#E8ECF1;border-radius:14px;padding:10px 12px;}
+#adminApp.skin-atlas .route-stat .val{font-size:20px;}
+#adminApp.skin-atlas .gps-veh-item,#adminApp.skin-atlas .gps-chip{border-color:#E8ECF1;background:#fff;}
+#adminApp.skin-atlas .gps-veh-item{border-radius:14px;}
+#adminApp.skin-atlas .leaflet-popup-content-wrapper{border-radius:16px;box-shadow:var(--atlas-float);}
+#adminApp.skin-atlas #mapProviderBar{width:max-content;max-width:calc(100% - 640px);flex-wrap:wrap;justify-content:center;}
+#adminApp.skin-atlas .map-panel .btn{white-space:nowrap;padding:7px 12px;}
+#adminApp.skin-atlas .leaflet-popup-content-wrapper{background:#fff;color:var(--text);border:1px solid #E8ECF1;}
+#adminApp.skin-atlas .leaflet-popup-tip{background:#fff;}
+#adminApp.skin-atlas .legend-check:hover{background:#F1F4F8;}
+#adminApp.skin-atlas .risk-ring-wrap circle:first-of-type{stroke:#E8ECF1;}
+#adminApp.skin-atlas #riskRingNum{fill:var(--text);}
+#adminApp.skin-atlas .risk-ring-wrap text:not(#riskRingNum){fill:var(--text-faint);}
+/* ---- การ์ด / ตาราง ---- */
+#adminApp.skin-atlas .card,
+#adminApp.skin-atlas .kpi-card,
+#adminApp.skin-atlas .fleet-group{
+  background:#fff;border:1px solid #E8ECF1;border-radius:var(--radius);box-shadow:var(--atlas-shadow);
+}
+#adminApp.skin-atlas .card{padding:20px 22px;}
+#adminApp.skin-atlas .kpi-card{padding:18px 20px;}
+#adminApp.skin-atlas .kpi-card .lbl{text-transform:none;letter-spacing:0;font-size:13px;}
+#adminApp.skin-atlas .kpi-card .val{font-size:34px;font-weight:700;letter-spacing:-.5px;line-height:1.1;}
+#adminApp.skin-atlas .card h3{font-size:16px;}
+#adminApp.skin-atlas .section-hd h2{font-size:26px;font-weight:700;}
+#adminApp.skin-atlas .fleet-row{background:#fff;border-color:#E8ECF1;border-radius:18px;}
+#adminApp.skin-atlas .fleet-group-hd{background:var(--panel-2);}
+#adminApp.skin-atlas .fleet-ic{border-radius:12px;}
+#adminApp.skin-atlas .progress{height:8px;border-radius:8px;border:0;background:#E8ECF1;}
+#adminApp.skin-atlas .progress i{border-radius:8px;}
+#adminApp.skin-atlas th{text-transform:none;letter-spacing:0;font-size:12.5px;border-bottom-color:#E8ECF1;padding:10px 12px;}
+#adminApp.skin-atlas td{padding:12px;border-bottom-color:#EEF1F4;}
+#adminApp.skin-atlas tr:hover td{background:#F7F9FC;}
+/* ---- ปุ่ม / ช่องกรอก ---- */
+#adminApp.skin-atlas .btn{border-radius:99px;background:#fff;border-color:#E1E6EC;color:#374151;padding:9px 18px;}
+#adminApp.skin-atlas .btn.sm{padding:6px 14px;}
+#adminApp.skin-atlas .btn:hover{background:#F1F6FF;border-color:var(--accent);color:var(--accent);}
+#adminApp.skin-atlas .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+#adminApp.skin-atlas .btn.primary:hover{background:var(--accent-hover);color:#fff;}
+#adminApp.skin-atlas input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]),
+#adminApp.skin-atlas select,#adminApp.skin-atlas textarea{
+  background-color:#fff;color:var(--text);border:1px solid #E1E6EC;border-radius:12px;font-family:inherit;color-scheme:light;
+}
+#adminApp.skin-atlas .field input,#adminApp.skin-atlas .field select,#adminApp.skin-atlas .field textarea,
+#adminApp.skin-atlas .gps-veh-search,#adminApp.skin-atlas .panel-route-select select{border-radius:14px;padding:10px 13px;}
+#adminApp.skin-atlas .gps-veh-search{border-radius:12px;padding:8px 11px;}
+#adminApp.skin-atlas input::placeholder,#adminApp.skin-atlas textarea::placeholder{color:#8C97A8;}
+#adminApp.skin-atlas input:focus,#adminApp.skin-atlas select:focus,#adminApp.skin-atlas textarea:focus{outline:none;border-color:var(--accent);}
+#adminApp.skin-atlas .tabs{border-bottom:0;gap:8px;flex-wrap:wrap;}
+#adminApp.skin-atlas .tab-btn{border:1px solid #E1E6EC;border-radius:99px;padding:8px 18px;background:#fff;color:#374151;}
+#adminApp.skin-atlas .tab-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+#adminApp.skin-atlas .badge{border-radius:99px;}
+/* ---- กล่องโต้ตอบ / toast ---- */
+#adminApp.skin-atlas .two-col-modal{backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
+#adminApp.skin-atlas .modal-box{background:#fff;border-color:#E8ECF1;border-radius:24px;box-shadow:var(--atlas-float);}
+#adminApp.skin-atlas .toast{border-radius:16px;background:#fff;color:var(--text);box-shadow:var(--atlas-float);}
+#adminApp.skin-atlas .admin-list-item{border-bottom-color:#EEF1F4;}
+/* จอแคบ: ย่อเมนูกลับเป็นแถบไอคอน */
+@media(max-width:900px){
+  #adminApp.skin-atlas .app{grid-template-columns:72px minmax(0,1fr);}
+  #adminApp.skin-atlas .rail{align-items:center;padding:16px 0;}
+  #adminApp.skin-atlas .rail-brand,#adminApp.skin-atlas .rail-grp{display:none;}
+  #adminApp.skin-atlas .rail-logo{padding:0;margin-bottom:12px;}
+  #adminApp.skin-atlas .rail-btn{width:46px;min-height:46px;height:46px;padding:0;justify-content:center;}
+  #adminApp.skin-atlas .rail-btn .tip{
+    position:absolute;left:58px;top:50%;transform:translateY(-50%);opacity:0;background:#fff;border:1px solid var(--border);
+    padding:6px 10px;border-radius:8px;font-size:12px;box-shadow:var(--atlas-float);z-index:50;color:var(--text);
+  }
+  #adminApp.skin-atlas .rail-btn:hover .tip{opacity:1;transform:translateY(-50%) translateX(4px);}
+  #adminApp.skin-atlas .rail-btn[data-view="adminview"]{border-top:0;border-radius:12px;margin-top:0;}
+  #adminApp.skin-atlas .topbar,#adminApp.skin-atlas .view.scroll{padding-left:14px;padding-right:14px;}
+  #adminApp.skin-atlas .topbar{padding-right:150px;}
+}
 /* ---- ตัวเลือกรูปแบบหน้าตา (Admin > รูปแบบหน้าตา) ---- */
 .skin-opt-row{display:flex;gap:10px;flex-wrap:wrap;}
 .skin-opt{
@@ -783,19 +942,21 @@ function getTheme(){
 }
 
 /* ===== รูปแบบหน้าตาแดชบอร์ดแอดมิน (admin เท่านั้น) =====
-   'glass' = Glass Bento (ค่าเริ่มต้น) · 'classic' = หน้าตาเดิม
+   'atlas' = Atlas สว่าง (ค่าเริ่มต้น) · 'glass' = Glass Bento · 'classic' = หน้าตาเดิม
    เก็บใน localStorage ของเบราว์เซอร์นี้ ไม่ซิงค์ไปที่อื่น และไม่กระทบแอปคนขับ */
 function getAdminSkin(){
-  try{ return localStorage.getItem('rfsm_admin_skin') === 'classic' ? 'classic' : 'glass'; }catch(e){ return 'glass'; }
+  try{ const v=localStorage.getItem('rfsm_admin_skin'); return (v==='classic'||v==='glass'||v==='atlas') ? v : 'atlas'; }catch(e){ return 'atlas'; }
 }
 function applyAdminSkin(){
   const el = document.getElementById('adminApp');
   if(!el) return;
-  el.classList.toggle('skin-glass', getAdminSkin()==='glass');
-  document.querySelectorAll('.skin-opt').forEach(b=>b.classList.toggle('active', b.dataset.skin===getAdminSkin()));
+  const sk = getAdminSkin();
+  el.classList.toggle('skin-glass', sk==='glass');
+  el.classList.toggle('skin-atlas', sk==='atlas');
+  document.querySelectorAll('.skin-opt').forEach(b=>b.classList.toggle('active', b.dataset.skin===sk));
 }
 function setAdminSkin(id){
-  try{ localStorage.setItem('rfsm_admin_skin', id==='classic' ? 'classic' : 'glass'); }catch(e){}
+  try{ localStorage.setItem('rfsm_admin_skin', (id==='classic'||id==='glass'||id==='atlas') ? id : 'atlas'); }catch(e){}
   applyAdminSkin();
   /* เลย์เอาต์เปลี่ยน แผนที่ต้องคำนวณขนาดใหม่ */
   setTimeout(()=>{ try{ if(window.__leafletMap) window.__leafletMap.invalidateSize(); }catch(e){} },80);
@@ -1364,7 +1525,7 @@ function themeSwatchesHtml(){
 <div class="toast-wrap" id="toastWrap"></div>
 </div>
 
-<div id="adminApp" class="skin-glass">
+<div id="adminApp" class="skin-atlas">
 
 <!-- ===== ADMIN LOGIN GATE ===== -->
 <div id="adminLoginScreen">
@@ -1382,7 +1543,8 @@ function themeSwatchesHtml(){
 <div class="app" id="adminAppShell" style="display:none;">
   <!-- ICON RAIL -->
   <nav class="rail" id="rail">
-    <div class="rail-logo">RF</div>
+    <div class="rail-logo"><span class="rl-mark">RF</span><span class="rail-brand"><b>RFSM</b><small>ศูนย์ควบคุมกองรถ</small></span></div>
+    <div class="rail-grp" data-g="a">ติดตามสด</div><div class="rail-grp" data-g="b">ความปลอดภัย</div><div class="rail-grp" data-g="c">บริหารจัดการ</div>
     <button class="rail-btn active" data-view="mapview">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 3 3 5.5v15L9 18l6 2.5L21 18V3l-6 2.5L9 3Z"/><path d="M9 3v15M15 5.5v15"/></svg>
       <span class="tip">แผนที่หลัก</span>
@@ -1999,6 +2161,7 @@ function themeSwatchesHtml(){
         <h3>✨ รูปแบบหน้าตา</h3>
         <p style="font-size:12.5px;color:var(--text-faint);margin-bottom:10px;">สลับระหว่างหน้าตาใหม่กับหน้าตาเดิมของแดชบอร์ด (มีผลเฉพาะเบราว์เซอร์นี้ ไม่กระทบแอปคนขับ)</p>
         <div class="skin-opt-row">
+          <button type="button" class="skin-opt" data-skin="atlas" onclick="setAdminSkin('atlas')"><b>Atlas (สว่าง)</b><span>พื้นสว่าง สบายตา เมนูซ้ายแบ่งกลุ่ม การ์ดลอยบนแผนที่</span></button>
           <button type="button" class="skin-opt" data-skin="glass" onclick="setAdminSkin('glass')"><b>Glass Bento</b><span>พื้นมืดโปร่งแสง การ์ดมนใหญ่ เมนูแท็บด้านบน</span></button>
           <button type="button" class="skin-opt" data-skin="classic" onclick="setAdminSkin('classic')"><b>Classic</b><span>หน้าตาเดิม เมนูไอคอนด้านซ้าย</span></button>
         </div>
