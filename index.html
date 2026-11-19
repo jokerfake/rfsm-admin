@@ -588,6 +588,15 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);overflo
 #adminApp .two-col-modal.show{display:flex;}
 #adminApp .modal-box{background:var(--panel);border:1px solid var(--border);border-radius:16px;width:520px;max-width:92vw;max-height:86vh;overflow-y:auto;padding:24px;}
 #adminApp .modal-box h3{font-family:var(--font-display);font-size:17px;margin-bottom:16px;}
+/* v38 — ฟอร์มในหน้าต่างป๊อปอัพให้พอดีกรอบ (เดิมคอลัมน์ขวาล้นออกนอกกล่อง) */
+#adminApp .form-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+#adminApp .form-grid>.field{min-width:0;}
+#adminApp .modal-box{overflow-x:hidden;box-sizing:border-box;}
+#adminApp .modal-box input,#adminApp .modal-box select,#adminApp .modal-box textarea{max-width:100%;min-width:0;box-sizing:border-box;}
+#adminApp .modal-box.wide{width:860px;}
+#adminApp .ns-clickrow{cursor:pointer;}
+#adminApp .ns-clickrow:hover td{background:var(--panel-2);}
+#adminApp .ns-chip{display:inline-block;padding:2px 8px;margin:2px 3px 2px 0;border-radius:999px;border:1px solid var(--border);background:var(--panel-2);font-size:11.5px;font-family:var(--font-mono);}
 #adminApp .modal-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;}
 #adminApp .toast-wrap{position:fixed;bottom:20px;right:20px;z-index:3000;display:flex;flex-direction:column;gap:8px;}
 #adminApp .toast{background:#141F35;border:1px solid var(--accent);color:var(--text);padding:11px 16px;border-radius:10px;font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,.4);animation:slidein .2s;}
@@ -10182,12 +10191,68 @@ function nsRenderHistory(){
   const sumEl = document.getElementById('nsSummary');
   if(sumEl){
     const by = {};
-    items.forEach(x=>{ const o = by[x.poiId] = by[x.poiId] || {name:x.poiName, n:0, dw:[]}; if(x.arriveTs){ o.n++; if(x.dwellMin!=null) o.dw.push(x.dwellMin); } });
+    items.forEach(x=>{ const o = by[x.poiId] = by[x.poiId] || {id:x.poiId, name:x.poiName, n:0, dw:[]}; if(x.arriveTs){ o.n++; if(x.dwellMin!=null) o.dw.push(x.dwellMin); } });
     const rows = Object.values(by).filter(o=>o.n).sort((a,b)=>b.n-a.n);
-    sumEl.innerHTML = rows.length ? rows.map(o=>`<tr><td>📦 ${nsEsc(o.name)}</td><td class="mono">${o.n}</td><td class="mono">${o.dw.length?Math.round(o.dw.reduce((a,b)=>a+b,0)/o.dw.length)+' นาที':'-'}</td></tr>`).join('')
+    sumEl.innerHTML = rows.length ? rows.map(o=>`<tr class="ns-clickrow" title="กดดูประวัติรถของร้านนี้" onclick="nsOpenStoreHistory('${nsEsc(o.id)}')"><td>📦 ${nsEsc(o.name)} <span style="color:var(--accent);font-size:11px;">ดูประวัติ ›</span></td><td class="mono">${o.n}</td><td class="mono">${o.dw.length?Math.round(o.dw.reduce((a,b)=>a+b,0)/o.dw.length)+' นาที':'-'}</td></tr>`).join('')
       : '<tr><td colspan="3" class="empty">ยังไม่มีรถถึงร้านในช่วงนี้</td></tr>';
   }
 }
+/* v38 — กดร้านเพื่อดูว่า "รถคันไหนมา วันไหน" ย้อนหลัง (ทั้งแบบแยกรายคัน และแยกรายวัน) */
+function nsOpenStoreHistory(poiId){
+  const s = (STATE.pois||[]).find(p=>p.id===poiId);
+  const name = s ? s.name : ((nsVisits||[]).find(x=>x.poiId===poiId)||{}).poiName || 'ร้าน';
+  openModal('📦 '+nsEsc(name)+' — ประวัติรถที่มา', `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
+      <select id="nsShRange" onchange="nsStoreHistRender()" style="background:var(--panel-2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:10px;font-size:13px;">
+        <option value="7">7 วันล่าสุด</option><option value="30" selected>30 วันล่าสุด</option><option value="90">90 วันล่าสุด</option><option value="0">ทั้งหมด</option></select>
+      <select id="nsShPlate" onchange="nsStoreHistRender()" style="background:var(--panel-2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:10px;font-size:13px;"><option value="">ทุกคัน</option></select>
+      <span id="nsShCount" style="font-size:12px;color:var(--text-faint);"></span>
+    </div>
+    <input type="hidden" id="nsShPoi" value="${nsEsc(poiId)}">
+    <div id="nsShBody"></div>`,
+    [{label:'ปิด', cls:'primary', action:closeModal}]);
+  document.getElementById('modalBox').classList.add('wide');
+  if(nsVisits===null){ nsLoadVisits().then(nsStoreHistRender); }
+  nsStoreHistRender();
+}
+function nsStoreHistRender(){
+  const body = document.getElementById('nsShBody'); if(!body) return;
+  const poiId = document.getElementById('nsShPoi').value;
+  const days = Number(document.getElementById('nsShRange').value)||0;
+  const from = days ? (Date.now()-days*86400000) : 0;
+  const all = (nsVisits||[]).filter(x=>x.poiId===poiId && x.arriveTs).sort((a,b)=>b.arriveTs-a.arriveTs);
+  const inRange = all.filter(x=>x.arriveTs>=from);
+  const sel = document.getElementById('nsShPlate'), cur = sel.value;
+  const plates = [...new Set(inRange.map(x=>x.plate))].sort();
+  sel.innerHTML = '<option value="">ทุกคัน ('+plates.length+')</option>' + plates.map(pl=>`<option value="${nsEsc(pl)}">${nsEsc(pl)}</option>`).join('');
+  sel.value = plates.includes(cur) ? cur : '';
+  const items = sel.value ? inRange.filter(x=>x.plate===sel.value) : inRange;
+  document.getElementById('nsShCount').textContent = items.length+' ครั้ง · '+new Set(items.map(x=>x.plate)).size+' คัน';
+  if(nsVisits===null){ body.innerHTML = '<div class="empty" style="padding:16px;">กำลังโหลด...</div>'; return; }
+  if(!items.length){ body.innerHTML = '<div class="empty" style="padding:16px;">ยังไม่มีรถถึงร้านนี้ในช่วงที่เลือก</div>'; return; }
+  const fmtDay = ts=>new Date(ts).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'});
+  /* แยกรายคัน */
+  const byPlate = {};
+  items.forEach(x=>{ (byPlate[x.plate] = byPlate[x.plate] || []).push(x); });
+  const plateRows = Object.entries(byPlate).sort((a,b)=>b[1].length-a[1].length).map(([pl,list])=>{
+    const ds = [...new Set(list.map(x=>dayKeyOf(x.arriveTs)))].sort().reverse();
+    return `<tr><td class="strong">${nsEsc(pl)}<div style="font-size:11px;font-weight:400;color:var(--text-faint);">${nsEsc(list[0].driverName||'')}</div></td>
+      <td class="mono">${list.length}</td>
+      <td>${ds.map(k=>`<span class="ns-chip">${fmtDay(new Date(k+'T00:00:00').getTime())}</span>`).join('')}</td></tr>`;
+  }).join('');
+  /* แยกรายวัน */
+  const dayGroups = groupByDay(items, x=>x.arriveTs);
+  const dayRows = dayGroups.map(g=>`<tr style="background:var(--panel-2);"><td colspan="5"><strong>${g.label}</strong> <span style="color:var(--text-faint);font-size:12px;">· ${g.items.length} ครั้ง</span></td></tr>`
+    + g.items.slice().sort((a,b)=>a.arriveTs-b.arriveTs).map(x=>`<tr><td class="strong">${nsEsc(x.plate)}</td><td>${nsEsc(x.driverName)||'-'}</td>
+      <td class="mono">${nsFmtTime(x.arriveTs)}${x.arriveClosed?' <span style="color:var(--risk-mid);font-size:11px;">⚠ ร้านปิด</span>':''}</td>
+      <td class="mono">${nsFmtTime(x.departTs)}</td><td class="mono">${x.dwellMin!=null?x.dwellMin+' นาที':(x.status==='arrived'?'กำลังอยู่':'-')}</td></tr>`).join('')).join('');
+  body.innerHTML = `
+    <h4 style="margin:0 0 6px;font-size:13.5px;">แยกรายคัน — มากี่ครั้ง วันไหนบ้าง</h4>
+    <div style="max-height:200px;overflow:auto;margin-bottom:14px;"><table><thead><tr><th>ทะเบียน / คนขับ</th><th>ครั้ง</th><th>วันที่มา</th></tr></thead><tbody>${plateRows}</tbody></table></div>
+    <h4 style="margin:0 0 6px;font-size:13.5px;">แยกรายวัน</h4>
+    <div style="max-height:300px;overflow:auto;"><table><thead><tr><th>ทะเบียน</th><th>คนขับ</th><th>ถึงร้าน</th><th>ออก</th><th>อยู่นาน</th></tr></thead><tbody>${dayRows}</tbody></table></div>`;
+}
+
 function nsExportCsv(){
   const rows = (nsVisits||[]).slice().sort((a,b)=>(b.approachTs||0)-(a.approachTs||0)).filter(x=>(x.approachTs||0)>=nsRangeStart());
   const head = ['ร้าน','ทะเบียน','คนขับ','สถานะ','เริ่มเข้าใกล้','ถึงร้าน','ออกจากร้าน','อยู่นาน(นาที)'];
@@ -10398,7 +10463,7 @@ function nsRenderDaily(){
   const tot = sm.rows.reduce((a,x)=>a+x.n,0);
   box.innerHTML = `<div style="font-size:12.5px;color:var(--text-dim);margin-bottom:8px;">รวมถึงร้าน ${tot} ครั้ง · ร้านที่ไม่มีรถมา ${sm.rows.filter(x=>!x.n).length} ร้าน</div>
   <table><thead><tr><th>ร้าน</th><th>จำนวนครั้ง</th><th>รถ (คัน)</th><th>ถึงแรก</th><th>ถึงล่าสุด</th><th>อยู่เฉลี่ย</th><th>นานสุด</th><th>ถึงตอนร้านปิด</th><th>ผ่านไป</th></tr></thead><tbody>${
-    sm.rows.map(x=>`<tr><td class="strong">📦 ${nsEsc(x.name)}</td><td class="mono">${x.n||'<span style="color:var(--text-faint)">ไม่มีรถมา</span>'}</td>
+    sm.rows.map(x=>`<tr class="ns-clickrow" title="กดดูว่ารถคันไหนมาวันไหนบ้าง (ย้อนหลัง)" onclick="nsOpenStoreHistory('${nsEsc(x.poiId)}')"><td class="strong">📦 ${nsEsc(x.name)} <span style="color:var(--accent);font-size:11px;font-weight:400;">ดูประวัติ ›</span></td><td class="mono">${x.n||'<span style="color:var(--text-faint)">ไม่มีรถมา</span>'}</td>
       <td class="mono" title="${nsEsc(x.plates.join(', '))}">${x.plates.length||'-'}</td>
       <td class="mono">${nsTimeOnly(x.first)}</td><td class="mono">${nsTimeOnly(x.last)}</td>
       <td class="mono">${x.avgDwell!=null?x.avgDwell+' นาที':'-'}</td><td class="mono">${x.maxDwell!=null?x.maxDwell+' นาที':'-'}</td>
@@ -11771,6 +11836,7 @@ async function deleteUser(id){
 
 /* ---------- MODALS ---------- */
 function openModal(title, bodyHtml, buttons){
+  document.getElementById('modalBox').classList.remove('wide');
   document.getElementById('modalBox').innerHTML = `<h3>${title}</h3><div>${bodyHtml}</div>
     <div class="modal-foot">${buttons.map((b,i)=>`<button class="btn ${b.cls}" id="modalBtn${i}">${b.label}</button>`).join('')}</div>`;
   document.getElementById('modalRoot').classList.add('show');
@@ -12964,7 +13030,7 @@ Object.assign(window, {
   showRouteHazardsOnMap, showHazardOnMap, clearHazardFocus,
   listMore, listToggleGroup, hazardCollapseAll, userCollapseAll, setStopEventRange,
   toggleStopDetect, fillPoiProvinces, mergeDuplicateStopEvents,
-  nsToggle, nsSaveRadius, nsOpenStoreEdit, nsOpenShopModal, nsShopPaste, nsDayShift, nsRenderDaily, nsCopyDaily, nsExportDailyCsv, nsTestAlert, nsClosePopup, nsShowOnMap, nsRenderHistory, nsExportCsv, loadNearStoreVisits,
+  nsToggle, nsSaveRadius, nsOpenStoreEdit, nsOpenShopModal, nsShopPaste, nsOpenStoreHistory, nsStoreHistRender, nsDayShift, nsRenderDaily, nsCopyDaily, nsExportDailyCsv, nsTestAlert, nsClosePopup, nsShowOnMap, nsRenderHistory, nsExportCsv, loadNearStoreVisits,
   renderStopEventQueue, openStopEventMap, approveStopAsPoi, markStopAskDriver,
   markStopNoStop, dismissStopEvent, deleteStopEvent, saveStopSettings,
   promoteReportToHazard, dismissDriverReport, promoteReportToPoi, promoteDupChanged, viewReportPhoto, viewPoiPhoto, viewHazardPhoto,
