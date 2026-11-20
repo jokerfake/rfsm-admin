@@ -583,10 +583,10 @@ html[data-theme="paper"] #adminApp:not(.skin-atlas):not(.skin-orbital){
   50%{opacity:.55;box-shadow:0 0 0 5px color-mix(in srgb,var(--dot-live) 8%,transparent);}
 }
 
-/* Views & Centered Readable Measure (1380px max-width) */
+/* Views & Centered Readable Measure (1380px max-width — centers both block and inline-flex tabs) */
 #adminApp .view{flex:1;min-height:0;display:none;overflow:hidden;}
 #adminApp .view.active{display:flex;}
-#adminApp .view.scroll{overflow-y:auto;padding:18px 28px 44px;}
+#adminApp .view.scroll{overflow-y:auto;padding:18px max(28px, calc((100% - 1380px) / 2)) 44px;}
 #adminApp .view.active.scroll{display:block;}
 #adminApp .view.scroll > *{max-width:1380px;margin-left:auto;margin-right:auto;}
 
@@ -1423,7 +1423,7 @@ html[data-theme="paper"] #adminApp:not(.skin-atlas):not(.skin-orbital){
 #adminApp.skin-atlas .topbar .pill:has(.dot){
   background:#ECFDF5;border-color:#A7F3D0;color:#047857;
 }
-#adminApp.skin-atlas .view.scroll{padding:18px 28px 44px;}
+#adminApp.skin-atlas .view.scroll{padding:18px max(28px, calc((100% - 1380px) / 2)) 44px;}
 
 #adminApp.skin-atlas input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]),
 #adminApp.skin-atlas select,
@@ -1515,10 +1515,10 @@ html[data-theme="paper"] #adminApp.skin-glass{--text-faint:#64748B;}
 }
 #adminApp.skin-glass .rail-btn.active:hover .tip{transform:none;}
 #adminApp.skin-glass .topbar{
-  min-height:52px;padding:10px 24px 6px;padding-right:24px;background:transparent;border-bottom:1px solid var(--glass-bd);
+  min-height:52px;padding:10px max(24px, calc((100% - 1380px) / 2)) 6px;background:transparent;border-bottom:1px solid var(--glass-bd);
   -webkit-backdrop-filter:none;backdrop-filter:none;
 }
-#adminApp.skin-glass .view.scroll{padding:16px 24px 44px;}
+#adminApp.skin-glass .view.scroll{padding:16px max(24px, calc((100% - 1380px) / 2)) 44px;}
 #adminApp.skin-glass #mapview{
   margin:8px 16px 14px;border-radius:16px;overflow:hidden;border:1px solid var(--glass-bd);
   box-shadow:var(--shadow-float);
@@ -1758,12 +1758,12 @@ html[data-theme="paper"] #adminApp.skin-glass textarea{color-scheme:light;}
 #adminApp.skin-orbital.view-is-map .topbar,
 #adminApp.skin-orbital:has(#mapview.active) .topbar{display:none;}
 #adminApp.skin-orbital .topbar{
-  height:48px;min-height:48px;padding:0 24px;
+  height:48px;min-height:48px;padding:0 max(24px, calc((100% - 1380px) / 2));
   background:transparent;border-bottom:1px solid rgba(148,163,184,.12);
   -webkit-backdrop-filter:none;backdrop-filter:none;position:static;
 }
 #adminApp.skin-orbital .topbar-right{display:none;}
-#adminApp.skin-orbital .view.scroll{padding:16px 24px 44px;}
+#adminApp.skin-orbital .view.scroll{padding:16px max(24px, calc((100% - 1380px) / 2)) 44px;}
 
 /* ==================== FULL-BLEED MAP & FLOATING ORBITAL HUD ==================== */
 #adminApp.skin-orbital #mapview{
