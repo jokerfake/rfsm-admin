@@ -358,8 +358,22 @@ body:has(#adminApp.skin-glass[style*="block"]) #roleSwitchBtn{
   border-color:rgba(255,255,255,.14);
   background:rgba(17,26,44,.82);
 }
+body:has(#adminApp.skin-nordic[style*="block"]) #roleSwitchBtn,
+html[data-theme="paper"] body:has(#adminApp.skin-nordic[style*="block"]) #roleSwitchBtn{
+  background:#EDF2F7;
+  border:1px solid #B4C2D3;
+  color:#1E293B;
+  box-shadow:0 1px 2px rgba(15,23,42,.05);
+  transition:background .15s,border-color .15s,color .15s;
+}
+body:has(#adminApp.skin-nordic[style*="block"]) #roleSwitchBtn:hover,
+html[data-theme="paper"] body:has(#adminApp.skin-nordic[style*="block"]) #roleSwitchBtn:hover{
+  background:#CCFBF1;
+  border-color:#0D9488;
+  color:#0F766E;
+}
 body:has(#adminApp.skin-atlas[style*="block"]) #roleSwitchBtn,
-html[data-theme="paper"] body:has(#adminApp:not(.skin-orbital)[style*="block"]) #roleSwitchBtn{
+html[data-theme="paper"] body:has(#adminApp:not(.skin-orbital):not(.skin-nordic)[style*="block"]) #roleSwitchBtn{
   background:rgba(255,255,255,.94);
   border:1px solid #CBD5E1;
   color:#334155;
@@ -367,7 +381,7 @@ html[data-theme="paper"] body:has(#adminApp:not(.skin-orbital)[style*="block"]) 
   transition:background .15s,border-color .15s,color .15s;
 }
 body:has(#adminApp.skin-atlas[style*="block"]) #roleSwitchBtn:hover,
-html[data-theme="paper"] body:has(#adminApp:not(.skin-orbital)[style*="block"]) #roleSwitchBtn:hover{
+html[data-theme="paper"] body:has(#adminApp:not(.skin-orbital):not(.skin-nordic)[style*="block"]) #roleSwitchBtn:hover{
   background:#F8FAFC;
   border-color:#94A3B8;
   color:#0F172A;
@@ -389,12 +403,13 @@ html[data-theme="paper"] body:has(#adminApp.skin-orbital[style*="block"]) #roleS
 }
 
 /* =========================================================================
-   ADMIN APP DESIGN SYSTEM (v38 — strictly scoped to #adminApp)
-   Supports 4 skins:
-     1. #adminApp.skin-orbital (Default — Orbital Dragon SpaceX HUD)
-     2. #adminApp.skin-atlas   (Light — Calm Enterprise Slate)
-     3. #adminApp.skin-glass   (Modern Obsidian Glass Bento)
-     4. #adminApp              (Classic Compact Rail — honors 5 [data-theme] palettes)
+   ADMIN APP DESIGN SYSTEM (v39 — strictly scoped to #adminApp)
+   Supports 5 skins:
+     1. #adminApp.skin-nordic  (Default — Nordic Freight Soft Cool Slate-Mist)
+     2. #adminApp.skin-orbital (Orbital Dragon SpaceX HUD)
+     3. #adminApp.skin-atlas   (Light — Calm Enterprise Slate)
+     4. #adminApp.skin-glass   (Modern Obsidian Glass Bento)
+     5. #adminApp              (Classic Compact Rail — honors 5 [data-theme] palettes)
    ========================================================================= */
 #adminApp{
   --font-display:'Inter','IBM Plex Sans Thai','Noto Sans Thai',-apple-system,BlinkMacSystemFont,sans-serif;
@@ -444,8 +459,8 @@ html[data-theme="paper"] body:has(#adminApp.skin-orbital[style*="block"]) #roleS
   -moz-osx-font-smoothing:grayscale;
 }
 
-/* Paper light theme semantic contrast for Classic & Glass (never Orbital) */
-html[data-theme="paper"] #adminApp:not(.skin-atlas):not(.skin-orbital){
+/* Paper light theme semantic contrast for Classic & Glass (never Nordic or Orbital) */
+html[data-theme="paper"] #adminApp:not(.skin-nordic):not(.skin-atlas):not(.skin-orbital){
   --panel-3:#E5E9F0;
   --row-divider:#EEF2F6;
   --row-hover:#F8FAFC;
@@ -1250,6 +1265,336 @@ html[data-theme="paper"] #adminApp:not(.skin-atlas):not(.skin-orbital){
 .skin-opt span{font-size:12px;color:var(--text-faint);line-height:1.4;}
 .skin-opt:hover{border-color:var(--border-strong);background:var(--panel);}
 .skin-opt.active{border-color:var(--accent);background:var(--info-bg);box-shadow:0 0 0 2px rgba(var(--accent-rgb),.14);}
+
+#adminApp .ns-plate-chip{font-family:var(--font-mono);font-weight:600;}
+
+/* =========================================================================
+   SKIN 5 (DEFAULT): NORDIC FREIGHT — "Soft Cool Slate-Mist Logistics"
+   Low-glare daylight canvas (#E5EBF1) · Calm off-white cards (#F6F8FB)
+   220px Sticky Left Rail (#DCE4EC) · Ocean Teal (#0D9488) · Crisp White Map
+   ========================================================================= */
+#adminApp:not(.skin-nordic) .nordic-only{display:none !important;}
+
+#adminApp.skin-nordic{
+  --bg:#E5EBF1;
+  --sidebar-bg:#DCE4EC;
+  --topbar-bg:rgba(246,248,251,.95);
+  --panel:#F6F8FB;
+  --panel-2:#EDF2F7;
+  --panel-3:#E2E9F0;
+  --border-soft:#CFD8E3;
+  --border:#B4C2D3;
+  --border-strong:#94A3B8;
+  --row-divider:#CFD8E3;
+  --row-hover:#EBF1F6;
+  --thead-bg:#EDF2F7;
+  --track-bg:#DCE4EC;
+
+  --text:#1E293B;
+  --text-dim:#475569;
+  --text-faint:#64748B;
+
+  --accent:#0D9488;
+  --accent-2:#0F766E;
+  --accent-ink:#F8FAFC;
+  --accent-hover:#0F766E;
+  --accent-rgb:13,148,136;
+  --accent-dim:#CCFBF1;
+  --focus-ring:0 0 0 3px rgba(13,148,136,.18);
+
+  /* WCAG AA daylight semantic tokens matching Nordic Freight */
+  --risk-low:#0D9488;  --risk-low-bg:#DCFCE7;  --risk-low-bd:#86EFAC;  --risk-low-ink:#166534;
+  --risk-mid:#D97706;  --risk-mid-bg:#FEF3C7;  --risk-mid-bd:#FCD34D;  --risk-mid-ink:#92400E;
+  --risk-high:#C2410C; --risk-high-bg:#FFEDD5; --risk-high-bd:#FDBA74; --risk-high-ink:#9A3412;
+  --risk-crit:#E11D48; --risk-crit-bg:#FFE4E6; --risk-crit-bd:#FDA4AF; --risk-crit-ink:#9F1239;
+  --info-bg:#CCFBF1;   --info-bd:#99F6E4;      --info-ink:#0F766E;
+  --neutral-bg:#EDF2F7; --neutral-bd:#CFD8E3;  --neutral-ink:#475569;
+  --dot-live:#10B981;
+
+  --shadow-xs:0 1px 2px rgba(15,23,42,.04);
+  --shadow-card:0 1px 3px rgba(15,23,42,.05);
+  --shadow-card-hover:0 6px 16px -4px rgba(15,23,42,.09);
+  --shadow-float:0 10px 26px -6px rgba(15,23,42,.13), 0 4px 10px -2px rgba(15,23,42,.05);
+  --shadow-modal:0 24px 54px -12px rgba(15,23,42,.22);
+}
+
+/* Tabular numeric precision across KPIs & badges */
+#adminApp.skin-nordic .kpi-card .val,
+#adminApp.skin-nordic .n-badge,
+#adminApp.skin-nordic .n-rail-row b,
+#adminApp.skin-nordic .ns-plate-chip{
+  font-variant-numeric:tabular-nums;
+}
+
+/* 220px Sticky Left Navigation Rail */
+#adminApp.skin-nordic .app{grid-template-columns:220px minmax(0,1fr);}
+#adminApp.skin-nordic .rail{
+  align-items:stretch;padding:14px 10px 10px;gap:2px;
+  background:var(--sidebar-bg);border-right:1px solid var(--border);
+  overflow-y:auto;overflow-x:hidden;
+}
+#adminApp.skin-nordic .rail::-webkit-scrollbar{width:0;}
+#adminApp.skin-nordic .rail-logo{
+  order:-1;width:auto;height:auto;margin:0 0 6px;padding:2px 6px 12px;
+  background:none;box-shadow:none;border-radius:0;border-bottom:1px solid var(--border-soft);
+  display:flex;align-items:center;gap:10px;justify-content:flex-start;color:var(--text);
+}
+#adminApp.skin-nordic .rl-mark{
+  width:34px;height:34px;border-radius:8px;flex:none;
+  background:linear-gradient(135deg,#0D9488 0%,#1E40AF 100%);color:#F6F8FB;
+  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13.5px;
+  letter-spacing:.3px;box-shadow:0 2px 6px rgba(13,148,136,.28);
+}
+#adminApp.skin-nordic .rail-brand{display:block;line-height:1.25;min-width:0;flex:1;}
+#adminApp.skin-nordic .rail-brand b{display:block;font-size:14px;font-weight:700;letter-spacing:-0.015em;color:#1E293B;}
+#adminApp.skin-nordic .rail-brand small{display:block;font-size:11px;font-weight:500;color:#475569;}
+#adminApp.skin-nordic .rail-collapse-btn,
+#adminApp.skin-nordic #sidebarToggleBtn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:28px;height:28px;border-radius:7px;border:1px solid transparent;
+  background:transparent;color:#475569;flex:none;
+  transition:background var(--t-fast),color var(--t-fast),border-color var(--t-fast),transform var(--t-med) var(--ease);
+}
+#adminApp.skin-nordic .rail-collapse-btn:hover,
+#adminApp.skin-nordic #sidebarToggleBtn:hover{background:#E7EEF5;color:#1E293B;border-color:#CFD8E3;}
+
+#adminApp.skin-nordic .rail-grp{
+  display:block;padding:11px 10px 4px;
+  font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#64748B;
+}
+#adminApp.skin-nordic .rail-btn{
+  width:100%;height:auto;min-height:35px;padding:6px 10px;border-radius:8px;gap:9px;
+  justify-content:flex-start;color:#475569;font-weight:600;border:1px solid transparent;
+  transition:background var(--t-fast),color var(--t-fast),border-color var(--t-fast);
+}
+#adminApp.skin-nordic .rail-btn svg{width:17px;height:17px;color:#64748B;}
+#adminApp.skin-nordic .rail-btn:hover{background:#E7EEF5;color:#1E293B;}
+#adminApp.skin-nordic .rail-btn:hover svg{color:#334155;}
+#adminApp.skin-nordic .rail-btn.active{
+  background:#F6F8FB;color:#0F766E;font-weight:700;border-color:#B4C2D3;
+  box-shadow:0 1px 3px rgba(30,41,59,.06);
+}
+#adminApp.skin-nordic .rail-btn.active svg{color:#0D9488;}
+#adminApp.skin-nordic .rail-btn.active::before{
+  display:block;left:-1px;top:6px;bottom:6px;transform:none;height:auto;width:3.5px;
+  background:#0D9488;border-radius:0 3px 3px 0;
+}
+#adminApp.skin-nordic .rail-btn .tip{
+  position:static;transform:none;opacity:1;background:none;border:0;box-shadow:none;padding:0;
+  font-size:13px;font-weight:inherit;color:inherit;pointer-events:none;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;flex:1;text-align:left;
+}
+#adminApp.skin-nordic .rail-btn:hover .tip{transform:none;}
+
+/* Nordic Nav Count Badges & Live Telemetry Card */
+#adminApp.skin-nordic .n-badge{
+  margin-left:auto;font-family:var(--font-mono);font-size:10.5px;font-weight:700;
+  padding:1px 7px;border-radius:99px;background:#CBD5E1;color:#1E293B;line-height:1.4;flex:none;
+}
+#adminApp.skin-nordic .n-badge:empty{display:none;}
+#adminApp.skin-nordic .rail-btn.active .n-badge{background:#CCFBF1;color:#0F766E;}
+#adminApp.skin-nordic .n-badge.warn{background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;}
+
+#adminApp.skin-nordic .n-rail-card{
+  background:#E7EEF5;border:1px solid #CFD8E3;border-radius:10px;
+  padding:10px 11px;margin:8px 0 4px;display:flex;flex-direction:column;gap:4px;
+}
+#adminApp.skin-nordic .n-rail-hd{
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:11.5px;font-weight:700;color:#1E293B;margin-bottom:2px;
+}
+#adminApp.skin-nordic .n-rail-row{
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:11.5px;color:#475569;line-height:1.4;
+}
+#adminApp.skin-nordic .n-rail-row b{font-weight:700;color:#1E293B;}
+
+/* Nordic logical flex order (preserves DOM order cleanly) */
+#adminApp.skin-nordic .rail-grp[data-g="a"]{order:0;}
+#adminApp.skin-nordic .rail-btn[data-view="mapview"]{order:1;}
+#adminApp.skin-nordic .rail-btn[data-view="nearstoreview"]{order:2;}
+#adminApp.skin-nordic .rail-btn[data-view="fleetview"]{order:3;}
+#adminApp.skin-nordic .rail-grp[data-g="b"]{order:9;}
+#adminApp.skin-nordic .rail-btn[data-view="hazardview"]{order:10;}
+#adminApp.skin-nordic .rail-btn[data-view="riskview"]{order:11;}
+#adminApp.skin-nordic .rail-btn[data-view="alertsview"]{order:12;}
+#adminApp.skin-nordic .rail-btn[data-view="speedview"]{order:13;}
+#adminApp.skin-nordic .rail-btn[data-view="pointsview"]{order:14;}
+#adminApp.skin-nordic .rail-grp[data-g="c"]{order:19;}
+#adminApp.skin-nordic .rail-btn[data-view="restview"]{order:20;}
+#adminApp.skin-nordic .rail-btn[data-view="maintview"]{order:21;}
+#adminApp.skin-nordic .rail-btn[data-view="reportview"]{order:22;}
+#adminApp.skin-nordic .rail-spacer{order:28;}
+#adminApp.skin-nordic #nordicRailTelemetry{order:29;}
+#adminApp.skin-nordic .rail-btn[data-view="adminview"]{
+  order:31;margin-top:6px;padding-top:8px;
+  box-shadow:0 -1px 0 var(--border-soft);border-radius:8px;
+}
+
+/* Nordic Collapsible Desktop Rail State (.rail-collapsed) */
+#adminApp.skin-nordic.rail-collapsed .app,
+#adminApp.skin-nordic.sidebar-collapsed .app{grid-template-columns:68px minmax(0,1fr);}
+#adminApp.skin-nordic.rail-collapsed .rail,
+#adminApp.skin-nordic.sidebar-collapsed .rail{align-items:center;padding:12px 8px 10px;overflow:visible;}
+#adminApp.skin-nordic.rail-collapsed .rail-brand,
+#adminApp.skin-nordic.sidebar-collapsed .rail-brand,
+#adminApp.skin-nordic.rail-collapsed .n-badge,
+#adminApp.skin-nordic.sidebar-collapsed .n-badge,
+#adminApp.skin-nordic.rail-collapsed #nordicRailTelemetry,
+#adminApp.skin-nordic.sidebar-collapsed #nordicRailTelemetry{display:none !important;}
+#adminApp.skin-nordic.rail-collapsed .rail-grp,
+#adminApp.skin-nordic.sidebar-collapsed .rail-grp{
+  font-size:0;padding:0;margin:6px auto 5px;width:22px;height:1px;background:var(--border);
+}
+#adminApp.skin-nordic.rail-collapsed .rail-grp[data-g="a"],
+#adminApp.skin-nordic.sidebar-collapsed .rail-grp[data-g="a"]{display:none;}
+#adminApp.skin-nordic.rail-collapsed .rail-logo,
+#adminApp.skin-nordic.sidebar-collapsed .rail-logo{justify-content:center;padding:2px 0 10px;width:100%;flex-direction:column;gap:6px;}
+#adminApp.skin-nordic.rail-collapsed #sidebarToggleBtn,
+#adminApp.skin-nordic.sidebar-collapsed #sidebarToggleBtn{transform:rotate(180deg);}
+#adminApp.skin-nordic.rail-collapsed .rail-btn,
+#adminApp.skin-nordic.sidebar-collapsed .rail-btn{width:42px;min-height:38px;height:38px;padding:0;justify-content:center;}
+#adminApp.skin-nordic.rail-collapsed .rail-btn.active::before,
+#adminApp.skin-nordic.sidebar-collapsed .rail-btn.active::before{left:-13px;top:50%;bottom:auto;height:18px;transform:translateY(-50%);}
+#adminApp.skin-nordic.rail-collapsed .rail-btn .tip,
+#adminApp.skin-nordic.sidebar-collapsed .rail-btn .tip{
+  position:absolute;left:58px;top:50%;transform:translateY(-50%);opacity:0;
+  background:#1E293B;color:#F8FAFC;border:1px solid #334155;
+  padding:5px 10px;border-radius:7px;font-size:12px;font-weight:500;
+  box-shadow:var(--shadow-float);z-index:120;flex:none;
+}
+#adminApp.skin-nordic.rail-collapsed .rail-btn:hover .tip,
+#adminApp.skin-nordic.sidebar-collapsed .rail-btn:hover .tip{
+  opacity:1;transform:translateY(-50%) translateX(4px);
+}
+
+/* Nordic Topbar & Centered Wide-Viewport Scroll Views */
+#adminApp.skin-nordic .topbar{
+  background:var(--topbar-bg);border-bottom:1px solid var(--border-soft);
+  padding:0 24px;padding-right:132px;
+}
+#adminApp.skin-nordic .topbar .pill{background:#EDF2F7;border-color:#CFD8E3;color:#1E293B;box-shadow:none;}
+#adminApp.skin-nordic .topbar .pill:has(.dot){background:#DCFCE7;border-color:#86EFAC;color:#166534;}
+#adminApp.skin-nordic .view.scroll{padding:18px max(24px, calc((100% - 1380px) / 2)) 44px;}
+
+/* Nordic 4px Left-Accent KPI Cards */
+#adminApp.skin-nordic .kpi-card{
+  background:#F6F8FB;border:1px solid #CFD8E3;border-radius:10px;
+  padding:12px 15px 12px 18px;position:relative;overflow:hidden;
+}
+#adminApp.skin-nordic .kpi-card::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:#0D9488;
+}
+#adminApp.skin-nordic .kpi-card:nth-child(4n+2)::before{background:#2563EB;}
+#adminApp.skin-nordic .kpi-card:nth-child(4n+3)::before{background:#D97706;}
+#adminApp.skin-nordic .kpi-card:nth-child(4n+4)::before{background:#E11D48;}
+
+/* Segmented Subtabs, Collapsible Settings Strip, Tables & Inputs */
+#adminApp.skin-nordic .subtabs,
+#adminApp.skin-nordic .tabs{background:#EDF2F7;border-color:#CFD8E3;}
+#adminApp.skin-nordic .subtab-btn:hover,
+#adminApp.skin-nordic .tab-btn:hover{background:#E7EEF5;color:#1E293B;}
+#adminApp.skin-nordic .subtab-btn.active,
+#adminApp.skin-nordic .tab-btn.active{
+  background:#F6F8FB;color:#0F766E;border-color:#CFD8E3;
+  box-shadow:0 1px 2px rgba(15,23,42,.06);
+}
+#adminApp.skin-nordic .collapse-bar{background:#EDF2F7;border-color:#B4C2D3;}
+#adminApp.skin-nordic .collapse-bar-hd:hover{background:#E7EEF5;}
+#adminApp.skin-nordic .collapse-bar-body{background:#F6F8FB;border-top-color:#CFD8E3;}
+
+#adminApp.skin-nordic .tbl-wrap{background:#F6F8FB;border-color:#CFD8E3;}
+#adminApp.skin-nordic thead th{background:#EDF2F7;color:#475569;border-bottom-color:#B4C2D3;}
+#adminApp.skin-nordic tbody tr:nth-child(even) td{background:#F1F5F9;}
+#adminApp.skin-nordic tbody tr:hover td{background:#EBF1F6;}
+#adminApp.skin-nordic td{color:#1E293B;}
+
+#adminApp.skin-nordic .ns-plate-chip{
+  display:inline-flex;align-items:center;background:#1E293B;color:#F8FAFC;
+  font-family:var(--font-mono);font-weight:700;font-size:12px;
+  padding:3px 9px;border-radius:6px;letter-spacing:.2px;white-space:nowrap;
+}
+
+#adminApp.skin-nordic .btn{
+  background:#EDF2F7;border-color:#B4C2D3;color:#1E293B;
+}
+#adminApp.skin-nordic .btn:hover:not(:disabled){
+  background:#CCFBF1;border-color:#0D9488;color:#0F766E;
+}
+#adminApp.skin-nordic .btn.primary{
+  background:#0D9488;border-color:#0F766E;color:#F8FAFC;
+  box-shadow:0 1px 2px rgba(13,148,136,.22);
+}
+#adminApp.skin-nordic .btn.primary:hover:not(:disabled){
+  background:#0F766E;border-color:#115E59;color:#F8FAFC;
+}
+#adminApp.skin-nordic td .btn.sm,
+#adminApp.skin-nordic .fleet-row .btn.sm,
+#adminApp.skin-nordic .fleet-group-hd .btn.sm,
+#adminApp.skin-nordic .admin-list-item .btn.sm{
+  background:#EDF2F7;border-color:#B4C2D3;color:#1E293B;
+}
+#adminApp.skin-nordic td .btn.sm:hover:not(:disabled),
+#adminApp.skin-nordic .fleet-row .btn.sm:hover:not(:disabled),
+#adminApp.skin-nordic .fleet-group-hd .btn.sm:hover:not(:disabled),
+#adminApp.skin-nordic .admin-list-item .btn.sm:hover:not(:disabled){
+  background:#CCFBF1;border-color:#0D9488;color:#0F766E;
+}
+
+#adminApp.skin-nordic input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]),
+#adminApp.skin-nordic select,
+#adminApp.skin-nordic textarea{
+  background-color:#EDF2F7;color:#1E293B;border:1px solid #B4C2D3;color-scheme:light;
+  box-shadow:inset 0 1px 2px rgba(15,23,42,.03);
+}
+#adminApp.skin-nordic input:not([type=checkbox]):not([type=radio]):not([type=range]):focus,
+#adminApp.skin-nordic select:focus,
+#adminApp.skin-nordic textarea:focus{
+  background-color:#F6F8FB;border-color:#0D9488;
+}
+#adminApp.skin-nordic td div[style*="rgba(255,255,255,.07)"]{background:var(--track-bg) !important;}
+#adminApp.skin-nordic #adminLoginScreen{
+  background:radial-gradient(900px 520px at 50% 0%,rgba(13,148,136,.08),transparent 65%), #E5EBF1;
+}
+#adminApp.skin-nordic #adminLoginScreen .al-box{background:#F6F8FB;border-color:#B4C2D3;}
+
+/* Nordic Main Map: Crisp Light/White Map + Nordic Left-Inner Drawer */
+#adminApp.skin-nordic #map,
+#adminApp.skin-nordic .leaflet-container{background:#E8EEF5;}
+#adminApp.skin-nordic .leaflet-layer.osm-dark{filter:none;}
+#adminApp.skin-nordic .map-panel{
+  background:rgba(246,248,251,.96);border:1px solid #B4C2D3;
+  box-shadow:0 8px 24px rgba(15,23,42,.10);
+}
+#adminApp.skin-nordic #fleetOverviewPanel{width:292px;max-height:min(492px,calc(61% - 14px));}
+#adminApp.skin-nordic #fleetOverviewPanel .route-stat{padding:5px 9px;}
+#adminApp.skin-nordic #fleetOverviewPanel .route-stat .val{font-size:16px;}
+#adminApp.skin-nordic #legendPanel{width:292px;max-width:292px;max-height:min(284px,calc(37% - 16px));}
+#adminApp.skin-nordic #reportsFeedPanel{border-left:4px solid #E11D48;}
+#adminApp.skin-nordic .gps-veh-item{background:#F6F8FB;border-color:#CFD8E3;}
+#adminApp.skin-nordic .gps-veh-item.orb-selected{
+  border-color:#0D9488;background:#EBF5F4;box-shadow:inset 3px 0 0 #0D9488;
+}
+#adminApp.skin-nordic .gps-veh-plate{
+  display:inline-block;background:#1E293B;color:#F8FAFC;padding:1px 7px;
+  border-radius:5px;font-size:11.5px;font-weight:700;margin-bottom:2px;
+}
+#adminApp.skin-nordic .gps-chip{background:#EDF2F7;border-color:#CFD8E3;color:#475569;}
+#adminApp.skin-nordic .gps-chip.on{background:#0D9488;border-color:#0F766E;color:#F8FAFC;}
+#adminApp.skin-nordic .gps-chip.on .n{color:#F8FAFC;}
+#adminApp.skin-nordic .risk-ring-wrap circle:first-of-type{stroke:#DCE4EC;}
+#adminApp.skin-nordic #riskRingNum{fill:#1E293B;}
+#adminApp.skin-nordic .risk-ring-wrap text:not(#riskRingNum){fill:#64748B;}
+#adminApp.skin-nordic #statVehMoving{color:#0F766E !important;}
+#adminApp.skin-nordic #statVehIdling{color:#B45309 !important;}
+#adminApp.skin-nordic #statVehOver{color:#BE123C !important;}
+#adminApp.skin-nordic #statVehOffline{color:#64748B !important;}
+#adminApp.skin-nordic #mapProviderBar{max-width:calc(100% - 624px);padding:4px 6px;gap:3px;}
+#adminApp.skin-nordic #mapProviderBar .btn.sm{padding:4px 7px;font-size:11.5px;min-height:27px;}
+#adminApp.skin-nordic #mapProviderBar .map-dock-sep{margin:0 1px;}
+#adminApp.skin-nordic #mapProviderBar .provider-btn.active{
+  background:#CCFBF1;color:#0F766E;border-color:#0D9488;
+}
 
 
 /* =========================================================================
@@ -2200,25 +2545,41 @@ html[data-theme="paper"] #adminApp.skin-glass textarea{color-scheme:light;}
    RESPONSIVE & ACCESSIBILITY
    ========================================================================= */
 @media(max-width:900px){
+  #adminApp.skin-nordic .app,
   #adminApp.skin-atlas .app{grid-template-columns:64px minmax(0,1fr);}
+  #adminApp.skin-nordic .rail,
   #adminApp.skin-atlas .rail{align-items:center;padding:14px 6px;}
+  #adminApp.skin-nordic .rail-brand,
+  #adminApp.skin-nordic .rail-grp,
+  #adminApp.skin-nordic .rail-collapse-btn,
+  #adminApp.skin-nordic #sidebarToggleBtn,
+  #adminApp.skin-nordic .n-badge,
+  #adminApp.skin-nordic #nordicRailTelemetry,
   #adminApp.skin-atlas .rail-brand,
   #adminApp.skin-atlas .rail-grp,
   #adminApp.skin-atlas .rail-collapse-btn,
   #adminApp.skin-atlas #sidebarToggleBtn{display:none;}
+  #adminApp.skin-nordic .rail-logo,
   #adminApp.skin-atlas .rail-logo{justify-content:center;padding:2px 0 10px;width:100%;}
+  #adminApp.skin-nordic .rail-btn,
   #adminApp.skin-atlas .rail-btn{width:42px;min-height:42px;height:42px;padding:0;justify-content:center;}
+  #adminApp.skin-nordic .rail-btn .tip,
   #adminApp.skin-atlas .rail-btn .tip{
     position:absolute;left:54px;top:50%;transform:translateY(-50%);opacity:0;
     background:#0F172A;color:#F8FAFC;border:1px solid #1E293B;
-    padding:5px 10px;border-radius:7px;font-size:12px;box-shadow:var(--shadow-float);z-index:120;
+    padding:5px 10px;border-radius:7px;font-size:12px;box-shadow:var(--shadow-float);z-index:120;flex:none;
   }
+  #adminApp.skin-nordic .rail-btn:hover .tip,
   #adminApp.skin-atlas .rail-btn:hover .tip{opacity:1;transform:translateY(-50%) translateX(4px);}
+  #adminApp.skin-nordic .rail-btn[data-view="adminview"],
   #adminApp.skin-atlas .rail-btn[data-view="adminview"]{box-shadow:none;margin-top:0;padding-top:0;}
+  #adminApp.skin-nordic .topbar,
+  #adminApp.skin-nordic .view.scroll,
   #adminApp.skin-atlas .topbar,
   #adminApp.skin-atlas .view.scroll,
   #adminApp .topbar,
   #adminApp .view.scroll{padding-left:14px;padding-right:14px;}
+  #adminApp.skin-nordic .topbar,
   #adminApp.skin-atlas .topbar,
   #adminApp .topbar{padding-right:126px;}
   #adminApp.skin-glass .rail{margin:8px 8px 0;padding-right:126px;}
@@ -2289,19 +2650,20 @@ function getTheme(){
 }
 
 /* ===== รูปแบบหน้าตาแดชบอร์ดแอดมิน (admin เท่านั้น) =====
-   'orbital' = Orbital Dragon SpaceX HUD (ค่าเริ่มต้นใหม่)
-   'atlas' = Atlas สว่าง · 'glass' = Glass Bento · 'classic' = หน้าตาเดิม
+   'nordic' = Nordic Freight โทนสว่างนุ่ม Cool Slate-Mist (ค่าเริ่มต้นใหม่)
+   'orbital' = Orbital Dragon SpaceX HUD · 'atlas' = Atlas สว่าง
+   'glass' = Glass Bento · 'classic' = หน้าตาเดิม
    เก็บใน localStorage ของเบราว์เซอร์นี้ ไม่ซิงค์ไปที่อื่น และไม่กระทบแอปคนขับ */
 function getAdminSkin(){
   try{
-    if(localStorage.getItem('rfsm_admin_skin_ver') !== 'v38_orbital'){
-      localStorage.setItem('rfsm_admin_skin_ver', 'v38_orbital');
-      localStorage.setItem('rfsm_admin_skin', 'orbital');
-      return 'orbital';
+    if(localStorage.getItem('rfsm_admin_skin_ver') !== 'v39_nordic'){
+      localStorage.setItem('rfsm_admin_skin_ver', 'v39_nordic');
+      localStorage.setItem('rfsm_admin_skin', 'nordic');
+      return 'nordic';
     }
     const v = localStorage.getItem('rfsm_admin_skin');
-    return (v==='classic'||v==='glass'||v==='atlas'||v==='orbital') ? v : 'orbital';
-  }catch(e){ return 'orbital'; }
+    return (v==='classic'||v==='glass'||v==='atlas'||v==='orbital'||v==='nordic') ? v : 'nordic';
+  }catch(e){ return 'nordic'; }
 }
 function applySidebarCollapsed(){
   const el = document.getElementById('adminApp');
@@ -2333,6 +2695,7 @@ function applyAdminSkin(){
   const el = document.getElementById('adminApp');
   if(!el) return;
   const sk = getAdminSkin();
+  el.classList.toggle('skin-nordic', sk==='nordic');
   el.classList.toggle('skin-orbital', sk==='orbital');
   el.classList.toggle('skin-glass', sk==='glass');
   el.classList.toggle('skin-atlas', sk==='atlas');
@@ -2341,9 +2704,9 @@ function applyAdminSkin(){
   applySidebarCollapsed();
 }
 function setAdminSkin(id){
-  const valid = (id==='classic'||id==='glass'||id==='atlas'||id==='orbital') ? id : 'orbital';
+  const valid = (id==='classic'||id==='glass'||id==='atlas'||id==='orbital'||id==='nordic') ? id : 'nordic';
   try{
-    localStorage.setItem('rfsm_admin_skin_ver', 'v38_orbital');
+    localStorage.setItem('rfsm_admin_skin_ver', 'v39_nordic');
     localStorage.setItem('rfsm_admin_skin', valid);
   }catch(e){}
   applyAdminSkin();
@@ -2918,7 +3281,7 @@ function themeSwatchesHtml(){
 <div class="toast-wrap" id="toastWrap"></div>
 </div>
 
-<div id="adminApp" class="skin-orbital view-is-map">
+<div id="adminApp" class="skin-nordic view-is-map">
 
 <!-- ===== ADMIN LOGIN GATE ===== -->
 <div id="adminLoginScreen">
@@ -2934,7 +3297,7 @@ function themeSwatchesHtml(){
 </div>
 
 <div class="app" id="adminAppShell" style="display:none;">
-  <!-- ICON RAIL (transforms into Floating Top Mission Bar in skin-orbital) -->
+  <!-- ICON RAIL (220px Nordic Freight Left Rail / transforms in other skins) -->
   <nav class="rail" id="rail">
     <div class="rail-logo"><span class="rl-mark"><span class="rl-mark-txt">RF</span><svg class="orb-only" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9" opacity=".35"/><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></span><span class="rail-brand"><span class="orb-brand-line"><b>RFSM</b><span class="orb-only orb-brand-tag">// ORBITAL</span></span><small>ศูนย์ควบคุมกองรถ</small><span class="orb-only orb-brand-sub">DRAGON TELEMETRY HUD</span></span><button type="button" id="sidebarToggleBtn" class="rail-collapse-btn" onclick="toggleAdminSidebar()" title="ย่อเมนูด้านข้าง" aria-label="ย่อ/ขยายเมนูด้านข้าง" aria-expanded="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/></svg></button></div>
     <div class="orb-only orb-sat-pill" id="orbitalSatPill" title="สถานะการเชื่อมต่อกองรถ GPS สด">
@@ -2945,10 +3308,12 @@ function themeSwatchesHtml(){
     <button class="rail-btn active" data-view="mapview">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 3 3 5.5v15L9 18l6 2.5L21 18V3l-6 2.5L9 3Z"/><path d="M9 3v15M15 5.5v15"/></svg>
       <span class="tip">แผนที่หลัก</span>
+      <span class="nordic-only n-badge" id="nBadgeMap"></span>
     </button>
     <button class="rail-btn" data-view="hazardview">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2 1 21h22L12 2Z"/><path d="M12 9v5M12 17h.01"/></svg>
       <span class="tip">Route Hazard</span>
+      <span class="nordic-only n-badge warn" id="nBadgeHaz"></span>
     </button>
     <button class="rail-btn" data-view="riskview">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
@@ -2957,6 +3322,7 @@ function themeSwatchesHtml(){
     <button class="rail-btn" data-view="fleetview">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17h1v-5l2-5h9l3 4h2v6h-2"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>
       <span class="tip">Fleet</span>
+      <span class="nordic-only n-badge" id="nBadgeFleet"></span>
     </button>
     <button class="rail-btn" data-view="alertsview">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -2965,6 +3331,7 @@ function themeSwatchesHtml(){
     <button class="rail-btn" data-view="nearstoreview">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v11h16V9"/><path d="M9 20v-6h6v6"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/></svg>
       <span class="tip">ใกล้ถึงร้าน</span>
+      <span class="nordic-only n-badge" id="nBadgeNear"></span>
     </button>
     <button class="rail-btn" data-view="restview">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 8v8M9 12h4a2 2 0 0 0 0-4H9"/></svg>
@@ -2977,6 +3344,7 @@ function themeSwatchesHtml(){
     <button class="rail-btn" data-view="speedview">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20a8 8 0 1 1 8-8"/><path d="M12 12l4.5-3.5"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg>
       <span class="tip">การควบคุมความเร็ว</span>
+      <span class="nordic-only n-badge warn" id="nBadgeSpd"></span>
     </button>
     <button class="rail-btn" data-view="reportview">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
@@ -2987,6 +3355,12 @@ function themeSwatchesHtml(){
       <span class="tip">คะแนนสะสม / Rewards</span>
     </button>
     <div class="rail-spacer"></div>
+    <div class="nordic-only n-rail-card" id="nordicRailTelemetry">
+      <div class="n-rail-hd"><span>สถานะระบบ GPS สด</span><span class="dot pulse" id="nRailDot"></span></div>
+      <div class="n-rail-row"><span>รถออนไลน์</span><b class="mono" id="nRailOnline">--/-- คัน</b></div>
+      <div class="n-rail-row"><span>ร้านที่เฝ้าดู</span><b class="mono" id="nRailStores">-- แห่ง</b></div>
+      <div class="n-rail-row"><span>โหมดถนอมสายตา</span><b style="color:#0F766E;">Nordic Mist</b></div>
+    </div>
     <button class="rail-btn" data-view="adminview">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.6V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.6 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.6 1Z"/></svg>
       <span class="tip">Admin / Settings</span>
@@ -4041,6 +4415,7 @@ function themeSwatchesHtml(){
             <h3>✨ รูปแบบหน้าตา</h3>
             <p style="font-size:12px;color:var(--text-faint);margin:-4px 0 10px;">มีผลเฉพาะเบราว์เซอร์นี้ ไม่กระทบแอปคนขับ</p>
             <div class="skin-opt-row">
+              <button type="button" class="skin-opt" data-skin="nordic" onclick="setAdminSkin('nordic')"><b>Nordic Freight (แนะนำ · ถนอมสายตา)</b><span>โทนสว่างนุ่ม Cool Slate-Mist ไม่ขาวแสบตา เมนูซ้าย 220px พร้อมแผนที่สว่างคมชัด</span></button>
               <button type="button" class="skin-opt" data-skin="orbital" onclick="setAdminSkin('orbital')"><b>Orbital Dragon (SpaceX HUD)</b><span>โทนมืดอวกาศถนอมสายตา แผนที่เต็มจอพร้อม Target Lock HUD</span></button>
               <button type="button" class="skin-opt" data-skin="atlas" onclick="setAdminSkin('atlas')"><b>Atlas (สว่าง)</b><span>พื้นสว่าง สบายตา เมนูซ้ายแบ่งกลุ่ม</span></button>
               <button type="button" class="skin-opt" data-skin="glass" onclick="setAdminSkin('glass')"><b>Glass Bento</b><span>พื้นมืดโปร่งแสง เมนูแท็บด้านบน</span></button>
@@ -8682,9 +9057,9 @@ const G_LIGHT_STYLE = [
   {featureType:"road.highway",elementType:"geometry.stroke",stylers:[{color:"#f59e0b"}]},
 ];
 function isAdminLightMapMode(){
-  const sk = (typeof getAdminSkin === 'function') ? getAdminSkin() : 'orbital';
+  const sk = (typeof getAdminSkin === 'function') ? getAdminSkin() : 'nordic';
   const th = (typeof getTheme === 'function') ? getTheme() : 'midnight';
-  return sk === 'orbital' || sk === 'atlas' || th === 'paper';
+  return sk === 'nordic' || sk === 'orbital' || sk === 'atlas' || th === 'paper';
 }
 function googleMapStyleForCurrentSkin(){
   return isAdminLightMapMode() ? G_LIGHT_STYLE : G_DARK_STYLE;
@@ -9191,6 +9566,24 @@ function orbitalRenderHud(){
   if(syncMeta) syncMeta.textContent = `AUTO-GEOFENCE SYNC · ${stores.length} STORES`;
   const engLbl = document.getElementById('orbMapEngineLbl');
   if(engLbl) engLbl.textContent = mapProvider==='google' ? 'GOOGLE MAPS' : 'DARK OPS';
+
+  /* Sync Nordic Freight left-rail count badges & live GPS card */
+  const nMap = document.getElementById('nBadgeMap');
+  const nFleet = document.getElementById('nBadgeFleet');
+  const nNear = document.getElementById('nBadgeNear');
+  const nHaz = document.getElementById('nBadgeHaz');
+  const nSpd = document.getElementById('nBadgeSpd');
+  const nOnl = document.getElementById('nRailOnline');
+  const nStr = document.getElementById('nRailStores');
+  const nDot = document.getElementById('nRailDot');
+  if(nMap) nMap.textContent = total ? String(total) : '';
+  if(nFleet) nFleet.textContent = total ? String(total) : '';
+  if(nNear) nNear.textContent = nearArr.length ? String(nearArr.length) : '';
+  if(nHaz) nHaz.textContent = activeHaz.length ? String(activeHaz.length) : '';
+  if(nSpd) nSpd.textContent = c.overspeed ? String(c.overspeed) : '';
+  if(nOnl) nOnl.textContent = `${onlineCount}/${total} คัน`;
+  if(nStr) nStr.textContent = `${stores.length} แห่ง`;
+  if(nDot) nDot.style.background = (total > 0 && onlineCount === 0) ? '#E11D48' : '#10B981';
 
   /* Build up to 4 SpaceX arrival milestones: prioritize live approaching/arrived, then closest trucks, then registered stores */
   const gridEl = document.getElementById('orbTimelineGrid');
@@ -12755,7 +13148,7 @@ function nsRender(){
     box.innerHTML = `<table><thead><tr><th>สถานะ</th><th>ทะเบียนรถ</th><th>คนขับ</th><th>ร้าน</th><th class="num">ระยะ</th><th>ถึงในอีก (ประมาณ)</th><th class="num">ความเร็ว</th><th class="col-act"></th></tr></thead><tbody>${
       nsLive.map(x=>`<tr>
         <td>${nsStatusBadge(x.state)}</td>
-        <td class="strong">${nsEsc(x.plate)}</td>
+        <td class="strong"><span class="ns-plate-chip">${nsEsc(x.plate)}</span></td>
         <td>${nsEsc(x.driver)||'-'}</td>
         <td>📦 ${nsEsc(x.poiName)}</td>
         <td class="mono num">${nsFmtDist(x.distKm)}</td>
