@@ -10420,7 +10420,7 @@ function drawFleetMap3D(){
 
   (STATE.pois||[]).forEach(p=>{
     if(typeof p.lat!=='number' || typeof p.lng!=='number') return;
-    if(isPoiHidden(p)) return;
+    if(poiHiddenByFilter(p)) return;
     const isLoad = !!p.loadPoint;
     const meta = isLoad ? LOAD_POI_LEGEND : (POI_META[p.type] || POI_META.other);
     const el = document.createElement('div');
