@@ -9601,7 +9601,7 @@ function orbitalRenderHud(){
       const isOver = (x.speed||0) > 80;
       const cls = isOver ? 'overspeed' : (x.state==='arrived' ? 'arrived' : 'approaching');
       const tTag = x.state==='arrived' ? 'ถึงร้านแล้ว' : ('T-' + Math.max(1, Math.round(x.etaMin||1)) + ' MIN' + (isOver?' ⚠':''));
-      const subTxt = x.state==='arrived' ? (`จอดที่ร้าน · ${Math.round(x.speed||0)} km/h`) : (`อีก ${nsFmtDist(x.distKm)} · ${Math.round(x.speed||0)} km/h`);
+      const subTxt = x.state==='arrived' ? (x.offline ? 'จอดที่ร้าน (ออฟไลน์)' : (`จอดที่ร้าน · ${Math.round(x.speed||0)} km/h`)) : (`อีก ${nsFmtDist(x.distKm)} · ${Math.round(x.speed||0)} km/h`);
       milestones.push({ cls, tag:tTag, plate:x.plate, name:x.poiName, sub:subTxt, fn:`orbitalSelectVehicle('${orbEsc(x.vehicleId)}')` });
     });
 
@@ -12752,6 +12752,8 @@ const NS_LS_CFG = 'rfsm.nearStore.cfg';
 const NS_LS_FIRED = 'rfsm.nearStore.fired';
 const NS_STALE_APPROACH_MIN = 120;     // เข้าใกล้แล้วไม่ถึงภายใน 2 ชม. = ผ่านไป
 const NS_REUSE_MS = 6*3600*1000;       // ต่อยอดรายการเดิมถ้าเป็นรถ+ร้านเดียวกันภายใน 6 ชม.
+const NS_OFFLINE_MAX_MS = 7*24*3600*1000; // นับรถที่ออฟไลน์และยังจอดอยู่ในร้าน/คลังสินค้าย้อนหลังสูงสุด 7 วัน
+const NS_PARK_MAX_SPEED = 15;             // ความเร็วล่าสุดไม่เกินนี้สำหรับรถออฟไลน์ถือว่าจอดอยู่ที่ร้าน/คลัง
 let nsVisits = null;                   // null = ยังไม่โหลด
 const nsTrack = new Map();             // `${plateKey}|${poiId}` -> สถานะ
 let nsLive = [];                       // รายการที่แสดงบนหน้า (คำนวณทุกรอบ)
@@ -12795,6 +12797,15 @@ function nsFmtEta(min){
 function nsFmtTime(ts){
   return ts ? new Date(ts).toLocaleString('th-TH',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'}) : '-';
 }
+function nsFmtAgo(ts){
+  if(!ts) return '-';
+  const mins = Math.max(0, Math.round((Date.now()-ts)/60000));
+  if(mins < 1) return 'เมื่อครู่นี้';
+  if(mins < 60) return mins + ' นาทีที่แล้ว';
+  const hrs = Math.floor(mins/60), rem = mins%60;
+  if(hrs < 24) return hrs + ' ชม.' + (rem ? ' ' + rem + ' น.' : '') + ' ที่แล้ว';
+  return Math.floor(hrs/24) + ' วันที่แล้ว';
+}
 /* เวลาโดยประมาณ: ระยะ × ตัวคูณถนน ÷ ความเร็วเฉลี่ยล่าสุด (ไม่ต่ำกว่า 25 ไม่เกิน 70 กม./ชม.
    เพราะความเร็วตอนติดไฟแดง/ชะลอ จะทำให้ ETA เพี้ยนมาก) — ประมาณการเท่านั้น ไม่ได้รู้เส้นทางจริง */
 function nsEtaMin(distKm, speeds, cfg){
@@ -12825,6 +12836,7 @@ async function nsLoadVisits(){
     (nsVisits||[]).forEach(x=>{ if(!have.has(x.id)) loaded.push(x); });
     nsVisits = loaded;
   }catch(e){ console.warn('โหลดประวัติใกล้ถึงร้านไม่สำเร็จ:', e); nsVisits = nsVisits || []; }
+  nsTick();
   nsRender();
 }
 
@@ -12941,9 +12953,10 @@ function nsTestAlert(){
 
 /* ---------- ตรวจจับ ---------- */
 function nsFindVisit(plate, poiId, now){
-  return (nsVisits||[]).filter(x=>x.poiId===poiId && x.plate===plate
-      && (x.status==='approaching'||x.status==='arrived')
-      && now - (x.lastTs||x.approachTs||0) < NS_REUSE_MS)
+  const pk = normPlate(plate);
+  return (nsVisits||[]).filter(x=>x.poiId===poiId && normPlate(x.plate)===pk
+      && ((x.status==='approaching' && now - (x.lastTs||x.approachTs||0) < NS_REUSE_MS)
+       || (x.status==='arrived'     && now - (x.lastTs||x.arriveTs||x.approachTs||0) < NS_OFFLINE_MAX_MS)))
     .sort((a,b)=>(b.lastTs||0)-(a.lastTs||0))[0] || null;
 }
 function nsNewVisit(v, s, now, distKm, etaMin){
@@ -12968,40 +12981,49 @@ function nsTick(){
     if(!pk) return;
     const r = liveOf(v);
     if(!r || typeof r.lat!=='number' || typeof r.lng!=='number') return;
-    if(!isVehicleOnline(v)) return;            // กล่องเงียบ = ข้อมูลเก่า ไม่เชื่อ
-    const gpsTs = Number(v.lastSeenTs) || now;
+    const online = isVehicleOnline(v);
+    const gpsTs = Number(v.lastSeenTs) || 0;
+    const ageMs = gpsTs ? Math.max(0, now - gpsTs) : Infinity;
     const spd = Number(r.speed)||0;
-    const moving = spd >= cfg.minSpeed;
+    const moving = online && spd >= cfg.minSpeed;
     if(moving) watching++;
+    if(!online && ageMs > NS_OFFLINE_MAX_MS) return;
     stores.forEach(s=>{
       const key = pk+'|'+s.id;
-      seenKeys.add(key);
       const d = haversineKm([r.lat,r.lng],[s.lat,s.lng]);
-      let t = nsTrack.get(key);
-      if(!t){ t = { state:'far', prevD:null, minD:Infinity, speeds:[], lastGps:0, visit:null }; nsTrack.set(key,t); }
-      const fresh = gpsTs > t.lastGps;         // ข้อมูลใหม่จริงเท่านั้นถึงนับ (กล่องส่งซ้ำไม่ทำให้ "ใกล้ขึ้น")
-      if(fresh){
-        t.speeds.push(spd); if(t.speeds.length>6) t.speeds.shift();
-      }
       const sc = nsStoreCfg(s.id);            // v36 — รัศมี/เวลาเปิดรายร้าน (ว่าง = ค่ากลาง)
       const arriveKm = sc.arriveM/1000, departKm = Math.max(arriveKm*1.7, 0.5);
+      let t = nsTrack.get(key);
+      if(!online){
+        const stayArrived = !!(t && t.state==='arrived' && d <= departKm);
+        const parkedInside = d <= arriveKm && spd <= NS_PARK_MAX_SPEED;
+        if(!stayArrived && !parkedInside) return;
+      }
+      seenKeys.add(key);
+      if(!t){ t = { state:'far', prevD:null, minD:Infinity, speeds:[], lastGps:0, visit:null }; nsTrack.set(key,t); }
+      const effectiveTs = gpsTs || now;
+      const fresh = effectiveTs > t.lastGps;         // ข้อมูลใหม่จริงเท่านั้นถึงนับ (กล่องส่งซ้ำไม่ทำให้ "ใกล้ขึ้น")
+      if(fresh && online){
+        t.speeds.push(spd); if(t.speeds.length>6) t.speeds.shift();
+      }
       const info = { key, vehicleId:v.id, plate:v.plate, poiName:s.name, driver:nsDriverOf(v), distKm:d };
 
       if(t.state==='far'){
         const closing = t.prevD!=null && d < t.prevD - 0.03;
-        if(fresh && d<=arriveKm && (moving||closing||t.prevD==null)){
-          /* เปิดหน้ามาตอนรถถึงร้านพอดี หรือไม่เคยเห็นช่วงเข้าใกล้ — นับเป็นถึงร้านเลย */
+        if(d<=arriveKm && (fresh || t.prevD==null || !moving)){
+          /* เปิดหน้ามาตอนรถถึงร้านพอดี หรือไม่เคยเห็นช่วงเข้าใกล้ หรือรถจอดออฟไลน์ในรัศมี — นับเป็นถึงร้านเลย */
           const ex = nsFindVisit(v.plate, s.id, now);
-          t.visit = ex || nsNewVisit(v, s, now, d, 0);
+          const initTs = online ? now : effectiveTs;
+          t.visit = ex || nsNewVisit(v, s, initTs, d, 0);
           if(!ex){ t.visit.approachEtaMin = 0; }
           t.state='arrived'; t.minD=d;
           if(t.visit.status!=='arrived'){
-            t.visit.status='arrived'; t.visit.arriveTs=gpsTs; t.visit.lastTs=now;
-            const cn = nsClosedNote(s.id, gpsTs); t.visit.arriveClosed = !!cn;
+            t.visit.status='arrived'; t.visit.arriveTs=effectiveTs; t.visit.lastTs=now;
+            const cn = nsClosedNote(s.id, effectiveTs); t.visit.arriveClosed = !!cn;
             nsPush(t.visit);
-            if(nsShouldAlert(key,'arrive')) nsAlert('arrive', Object.assign({closedNote:cn}, info));
+            if(online && nsShouldAlert(key,'arrive')) nsAlert('arrive', Object.assign({closedNote:cn}, info));
           }
-        } else if(fresh && moving && closing && d<=sc.nearKm){
+        } else if(online && fresh && moving && closing && d<=sc.nearKm){
           const eta = nsEtaMin(d, t.speeds, cfg);
           const ex = nsFindVisit(v.plate, s.id, now);
           t.visit = ex || nsNewVisit(v, s, now, d, eta);
@@ -13011,13 +13033,13 @@ function nsTick(){
           if(t.state==='approaching' && nsShouldAlert(key,'approach')) nsAlert('approach', Object.assign({etaMin:eta, closedNote:nsClosedNote(s.id, now+eta*60000)}, info));
         }
       } else if(t.state==='approaching'){
-        if(fresh){
+        if(fresh && online){
           t.minD = Math.min(t.minD, d);
           if(d<=arriveKm){
             t.state='arrived';
             if(t.visit){
-              t.visit.status='arrived'; t.visit.arriveTs=gpsTs; t.visit.lastTs=now;
-              const cn = nsClosedNote(s.id, gpsTs); t.visit.arriveClosed = !!cn;
+              t.visit.status='arrived'; t.visit.arriveTs=effectiveTs; t.visit.lastTs=now;
+              const cn = nsClosedNote(s.id, effectiveTs); t.visit.arriveClosed = !!cn;
               nsPush(t.visit);
               if(nsShouldAlert(key,'arrive')) nsAlert('arrive', Object.assign({closedNote:cn}, info));
             }
@@ -13033,19 +13055,20 @@ function nsTick(){
           if(t.visit) t.visit.lastTs = now;
           if(d > departKm){
             if(t.visit){
-              t.visit.status='departed'; t.visit.departTs=gpsTs; t.visit.lastTs=now;
-              t.visit.dwellMin = t.visit.arriveTs ? Math.max(0, Math.round((gpsTs - t.visit.arriveTs)/60000)) : null;
+              t.visit.status='departed'; t.visit.departTs=effectiveTs; t.visit.lastTs=now;
+              t.visit.dwellMin = t.visit.arriveTs ? Math.max(0, Math.round((effectiveTs - t.visit.arriveTs)/60000)) : null;
               nsPush(t.visit);
             }
             t.state='far'; t.visit=null; t.minD=Infinity;
           }
         }
       }
-      if(fresh){ t.prevD = d; t.lastGps = gpsTs; }
+      if(fresh){ t.prevD = d; t.lastGps = effectiveTs; }
 
       if(t.state!=='far'){
         live.push({ vehicleId:v.id, plate:v.plate, driver:nsDriverOf(v), poiId:s.id, poiName:s.name,
-          state:t.state, distKm:d, speed:spd,
+          state:t.state, distKm:d, speed: online ? spd : 0, offline: !online, lastSeenTs: gpsTs,
+          boxStatus: (r && r.status) ? String(r.status) : '',
           etaMin: t.state==='approaching' ? nsEtaMin(d, t.speeds, cfg) : 0,
           since: t.state==='arrived' ? (t.visit && t.visit.arriveTs) : (t.visit && t.visit.approachTs),
           closedNote: t.state==='approaching' ? nsClosedNote(s.id, now + nsEtaMin(d, t.speeds, cfg)*60000) : '' });
@@ -13106,10 +13129,12 @@ function nsRender(){
   setSubTabBadge('nsBadgeStores', stores.length, false);
 
   /* KPI */
+  const arrivedLive = nsLive.filter(x=>x.state==='arrived');
+  const arrivedOffline = arrivedLive.filter(x=>x.offline).length;
   document.getElementById('nsKpis').innerHTML = `
     <div class="kpi-card"><div class="lbl">ร้านที่เฝ้าดู</div><div class="val">${stores.length}</div><div class="delta">จุดขึ้น/ลงสินค้า 📦</div></div>
     <div class="kpi-card"><div class="lbl">กำลังเข้าใกล้ร้าน</div><div class="val" style="color:var(--risk-mid)">${nsLive.filter(x=>x.state==='approaching').length}</div><div class="delta">รถวิ่งอยู่ตอนนี้ ${nsWatching} คัน</div></div>
-    <div class="kpi-card"><div class="lbl">อยู่ที่ร้านตอนนี้</div><div class="val" style="color:var(--risk-low)">${nsLive.filter(x=>x.state==='arrived').length}</div><div class="delta">ในรัศมีถึงร้าน</div></div>
+    <div class="kpi-card"><div class="lbl">อยู่ที่ร้านตอนนี้</div><div class="val" style="color:var(--risk-low)">${arrivedLive.length}</div><div class="delta">ในรัศมีถึงร้าน${arrivedOffline ? ` · ออฟไลน์ ${arrivedOffline} คัน` : ''}</div></div>
     <div class="kpi-card"><div class="lbl">ถึงร้านวันนี้</div><div class="val">${arrivedToday}</div><div class="delta">ครั้ง</div></div>`;
 
   /* ตั้งค่า (พับเป็นแถบสรุป 1 บรรทัด และไม่เขียนทับช่องที่กำลังพิมพ์) */
@@ -13143,17 +13168,17 @@ function nsRender(){
       <div style="margin-top:10px;"><button class="btn primary sm" onclick="nsOpenAddStoreModal()">+ เพิ่มร้านแรกด้วยพิกัดละติจูด/ลองจิจูด</button></div></div>`;
   } else if(!nsLive.length){
     box.innerHTML = `<div class="empty">ตอนนี้ยังไม่มีรถเข้าใกล้ร้านใด<br>
-      <span style="font-size:12px;">ระบบเฝ้าดูรถที่กำลังวิ่งอยู่ ${nsWatching} คัน · เปิดหน้าแอดมินค้างไว้เพื่อให้ระบบตรวจต่อเนื่อง</span></div>`;
+      <span style="font-size:12px;">ระบบเฝ้าดูรถที่กำลังวิ่งอยู่ ${nsWatching} คัน และนับรถที่จอด/ออฟไลน์ในรัศมีร้านหรือคลังสินค้าด้วย · เปิดหน้าแอดมินค้างไว้เพื่อให้ระบบตรวจต่อเนื่อง</span></div>`;
   } else {
     box.innerHTML = `<table><thead><tr><th>สถานะ</th><th>ทะเบียนรถ</th><th>คนขับ</th><th>ร้าน</th><th class="num">ระยะ</th><th>ถึงในอีก (ประมาณ)</th><th class="num">ความเร็ว</th><th class="col-act"></th></tr></thead><tbody>${
       nsLive.map(x=>`<tr>
-        <td>${nsStatusBadge(x.state)}</td>
+        <td>${nsStatusBadge(x.state)}${x.offline?'<div style="font-size:11px;color:var(--text-faint);margin-top:2px;">ออฟไลน์ · จอดนิ่ง</div>':''}</td>
         <td class="strong"><span class="ns-plate-chip">${nsEsc(x.plate)}</span></td>
         <td>${nsEsc(x.driver)||'-'}</td>
         <td>📦 ${nsEsc(x.poiName)}</td>
         <td class="mono num">${nsFmtDist(x.distKm)}</td>
-        <td class="mono">${x.state==='arrived' ? ('ถึงเมื่อ '+nsFmtTime(x.since)) : nsFmtEta(x.etaMin)}${x.closedNote?`<br><span style="font-size:11px;color:var(--risk-mid);">⚠ ${nsEsc(x.closedNote)}</span>`:''}</td>
-        <td class="mono num">${Math.round(x.speed)} กม./ชม.</td>
+        <td class="mono">${x.state==='arrived' ? ('ถึงเมื่อ '+nsFmtTime(x.since)+(x.offline?`<br><span style="font-size:11px;color:var(--text-faint);">สัญญาณล่าสุด ${nsEsc(nsFmtAgo(x.lastSeenTs))}</span>`:'')) : nsFmtEta(x.etaMin)}${x.closedNote?`<br><span style="font-size:11px;color:var(--risk-mid);">⚠ ${nsEsc(x.closedNote)}</span>`:''}</td>
+        <td class="mono num">${x.offline ? '<span style="color:var(--text-faint);">จอด (ออฟไลน์)</span>' : (Math.round(x.speed)+' กม./ชม.')}</td>
         <td class="col-act"><button class="btn sm" onclick="nsShowOnMap('${x.vehicleId}')">แผนที่</button></td></tr>`).join('')}</tbody></table>`;
   }
   nsRenderStoreList();
@@ -13688,8 +13713,9 @@ async function nsLoadStoreSettings(){
     if(error) throw error;
     const m = {};
     (data||[]).forEach(r=>{ if(r.data && r.data.poiId) m[r.data.poiId] = r.data; });
-    nsStoreSet = Object.assign(m, nsStoreSet||{});
+    nsStoreSet = Object.assign({}, nsStoreSet||{}, m);
   }catch(e){ console.warn('โหลดตั้งค่ารายร้านไม่สำเร็จ:', e); nsStoreSet = nsStoreSet || {}; }
+  nsTick();
   nsRender();
 }
 async function nsStoreSetPush(rec){
@@ -13748,6 +13774,7 @@ async function nsSaveStoreEdit(poiId, clear){
     nsTick();
     renderAllDependants();
   } else {
+    nsTick();
     nsRender();
   }
   toast(clear ? 'ล้างค่าแจ้งเตือนเฉพาะร้านแล้ว' : 'บันทึกข้อมูลร้านแล้ว');
