@@ -755,9 +755,10 @@ html[data-theme="paper"] #adminApp:not(.skin-nordic):not(.skin-atlas):not(.skin-
 }
 #adminApp .m3d-truck-rot{
   width:46px;height:46px;display:flex;align-items:center;justify-content:center;
-  transition:transform .55s cubic-bezier(.22,.61,.36,1);
+  transition:transform .45s cubic-bezier(.22,.61,.36,1);
   filter:drop-shadow(0 5px 7px rgba(0,0,0,.62));
 }
+#adminApp #map3D.m3d-rotating .m3d-truck-rot{transition:none;}
 #adminApp .m3d-plate-pill{
   margin-top:-4px;background:rgba(13,21,36,.92);color:#F8FAFC;
   border:1.5px solid var(--accent);border-radius:999px;
@@ -9497,7 +9498,7 @@ function focusVehicleOnMap(id){
       center:[v.lng, v.lat],
       zoom: Math.max(map3D.getZoom(), 15),
       pitch: m3dPitchOn ? 60 : 0,
-      bearing: (st && Number.isFinite(st.bearing)) ? st.bearing : map3D.getBearing(),
+      bearing: (st && Number.isFinite(st.rawBearing)) ? st.rawBearing : map3D.getBearing(),
       duration: 900,
     });
   }
@@ -10245,6 +10246,21 @@ function m3dShortestAngle(cur, target){
   return cur + diff;
 }
 
+function m3dScreenBearing(rawBearing){
+  const camB = (map3D && typeof map3D.getBearing === 'function') ? (map3D.getBearing() || 0) : 0;
+  return ((rawBearing - camB) % 360 + 360) % 360;
+}
+
+function m3dSyncAllRotations(){
+  if(!map3D) return;
+  m3dVehState.forEach(st=>{
+    if(!st.rotEl) return;
+    const target = m3dScreenBearing(st.rawBearing || 0);
+    st.screenBearing = Number.isFinite(st.screenBearing) ? m3dShortestAngle(st.screenBearing, target) : target;
+    st.rotEl.style.transform = `rotate(${st.screenBearing.toFixed(1)}deg)`;
+  });
+}
+
 function m3dTruckSvg(bodyColor, isMoving, isOver){
   const cab = isOver ? '#DC2626' : bodyColor;
   const roof = isOver ? '#FCA5A5' : '#F8FAFC';
@@ -10292,6 +10308,9 @@ function ensureMap3D(){
     maxPitch: 75,
   });
   map3D.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-left');
+  map3D.on('rotatestart', ()=>{ el.classList.add('m3d-rotating'); });
+  map3D.on('rotate', ()=>{ m3dSyncAllRotations(); });
+  map3D.on('rotateend', ()=>{ el.classList.remove('m3d-rotating'); m3dSyncAllRotations(); });
   map3D.on('load', ()=>{
     m3dReady = true;
     try{
@@ -10533,7 +10552,9 @@ function drawFleetMap3D(){
       st.rotEl.innerHTML = m3dTruckSvg(col, isMoving, isOver);
       st.statusKey = visualKey;
     }
-    st.rotEl.style.transform = `rotate(${st.bearing.toFixed(1)}deg)`;
+    const targetScreen = m3dScreenBearing(st.rawBearing || 0);
+    st.screenBearing = Number.isFinite(st.screenBearing) ? m3dShortestAngle(st.screenBearing, targetScreen) : targetScreen;
+    st.rotEl.style.transform = `rotate(${st.screenBearing.toFixed(1)}deg)`;
     st.el.style.opacity = online ? '1' : '0.72';
     st.pulseEl.style.display = (isOver || isMoving) ? 'block' : 'none';
     st.pulseEl.style.background = isOver ? 'rgba(239,68,68,.48)' : 'rgba(16,185,129,.28)';
