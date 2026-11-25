@@ -728,6 +728,65 @@ html[data-theme="paper"] #adminApp:not(.skin-nordic):not(.skin-atlas):not(.skin-
 #adminApp .pop-title{font-family:var(--font-display);font-weight:600;font-size:14px;margin-bottom:4px;color:var(--text);}
 #adminApp .pop-row{color:var(--text-dim);font-size:12px;margin-top:2px;}
 
+/* ===== 3D MAP (MapLibre GL JS — Option A: 3D Buildings + Animated Rotating Trucks) ===== */
+#adminApp #map3D{background:#0c1424;}
+#adminApp #m3dControls{
+  bottom:18px;left:50%;transform:translateX(-50%);
+  padding:5px 7px;display:none;gap:5px;align-items:center;z-index:950;
+  border-radius:12px;
+}
+#adminApp #m3dControls .btn.sm{padding:4px 9px;font-size:11.8px;min-height:28px;}
+#adminApp #m3dControls .btn.sm.active{border-color:var(--accent);color:var(--accent);background:var(--info-bg);font-weight:600;}
+#adminApp .m3d-veh-wrap{
+  position:relative;display:flex;flex-direction:column;align-items:center;
+  cursor:pointer;user-select:none;will-change:transform;
+}
+#adminApp .m3d-truck-stage{
+  position:relative;width:46px;height:46px;display:flex;align-items:center;justify-content:center;
+}
+#adminApp .m3d-pulse{
+  position:absolute;inset:4px;border-radius:50%;pointer-events:none;
+  animation:m3dPulse 1.6s ease-out infinite;
+}
+@keyframes m3dPulse{
+  0%{transform:scale(.72);opacity:.75;}
+  100%{transform:scale(1.65);opacity:0;}
+}
+#adminApp .m3d-truck-rot{
+  width:42px;height:42px;display:flex;align-items:center;justify-content:center;
+  transition:transform .55s cubic-bezier(.22,.61,.36,1);
+  filter:drop-shadow(0 6px 8px rgba(0,0,0,.48));
+}
+#adminApp .m3d-plate-pill{
+  margin-top:-4px;background:rgba(13,21,36,.92);color:#F8FAFC;
+  border:1.5px solid var(--accent);border-radius:999px;
+  padding:1.5px 8px;font-family:var(--font-mono);font-size:10.5px;font-weight:700;
+  white-space:nowrap;box-shadow:0 3px 10px rgba(0,0,0,.45);
+  display:inline-flex;align-items:center;gap:4px;line-height:1.35;
+}
+#adminApp .m3d-plate-pill.overspeed{background:#DC2626;border-color:#FCA5A5;color:#fff;}
+#adminApp .m3d-plate-pill.offline{background:rgba(30,41,59,.85);border-color:#64748B;color:#CBD5E1;}
+#adminApp .m3d-plate-pill .spd{font-weight:500;opacity:.92;font-size:9.8px;}
+#adminApp .m3d-poi-pin{
+  width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:13px;cursor:pointer;border:2px solid rgba(10,15,28,.9);
+  box-shadow:0 4px 10px rgba(0,0,0,.4);transition:transform .15s;
+}
+#adminApp .m3d-poi-pin:hover{transform:scale(1.16);}
+#adminApp .m3d-haz-pin{
+  width:24px;height:24px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  font-size:12px;cursor:pointer;border:1.5px solid rgba(255,255,255,.85);
+  box-shadow:0 4px 10px rgba(0,0,0,.42);
+}
+#adminApp .maplibregl-popup-content{
+  background:var(--panel);color:var(--text);border:1px solid var(--border);
+  border-radius:12px;box-shadow:var(--shadow-float);padding:12px 14px;
+  font-family:var(--font-body);font-size:12.5px;line-height:1.5;min-width:210px;
+}
+#adminApp .maplibregl-popup-tip{border-top-color:var(--panel) !important;border-bottom-color:var(--panel) !important;}
+#adminApp .maplibregl-popup-close-button{color:var(--text-faint);font-size:16px;padding:4px 8px;}
+#adminApp .maplibregl-popup-close-button:hover{color:var(--text);background:transparent;}
+
 /* ===== SECTION HEADERS (Compact Context & Action Bar — deduplicates Topbar h1) ===== */
 #adminApp .section-hd{
   display:flex;align-items:center;justify-content:space-between;
@@ -3431,15 +3490,24 @@ function themeSwatchesHtml(){
     <div class="view active" id="mapview">
       <div id="mapLeaflet" style="position:absolute;inset:0;"></div>
       <div id="mapGoogle" style="position:absolute;inset:0;display:none;"></div>
+      <div id="map3D" style="position:absolute;inset:0;display:none;"></div>
 
       <div class="map-panel" id="mapProviderBar" style="top:16px;left:50%;transform:translateX(-50%);padding:5px;display:flex;gap:4px;z-index:950;">
         <button class="btn sm provider-btn" id="btnProviderGoogle" onclick="switchMapProvider('google')" title="แสดงแผนที่ด้วย Google Maps API (รองรับดาวเทียม + จราจรสด)">🌍 Google Maps</button>
         <button class="btn sm provider-btn active" id="btnProviderLeaflet" onclick="switchMapProvider('leaflet')" title="แผนที่สำรองฟรี (Leaflet)">🗺️ Dark Ops Map</button>
+        <button class="btn sm provider-btn" id="btnProvider3D" onclick="switchMapProvider('3d')" title="แผนที่ 3 มิติ (ตึก 3D + รถบรรทุกวิ่งตามทิศทาง · ฟรีไม่ต้องใช้ API Key)">🧊 3D Map</button>
         <span class="map-dock-sep" aria-hidden="true"></span>
         <button class="btn sm" title="จัดกึ่งกลางกองรถ" onclick="recenterFleetMap()">🎯 จัดกึ่งกลาง</button>
         <button class="btn sm" id="btnRoadNet" title="แนวถนนที่กองรถเราใช้ซ้ำ สร้างจากรอยรถจริง" onclick="toggleRoadNetwork()">🛣️ ถนนที่กองเราใช้</button>
         <button class="btn sm" id="btnTrafficFlow" title="ซ้อนทับเส้นทางรถติดสด (Google Maps ใช้จราจรสดของ Google ทันที · Dark Ops ใช้ TomTom)" onclick="toggleTrafficFlow()">🚦 จราจรสด</button>
         <button class="btn sm" id="btnFloodCorridor" title="ทาบเส้นสีทับช่วงถนนจริงที่กองเราใช้ ซึ่งตรวจพบว่าอยู่ในพื้นที่น้ำท่วมจากภาพถ่ายดาวเทียม GISTDA จริง (ไม่ใช่แค่ประมาณระยะห่าง)" onclick="toggleFloodCorridors()">🌊 น้ำท่วมตามเส้นทาง</button>
+      </div>
+
+      <div class="map-panel" id="m3dControls" style="display:none;">
+        <button class="btn sm" id="btnM3dSat" onclick="m3dToggleSatellite()" title="สลับภาพดาวเทียม 3 มิติ + อาคาร 3D">🛰️ ดาวเทียม 3D</button>
+        <button class="btn sm active" id="btnM3dPitch" onclick="m3dTogglePitch()" title="สลับมุมเอียง 3 มิติ / มุมมองด้านบน">📐 เอียง 3D</button>
+        <button class="btn sm" onclick="m3dResetNorth()" title="หมุนทิศเหนือกลับมาด้านบน">🧭 ทิศเหนือ</button>
+        <button class="btn sm" id="btnM3dFollow" onclick="m3dToggleFollow()" title="ล็อกกล้องตามรถที่เลือกอยู่แบบเรียลไทม์">🎯 ตามรถ</button>
       </div>
 
       <div class="map-panel" id="hazardFocusBar" style="display:none;top:62px;left:50%;transform:translateX(-50%);z-index:951;padding:7px 12px;align-items:center;gap:10px;">
@@ -8680,6 +8748,7 @@ document.querySelectorAll('.rail-btn[data-view]').forEach(btn=>{
       setTimeout(()=>{
         if(mapProvider==='leaflet' && window.__leafletMap) window.__leafletMap.invalidateSize();
         if(mapProvider==='google' && gMap) google.maps.event.trigger(gMap,'resize');
+        if(mapProvider==='3d' && typeof map3D!=='undefined' && map3D) map3D.resize();
       },50);
     }
     if(btn.dataset.view==='restview'){
@@ -8757,12 +8826,22 @@ function clearFloodCorridors(){
   if(floodCorridorLayer) floodCorridorLayer.clearLayers();
   gFloodCorridorOverlays.forEach(o=>o.setMap(null));
   gFloodCorridorOverlays = [];
+  if(typeof m3dSetGeoSource === 'function') m3dSetGeoSource('m3d-flood', []);
   floodCorridorDrawnFor = null;
 }
 
 function drawFloodCorridors(){
   clearFloodCorridors();
   if(!floodCorridorOn) return;
+  if(mapProvider === '3d'){
+    const feats = (floodCorridorData || []).filter(seg=>Array.isArray(seg.path) && seg.path.length>1).map(seg=>({
+      type:'Feature', properties:{},
+      geometry:{ type:'LineString', coordinates: seg.path.map(p=>[p[1], p[0]]) }
+    }));
+    if(typeof m3dSetGeoSource === 'function') m3dSetGeoSource('m3d-flood', feats);
+    floodCorridorDrawnFor = '3d';
+    return;
+  }
   (floodCorridorData || []).forEach(seg=>{
     const f = seg.nearest ? seg.nearest.f : null;
     const label = f ? (f.label || 'จุดน้ำท่วม') : 'จุดน้ำท่วม';
@@ -8776,7 +8855,7 @@ function drawFloodCorridors(){
       L.polyline(seg.path, {
         color:'#3AA0FF', weight:7, opacity:.85, dashArray:'2,12', lineCap:'round',
       }).addTo(floodCorridorLayer).bindPopup(popupHtml);
-    } else {
+    } else if(mapProvider === 'google') {
       if(!gMap || !window.google) return;
       const gPopupHtml = `<div style="color:#111"><b>🌊 ถนนช่วงนี้อยู่ในพื้นที่น้ำท่วมจริง</b><br>${label}<br>${noteTxt}<br><small style="color:#3AA0FF">🛰️ ข้อมูลอัตโนมัติจากภาพถ่ายดาวเทียม GISTDA</small></div>`;
       const pl = new google.maps.Polyline({
@@ -8852,12 +8931,22 @@ function clearRoadNetwork(){
   if(roadNetLayer) roadNetLayer.clearLayers();
   gRoadOverlays.forEach(o=>o.setMap(null));
   gRoadOverlays = [];
+  if(typeof m3dSetGeoSource === 'function') m3dSetGeoSource('m3d-roadnet', []);
   roadNetDrawnFor = null;
 }
 
 function drawRoadNetwork(){
   clearRoadNetwork();
   if(!roadNetOn) return;
+  if(mapProvider === '3d'){
+    const feats = (roadNetData || []).filter(r=>Array.isArray(r.path) && r.path.length>1).map(r=>({
+      type:'Feature', properties:{ trips: r.trips || 2, km: r.km || 0 },
+      geometry:{ type:'LineString', coordinates: r.path.map(p=>[p[1], p[0]]) }
+    }));
+    if(typeof m3dSetGeoSource === 'function') m3dSetGeoSource('m3d-roadnet', feats);
+    roadNetDrawnFor = '3d';
+    return;
+  }
   (roadNetData || []).forEach(r=>{
     // เส้นที่มีรถผ่านซ้ำมากกว่า วาดหนากว่าและทึบกว่า
     const t = Math.min(6, Math.max(2, (r.trips || 2)));
@@ -8873,7 +8962,7 @@ function drawRoadNetwork(){
         .bindPopup(`<div class="pop-title">🛣️ ถนนที่กองเราใช้</div>`
           + `<div class="pop-row">ระยะ ${km} กม.</div>`
           + `<div class="pop-row">ยืนยันจาก ${trips} เที่ยว</div>`);
-    }else{
+    }else if(mapProvider === 'google'){
       if(!gMap || !window.google) return;
       const pl = new google.maps.Polyline({
         path: r.path.map(p=>({lat:p[0], lng:p[1]})),
@@ -8898,7 +8987,9 @@ function drawRoadNetwork(){
    เส้นถนนอยู่คนละชั้นกับหมุดรถ จึงไม่ได้ถูกล้างไปด้วย
    วาดใหม่เฉพาะตอนสลับโหมดแผนที่เท่านั้น ไม่ต้องสร้างเส้น 969 จุดใหม่ทุกรอบ */
 function redrawMapLayers(){
-  if(mapProvider==='leaflet') drawFleetMapLeaflet(); else drawFleetMapGoogle();
+  if(mapProvider==='leaflet') drawFleetMapLeaflet();
+  else if(mapProvider==='3d') drawFleetMap3D();
+  else drawFleetMapGoogle();
   if(roadNetOn && roadNetDrawnFor !== mapProvider) drawRoadNetwork();
   if(floodCorridorOn && floodCorridorDrawnFor !== mapProvider) drawFloodCorridors();
 }
@@ -8955,6 +9046,21 @@ function addTrafficFlowLayer(){
     googleTrafficLayer.setMap(gMap);
     return true;
   }
+  if(mapProvider === '3d'){
+    const key = STATE.settings && STATE.settings.tomtomApiKey;
+    if(!key || !map3D || !m3dReady) return false;
+    if(!map3D.getSource('m3d-traffic-src')){
+      map3D.addSource('m3d-traffic-src', {
+        type: 'raster',
+        tiles: [trafficTileUrl(key, '{z}', '{x}', '{y}')],
+        tileSize: 256,
+      });
+      map3D.addLayer({ id: 'm3d-traffic-layer', type: 'raster', source: 'm3d-traffic-src', paint: { 'raster-opacity': 0.78 } });
+    } else if(map3D.getLayer('m3d-traffic-layer')){
+      map3D.setLayoutProperty('m3d-traffic-layer', 'visibility', 'visible');
+    }
+    return true;
+  }
   const key = STATE.settings && STATE.settings.tomtomApiKey;
   if(!key) return false;
   if(!map) return false;
@@ -8968,6 +9074,9 @@ function removeTrafficFlowLayer(){
     map.removeLayer(trafficFlowLeafletLayer);
   }
   trafficFlowLeafletLayer = null;
+  if(map3D && m3dReady && map3D.getLayer('m3d-traffic-layer')){
+    try{ map3D.setLayoutProperty('m3d-traffic-layer', 'visibility', 'none'); }catch(e){}
+  }
   if(googleTrafficLayer){
     try{ googleTrafficLayer.setMap(null); }catch(e){}
   }
@@ -9195,6 +9304,8 @@ async function switchMapProvider(provider, opts){
   opts = opts || {};
   const btnG = document.getElementById('btnProviderGoogle');
   const btnL = document.getElementById('btnProviderLeaflet');
+  const btn3 = document.getElementById('btnProvider3D');
+  const m3dBar = document.getElementById('m3dControls');
   if(provider===mapProvider && !opts.force) return;
   const wasTrafficOn = trafficFlowOn;
   if(trafficFlowOn){
@@ -9219,9 +9330,12 @@ async function switchMapProvider(provider, opts){
       return;
     }
     document.getElementById('mapLeaflet').style.display='none';
+    if(document.getElementById('map3D')) document.getElementById('map3D').style.display='none';
+    if(m3dBar) m3dBar.style.display='none';
     document.getElementById('mapGoogle').style.display='block';
     if(btnG){ btnG.classList.add('active'); btnG.style.cssText=''; }
     if(btnL){ btnL.classList.remove('active'); btnL.style.cssText=''; }
+    if(btn3){ btn3.classList.remove('active'); btn3.style.cssText=''; }
     mapProvider='google';
     if(!opts.skipSave){ try{ localStorage.setItem('rfsm_map_provider', 'google'); }catch(e){} }
     updateGmapKeyStatusUi('connected');
@@ -9233,11 +9347,34 @@ async function switchMapProvider(provider, opts){
         if(tbtn){ tbtn.style.borderColor='#F59E0B'; tbtn.style.color='#F59E0B'; }
       }
     }
+  } else if(provider==='3d'){
+    try{
+      if(!opts.silent) toast('กำลังโหลดแผนที่ 3 มิติ...');
+      await loadMapLibreGL();
+      document.getElementById('mapLeaflet').style.display='none';
+      document.getElementById('mapGoogle').style.display='none';
+      const el3d = document.getElementById('map3D');
+      if(el3d) el3d.style.display='block';
+      if(m3dBar) m3dBar.style.display='flex';
+      ensureMap3D();
+    }catch(err){
+      if(!opts.silent) toast('โหลดแผนที่ 3 มิติไม่สำเร็จ: ' + (err && err.message ? err.message : 'ตรวจสอบอินเทอร์เน็ต'));
+      return;
+    }
+    if(btn3){ btn3.classList.add('active'); btn3.style.cssText=''; }
+    if(btnG){ btnG.classList.remove('active'); btnG.style.cssText=''; }
+    if(btnL){ btnL.classList.remove('active'); btnL.style.cssText=''; }
+    mapProvider='3d';
+    if(!opts.skipSave){ try{ localStorage.setItem('rfsm_map_provider', '3d'); }catch(e){} }
+    setTimeout(()=>{ if(map3D) map3D.resize(); }, 80);
   } else {
     document.getElementById('mapGoogle').style.display='none';
+    if(document.getElementById('map3D')) document.getElementById('map3D').style.display='none';
+    if(m3dBar) m3dBar.style.display='none';
     document.getElementById('mapLeaflet').style.display='block';
     if(btnL){ btnL.classList.add('active'); btnL.style.cssText=''; }
     if(btnG){ btnG.classList.remove('active'); btnG.style.cssText=''; }
+    if(btn3){ btn3.classList.remove('active'); btn3.style.cssText=''; }
     mapProvider='leaflet';
     if(!opts.skipSave){ try{ localStorage.setItem('rfsm_map_provider', 'leaflet'); }catch(e){} }
     setTimeout(()=>{ if(map) map.invalidateSize(); }, 80);
@@ -9353,6 +9490,16 @@ function focusVehicleOnMap(id){
   });
   try{ orbitalRenderTargetHud(); }catch(e){}
   if(mapProvider==='leaflet' && typeof map!=='undefined' && map){ map.flyTo([v.lat,v.lng], 12, {duration:0.6}); }
+  else if(mapProvider==='3d' && typeof map3D!=='undefined' && map3D && typeof v.lat==='number' && typeof v.lng==='number'){
+    const st = m3dVehState.get(v.id);
+    map3D.flyTo({
+      center:[v.lng, v.lat],
+      zoom: Math.max(map3D.getZoom(), 15),
+      pitch: m3dPitchOn ? 60 : 0,
+      bearing: (st && Number.isFinite(st.bearing)) ? st.bearing : map3D.getBearing(),
+      duration: 900,
+    });
+  }
   else if(typeof gMap!=='undefined' && gMap){ gMap.panTo({lat:v.lat,lng:v.lng}); gMap.setZoom(12); }
 }
 
@@ -9605,7 +9752,7 @@ function orbitalRenderHud(){
   const syncMeta = document.getElementById('orbStoreSyncMeta');
   if(syncMeta) syncMeta.textContent = `AUTO-GEOFENCE SYNC · ${stores.length} STORES`;
   const engLbl = document.getElementById('orbMapEngineLbl');
-  if(engLbl) engLbl.textContent = mapProvider==='google' ? 'GOOGLE MAPS' : 'DARK OPS';
+  if(engLbl) engLbl.textContent = mapProvider==='google' ? 'GOOGLE MAPS' : (mapProvider==='3d' ? '3D MAP' : 'DARK OPS');
 
   /* Sync Nordic Freight left-rail count badges & live GPS card */
   const nMap = document.getElementById('nBadgeMap');
@@ -9951,6 +10098,13 @@ function recenterFleetMap(){
   if(mapProvider==='leaflet'){
     const bounds = STATE.vehicles.map(v=>[v.lat,v.lng]);
     if(bounds.length) map.fitBounds(bounds,{padding:[80,80],maxZoom:9});
+  } else if(mapProvider==='3d' && map3D && window.maplibregl){
+    const pts = STATE.vehicles.filter(v=>typeof v.lat==='number' && typeof v.lng==='number');
+    if(pts.length){
+      const b = new maplibregl.LngLatBounds();
+      pts.forEach(v=>b.extend([v.lng, v.lat]));
+      map3D.fitBounds(b, { padding: 80, maxZoom: 11, pitch: m3dPitchOn ? 52 : 0, duration: 800 });
+    }
   } else if(gMap){
     const bounds = new google.maps.LatLngBounds();
     STATE.vehicles.forEach(v=>bounds.extend({lat:v.lat,lng:v.lng}));
@@ -10028,6 +10182,444 @@ function drawFleetMapGoogle(){
     else gMap.fitBounds(gFocusBounds, 90);
     if(gFocusOne) setTimeout(()=>{ try{ gFocusOne.iw.open(gMap, gFocusOne.m); }catch(e){} }, 250);
   }
+}
+
+/* ==================== 3D MAP ENGINE (MapLibre GL JS — Option A) ==================== */
+let map3D = null, m3dReady = false, m3dLoading = null, m3dFleetFitted = false;
+let m3dSatOn = false, m3dPitchOn = true, m3dFollowOn = false;
+const m3dVehState = new Map();   // vehicleId -> { marker, el, rotEl, pillEl, pulseEl, lat, lng, bearing, rawBearing, trail, animRaf, statusKey }
+let m3dStaticMarkers = [];       // POI + Hazard markers
+let m3dActivePopup = null;
+const m3dPendingGeo = {};        // sourceId -> Feature[] queued before style loads
+
+function loadMapLibreGL(){
+  if(window.maplibregl) return Promise.resolve();
+  if(m3dLoading) return m3dLoading;
+  const loadCss = url=>{
+    if(document.querySelector(`link[href="${url}"]`)) return;
+    const ln = document.createElement('link');
+    ln.rel = 'stylesheet'; ln.href = url;
+    document.head.appendChild(ln);
+  };
+  const loadJs = url=>new Promise((res, rej)=>{
+    const sc = document.createElement('script');
+    sc.src = url; sc.async = true;
+    sc.onload = ()=>res();
+    sc.onerror = ()=>rej(new Error('โหลด MapLibre ไม่สำเร็จ: '+url));
+    document.head.appendChild(sc);
+  });
+  m3dLoading = (async()=>{
+    try{
+      loadCss('https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css');
+      await loadJs('https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js');
+    }catch(e){
+      loadCss('https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css');
+      await loadJs('https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js');
+    }
+    if(!window.maplibregl) throw new Error('MapLibre GL ไม่พร้อมใช้งาน');
+  })().catch(err=>{ m3dLoading = null; throw err; });
+  return m3dLoading;
+}
+
+function m3dSetGeoSource(id, features){
+  const fc = { type:'FeatureCollection', features: features || [] };
+  m3dPendingGeo[id] = fc;
+  if(!map3D || !m3dReady) return;
+  try{
+    const src = map3D.getSource(id);
+    if(src) src.setData(fc);
+  }catch(e){}
+}
+
+function m3dCalcBearing(lat1, lng1, lat2, lng2){
+  const r = Math.PI / 180;
+  const p1 = lat1 * r, p2 = lat2 * r, dl = (lng2 - lng1) * r;
+  const y = Math.sin(dl) * Math.cos(p2);
+  const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+  return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+}
+
+function m3dShortestAngle(cur, target){
+  const diff = ((((target - cur) % 360) + 540) % 360) - 180;
+  return cur + diff;
+}
+
+function m3dTruckSvg(bodyColor, isMoving, isOver){
+  const cab = isOver ? '#DC2626' : bodyColor;
+  const roof = isOver ? '#FCA5A5' : '#F8FAFC';
+  const beams = isMoving
+    ? `<polygon points="15,8 10,0 20,0" fill="#FEF08A" opacity="0.58"/>
+       <polygon points="27,8 22,0 32,0" fill="#FEF08A" opacity="0.58"/>`
+    : '';
+  return `<svg width="42" height="42" viewBox="0 0 42 42" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    ${beams}
+    <rect x="11" y="17" width="20" height="21" rx="3" fill="#0F172A" opacity="0.28" transform="translate(1.5,2)"/>
+    <rect x="12" y="18" width="18" height="20" rx="2.6" fill="#E2E8F0" stroke="#0F172A" stroke-width="1.3"/>
+    <rect x="14" y="19.5" width="14" height="17" rx="1.6" fill="#FFFFFF" opacity="0.88"/>
+    <line x1="14" y1="24" x2="28" y2="24" stroke="#CBD5E1" stroke-width="0.9"/>
+    <line x1="14" y1="29" x2="28" y2="29" stroke="#CBD5E1" stroke-width="0.9"/>
+    <line x1="14" y1="34" x2="28" y2="34" stroke="#CBD5E1" stroke-width="0.9"/>
+    <rect x="13" y="7.5" width="16" height="10.5" rx="3.2" fill="${cab}" stroke="#0F172A" stroke-width="1.3"/>
+    <rect x="15" y="9.2" width="12" height="4.2" rx="1.4" fill="#0F172A" opacity="0.82"/>
+    <rect x="16" y="9.7" width="10" height="1.5" rx="0.7" fill="#7DD3FC" opacity="0.65"/>
+    <rect x="16" y="14.2" width="10" height="2.6" rx="1" fill="${roof}" opacity="0.75"/>
+    <circle cx="15" cy="7.8" r="1.3" fill="${isMoving?'#FEF08A':'#CBD5E1'}"/>
+    <circle cx="27" cy="7.8" r="1.3" fill="${isMoving?'#FEF08A':'#CBD5E1'}"/>
+    <rect x="10.5" y="11" width="2" height="4.5" rx="0.8" fill="#0F172A"/>
+    <rect x="29.5" y="11" width="2" height="4.5" rx="0.8" fill="#0F172A"/>
+    <rect x="10.5" y="21" width="2" height="5" rx="0.8" fill="#0F172A"/>
+    <rect x="29.5" y="21" width="2" height="5" rx="0.8" fill="#0F172A"/>
+    <rect x="10.5" y="30" width="2" height="5" rx="0.8" fill="#0F172A"/>
+    <rect x="29.5" y="30" width="2" height="5" rx="0.8" fill="#0F172A"/>
+  </svg>`;
+}
+
+function ensureMap3D(){
+  if(map3D) return map3D;
+  if(!window.maplibregl) return null;
+  const el = document.getElementById('map3D');
+  if(!el) return null;
+  m3dReady = false;
+  map3D = new maplibregl.Map({
+    container: el,
+    style: 'https://tiles.openfreemap.org/styles/liberty',
+    center: [100.6, 14.6],
+    zoom: 7.2,
+    pitch: 56,
+    bearing: -10,
+    antialias: true,
+    maxPitch: 75,
+  });
+  map3D.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-left');
+  map3D.on('load', ()=>{
+    m3dReady = true;
+    try{
+      const layers = (map3D.getStyle() && map3D.getStyle().layers) || [];
+      /* แทรกภาพดาวเทียม Esri ไว้ใต้อาคาร 3D และป้ายชื่อถนน เพื่อให้เปิดเป็นภาพดาวเทียม+ตึก 3D ได้ทันที */
+      let beforeId = undefined;
+      for(const lyr of layers){
+        if(lyr.type === 'fill-extrusion' || (lyr.id && /building.*3d|road_label|label/i.test(lyr.id))){
+          beforeId = lyr.id; break;
+        }
+      }
+      if(!map3D.getSource('m3d-sat-src')){
+        map3D.addSource('m3d-sat-src', {
+          type: 'raster',
+          tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+          tileSize: 256,
+          attribution: 'Esri World Imagery',
+        });
+        map3D.addLayer({
+          id: 'm3d-sat-layer',
+          type: 'raster',
+          source: 'm3d-sat-src',
+          layout: { visibility: m3dSatOn ? 'visible' : 'none' },
+          paint: { 'raster-opacity': 0.92 },
+        }, beforeId);
+      }
+      /* ปรับชั้นอาคาร 3 มิติให้ชัดขึ้น (หรือเพิ่มให้ถ้า style ไม่มี) */
+      const hasExtrusion = layers.some(l=>l.type==='fill-extrusion');
+      if(hasExtrusion){
+        layers.filter(l=>l.type==='fill-extrusion').forEach(l=>{
+          try{
+            map3D.setPaintProperty(l.id, 'fill-extrusion-opacity', 0.82);
+          }catch(e){}
+        });
+      } else if(map3D.getSource('openmaptiles')){
+        const labelLayer = layers.find(l=>l.type==='symbol' && l.layout && l.layout['text-field']);
+        map3D.addLayer({
+          id: 'm3d-buildings-extrusion',
+          source: 'openmaptiles',
+          'source-layer': 'building',
+          type: 'fill-extrusion',
+          minzoom: 13.5,
+          paint: {
+            'fill-extrusion-color': '#cbd5e1',
+            'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 12],
+            'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
+            'fill-extrusion-opacity': 0.8,
+          },
+        }, labelLayer ? labelLayer.id : undefined);
+      }
+      /* ชั้นเส้นทางวิ่งสีเหลืองลากตามหลังรถ + ถนนที่กองเราใช้ + น้ำท่วม */
+      map3D.addSource('m3d-roadnet', { type:'geojson', data: m3dPendingGeo['m3d-roadnet'] || {type:'FeatureCollection', features:[]} });
+      map3D.addLayer({
+        id: 'm3d-roadnet-line', type: 'line', source: 'm3d-roadnet',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#7C5CFF', 'line-width': 3.5, 'line-opacity': 0.68 },
+      });
+      map3D.addSource('m3d-flood', { type:'geojson', data: m3dPendingGeo['m3d-flood'] || {type:'FeatureCollection', features:[]} });
+      map3D.addLayer({
+        id: 'm3d-flood-line', type: 'line', source: 'm3d-flood',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#3AA0FF', 'line-width': 6, 'line-opacity': 0.85, 'line-dasharray': [1, 2] },
+      });
+      map3D.addSource('m3d-trails', { type:'geojson', data: m3dPendingGeo['m3d-trails'] || {type:'FeatureCollection', features:[]} });
+      map3D.addLayer({
+        id: 'm3d-trails-glow', type: 'line', source: 'm3d-trails',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#F59E0B', 'line-width': 7, 'line-opacity': 0.35, 'line-blur': 2 },
+      });
+      map3D.addLayer({
+        id: 'm3d-trails-core', type: 'line', source: 'm3d-trails',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#FACC15', 'line-width': 3.2, 'line-opacity': 0.92 },
+      });
+    }catch(e){ console.warn('ตั้งค่าเลเยอร์ 3D ไม่สมบูรณ์:', e); }
+    drawFleetMap3D();
+    if(roadNetOn) drawRoadNetwork();
+    if(floodCorridorOn) drawFloodCorridors();
+  });
+  return map3D;
+}
+
+function m3dBuildVehiclePopupHtml(v){
+  const status = vehDisplayStatus(v);
+  const stMeta = STATUS_META[status] || STATUS_META.idle;
+  const r = liveOf(v);
+  const drv = v.driver || nsDriverOf(v) || '-';
+  const spd = (r && typeof r.speed==='number') ? (Math.round(r.speed)+' กม./ชม.') : '-';
+  const loc = (r && r.location) ? nsEsc(r.location) : '-';
+  return `<div class="pop-title">🚛 ${nsEsc(v.plate)}</div>
+    <div class="pop-row">คนขับ: <b>${nsEsc(drv)}</b></div>
+    <div class="pop-row">สถานะ: <b style="color:${statusColor(status)}">${nsEsc(stMeta.label)}</b> · ความเร็ว <b>${spd}</b></div>
+    <div class="pop-row">ตำแหน่ง: ${loc}</div>
+    <div class="pop-row">สัญญาณล่าสุด: ${nsEsc(lastSeenLabel(v))}</div>
+    <div style="margin-top:8px;display:flex;gap:6px;">
+      <button class="btn sm primary" onclick="m3dFollowVehicle('${orbEsc(v.id)}')">🎯 ตามคันนี้ (3D)</button>
+    </div>`;
+}
+
+function m3dAnimateMarker(st, fromLat, fromLng, toLat, toLng){
+  if(st.animRaf){ cancelAnimationFrame(st.animRaf); st.animRaf = null; }
+  const dur = 2200;
+  const t0 = performance.now();
+  function step(now){
+    const p = Math.min(1, (now - t0) / dur);
+    const e = p < 0.5 ? 2*p*p : 1 - Math.pow(-2*p+2, 2)/2;
+    const lat = fromLat + (toLat - fromLat) * e;
+    const lng = fromLng + (toLng - fromLng) * e;
+    st.marker.setLngLat([lng, lat]);
+    if(p < 1){
+      st.animRaf = requestAnimationFrame(step);
+    } else {
+      st.animRaf = null;
+      st.marker.setLngLat([toLng, toLat]);
+    }
+  }
+  st.animRaf = requestAnimationFrame(step);
+}
+
+function drawFleetMap3D(){
+  if(!map3D || !window.maplibregl) return;
+
+  /* 1. วาดหมุดร้านค้า/POI และจุดเสี่ยงตามตัวกรอง Legend */
+  m3dStaticMarkers.forEach(m=>{ try{ m.remove(); }catch(e){} });
+  m3dStaticMarkers = [];
+
+  (STATE.pois||[]).forEach(p=>{
+    if(typeof p.lat!=='number' || typeof p.lng!=='number') return;
+    if(isPoiHidden(p)) return;
+    const isLoad = !!p.loadPoint;
+    const meta = isLoad ? LOAD_POI_LEGEND : (POI_META[p.type] || POI_META.other);
+    const el = document.createElement('div');
+    el.className = 'm3d-poi-pin';
+    el.style.background = meta.color || '#FBBF24';
+    el.textContent = meta.icon || '📍';
+    el.title = p.name || meta.label;
+    const popupHtml = `<div class="pop-title">${meta.icon||''} ${nsEsc(p.name||meta.label)}</div>
+      <div class="pop-row">${nsEsc(meta.label)}${p.province?' · '+nsEsc(p.province):''}</div>
+      ${p.notes?`<div class="pop-row">${nsEsc(p.notes)}</div>`:''}`;
+    const mk = new maplibregl.Marker({ element: el, anchor: 'center' })
+      .setLngLat([p.lng, p.lat])
+      .setPopup(new maplibregl.Popup({ offset: 14 }).setHTML(popupHtml))
+      .addTo(map3D);
+    m3dStaticMarkers.push(mk);
+  });
+
+  (STATE.hazards||[]).forEach(h=>{
+    if(typeof h.lat!=='number' || typeof h.lng!=='number') return;
+    if(h.type==='flood' && h.active===false) return;
+    if(MAP_FILTERS.haz[h.type]===false) return;
+    const meta = HAZ_META[h.type] || { icon:'⚠️', color:'#F59E0B', label:'จุดเสี่ยง' };
+    const el = document.createElement('div');
+    el.className = 'm3d-haz-pin';
+    el.style.background = meta.color || '#F59E0B';
+    el.textContent = meta.icon || '⚠️';
+    el.title = h.label || meta.label;
+    const popupHtml = `<div class="pop-title">${meta.icon||''} ${nsEsc(h.label||meta.label)}</div>
+      <div class="pop-row">ระดับความรุนแรง: <b>${h.severity||1}/4</b>${h.date?' · '+nsEsc(h.date):''}</div>
+      ${h.notes?`<div class="pop-row">${nsEsc(h.notes)}</div>`:''}`;
+    const mk = new maplibregl.Marker({ element: el, anchor: 'center' })
+      .setLngLat([h.lng, h.lat])
+      .setPopup(new maplibregl.Popup({ offset: 14 }).setHTML(popupHtml))
+      .addTo(map3D);
+    m3dStaticMarkers.push(mk);
+  });
+
+  /* 2. วาด/อัปเดตรถบรรทุก 3D แบบหันตามทิศ + แอนิเมชันวิ่งไหลลื่น + เส้นทางสีเหลือง */
+  const vis = visibleVehicles().filter(v=>typeof v.lat==='number' && typeof v.lng==='number');
+  const activeIds = new Set();
+  const trailFeatures = [];
+
+  vis.forEach(v=>{
+    activeIds.add(v.id);
+    const status = vehDisplayStatus(v);
+    const online = status !== 'offline';
+    const isOver = status === 'overspeed';
+    const r = liveOf(v);
+    const spd = (r && typeof r.speed==='number') ? Math.round(r.speed) : 0;
+    const isMoving = online && (status === 'moving' || status === 'overspeed' || spd >= 5);
+    const col = isOver ? '#EF4444' : (status==='moving' ? '#10B981' : statusColor(status));
+
+    let st = m3dVehState.get(v.id);
+    if(!st){
+      const wrap = document.createElement('div');
+      wrap.className = 'm3d-veh-wrap';
+      wrap.innerHTML = `<div class="m3d-truck-stage">
+          <div class="m3d-pulse"></div>
+          <div class="m3d-truck-rot"></div>
+        </div>
+        <div class="m3d-plate-pill"></div>`;
+      const rotEl = wrap.querySelector('.m3d-truck-rot');
+      const pillEl = wrap.querySelector('.m3d-plate-pill');
+      const pulseEl = wrap.querySelector('.m3d-pulse');
+      const mk = new maplibregl.Marker({ element: wrap, anchor: 'center' })
+        .setLngLat([v.lng, v.lat])
+        .addTo(map3D);
+      const initDir = (r && typeof r.direction==='number' && isFinite(r.direction)) ? r.direction : 0;
+      st = {
+        marker: mk, el: wrap, rotEl, pillEl, pulseEl,
+        lat: v.lat, lng: v.lng, bearing: initDir, rawBearing: initDir,
+        trail: [[v.lng, v.lat]], animRaf: null, statusKey: '',
+      };
+      wrap.addEventListener('click', e=>{
+        e.stopPropagation();
+        orbitalSelectedVehId = v.id;
+        try{ orbitalRenderTargetHud(); }catch(err){}
+        if(m3dActivePopup){ try{ m3dActivePopup.remove(); }catch(err){} }
+        m3dActivePopup = new maplibregl.Popup({ offset: 22 })
+          .setLngLat([st.lng, st.lat])
+          .setHTML(m3dBuildVehiclePopupHtml(v))
+          .addTo(map3D);
+      });
+      m3dVehState.set(v.id, st);
+    } else {
+      const movedKm = haversineKm([st.lat, st.lng], [v.lat, v.lng]);
+      const movedM = movedKm * 1000;
+      if(r && typeof r.direction==='number' && isFinite(r.direction)){
+        st.bearing = m3dShortestAngle(st.bearing, r.direction);
+        st.rawBearing = r.direction;
+      } else if(movedM > 15){
+        const b = m3dCalcBearing(st.lat, st.lng, v.lat, v.lng);
+        st.bearing = m3dShortestAngle(st.bearing, b);
+        st.rawBearing = b;
+      }
+      if(movedM > 5 && movedKm < 15){
+        m3dAnimateMarker(st, st.lat, st.lng, v.lat, v.lng);
+        st.trail.push([v.lng, v.lat]);
+        if(st.trail.length > 25) st.trail.shift();
+      } else if(movedM >= 5){
+        if(st.animRaf){ cancelAnimationFrame(st.animRaf); st.animRaf = null; }
+        st.marker.setLngLat([v.lng, v.lat]);
+        st.trail = [[v.lng, v.lat]];
+      }
+      st.lat = v.lat; st.lng = v.lng;
+    }
+
+    const visualKey = col + '|' + (isMoving?1:0) + '|' + (isOver?1:0);
+    if(st.statusKey !== visualKey){
+      st.rotEl.innerHTML = m3dTruckSvg(col, isMoving, isOver);
+      st.statusKey = visualKey;
+    }
+    st.rotEl.style.transform = `rotate(${st.bearing.toFixed(1)}deg)`;
+    st.el.style.opacity = online ? '1' : '0.72';
+    st.pulseEl.style.display = (isOver || isMoving) ? 'block' : 'none';
+    st.pulseEl.style.background = isOver ? 'rgba(239,68,68,.48)' : 'rgba(16,185,129,.28)';
+    st.pillEl.className = 'm3d-plate-pill' + (isOver ? ' overspeed' : (!online ? ' offline' : ''));
+    st.pillEl.style.borderColor = isOver ? '#FCA5A5' : (online ? col : '#64748B');
+    st.pillEl.innerHTML = `<span>${nsEsc(v.plate)}</span>${online && spd > 0 ? `<span class="spd">${spd} กม./ชม.</span>` : ''}`;
+
+    if(st.trail.length >= 2){
+      trailFeatures.push({
+        type: 'Feature',
+        properties: { plate: v.plate, overspeed: isOver ? 1 : 0 },
+        geometry: { type: 'LineString', coordinates: st.trail },
+      });
+    }
+  });
+
+  /* ลบหมุดรถที่ถูกซ่อนด้วยตัวกรองออก */
+  m3dVehState.forEach((st, vid)=>{
+    if(!activeIds.has(vid)){
+      if(st.animRaf) cancelAnimationFrame(st.animRaf);
+      try{ st.marker.remove(); }catch(e){}
+      m3dVehState.delete(vid);
+    }
+  });
+
+  m3dSetGeoSource('m3d-trails', trailFeatures);
+
+  /* ถ้าเปิดโหมดตามรถ ให้เลื่อนกล้องตามคันที่เลือกอัตโนมัติ */
+  if(m3dFollowOn && orbitalSelectedVehId && m3dVehState.has(orbitalSelectedVehId)){
+    const fst = m3dVehState.get(orbitalSelectedVehId);
+    map3D.easeTo({
+      center: [fst.lng, fst.lat],
+      pitch: m3dPitchOn ? 62 : 0,
+      duration: 1200,
+    });
+  }
+
+  /* ซูมพอดีกองรถครั้งแรกที่เปิดโหมด 3D */
+  if(!m3dFleetFitted && vis.length){
+    m3dFleetFitted = true;
+    const b = new maplibregl.LngLatBounds();
+    vis.forEach(v=>b.extend([v.lng, v.lat]));
+    map3D.fitBounds(b, { padding: 80, maxZoom: 11, pitch: m3dPitchOn ? 52 : 0, duration: 700 });
+  }
+}
+
+function m3dToggleSatellite(){
+  m3dSatOn = !m3dSatOn;
+  const btn = document.getElementById('btnM3dSat');
+  if(btn) btn.classList.toggle('active', m3dSatOn);
+  if(map3D && m3dReady && map3D.getLayer('m3d-sat-layer')){
+    map3D.setLayoutProperty('m3d-sat-layer', 'visibility', m3dSatOn ? 'visible' : 'none');
+  }
+  toast(m3dSatOn ? '🛰️ เปิดภาพดาวเทียม 3 มิติ + อาคาร 3D' : '🗺️ สลับกลับแผนที่ถนน 3 มิติ');
+}
+function m3dTogglePitch(){
+  m3dPitchOn = !m3dPitchOn;
+  const btn = document.getElementById('btnM3dPitch');
+  if(btn) btn.classList.toggle('active', m3dPitchOn);
+  if(map3D) map3D.easeTo({ pitch: m3dPitchOn ? 58 : 0, duration: 600 });
+}
+function m3dResetNorth(){
+  if(map3D) map3D.easeTo({ bearing: 0, duration: 500 });
+}
+function m3dToggleFollow(){
+  m3dFollowOn = !m3dFollowOn;
+  const btn = document.getElementById('btnM3dFollow');
+  if(btn) btn.classList.toggle('active', m3dFollowOn);
+  if(m3dFollowOn && orbitalSelectedVehId){
+    focusVehicleOnMap(orbitalSelectedVehId);
+    const v = STATE.vehicles.find(x=>x.id===orbitalSelectedVehId);
+    toast('🎯 ล็อกกล้องตามรถ ' + (v ? v.plate : ''));
+  } else if(!m3dFollowOn){
+    toast('ปลดล็อกการตามรถแล้ว');
+  } else {
+    toast('คลิกรถคันที่ต้องการติดตามบนแผนที่หรือรายการด้านซ้าย');
+  }
+}
+function m3dFollowVehicle(id){
+  orbitalSelectedVehId = id;
+  m3dFollowOn = true;
+  const btn = document.getElementById('btnM3dFollow');
+  if(btn) btn.classList.add('active');
+  if(m3dActivePopup){ try{ m3dActivePopup.remove(); }catch(e){} }
+  focusVehicleOnMap(id);
+  const v = STATE.vehicles.find(x=>x.id===id);
+  toast('🎯 กำลังติดตามรถ ' + (v ? v.plate : '') + ' แบบ 3 มิติ');
 }
 
 function paintRiskRing(score){
@@ -13588,6 +14180,8 @@ function nsShowStoreOnMap(poiId){
     redrawMapLayers();
     if(mapProvider==='leaflet' && map){
       map.setView([s.lat, s.lng], 15);
+    } else if(mapProvider==='3d' && map3D){
+      map3D.flyTo({ center:[s.lng, s.lat], zoom: 16, pitch: m3dPitchOn ? 58 : 0, duration: 800 });
     } else if(gMap){
       gMap.setCenter({lat:s.lat, lng:s.lng});
       gMap.setZoom(15);
@@ -16152,7 +16746,9 @@ async function boot(){
   /* ถ้าตั้งค่า Google Maps API Key ไว้แล้ว เปิดแผนที่ Google Maps เป็นค่าเริ่มต้นอัตโนมัติ (ยกเว้นผู้ใช้กดเลือก Dark Ops เองไว้) */
   try{
     const savedPref = localStorage.getItem('rfsm_map_provider');
-    if(STATE.settings && STATE.settings.gmapApiKey && savedPref !== 'leaflet'){
+    if(savedPref === '3d'){
+      switchMapProvider('3d', { silent: true });
+    } else if(STATE.settings && STATE.settings.gmapApiKey && savedPref !== 'leaflet'){
       switchMapProvider('google', { silent: true });
     }
   }catch(e){}
@@ -16749,6 +17345,7 @@ Object.assign(window, {
   savePointRulePoints, togglePointRuleActive, addPointRule, onPointsManualRuleChange, giveManualPoints,
   orbitalToggleDrawer, orbitalToggleStoreLayer, orbitalSelectVehicle, orbitalFocusLocked, orbitalOpenLockedHistory,
   openOrbitalCmdModal, orbitalCmdFilter, orbitalCmdGo, orbitalRenderHud,
+  m3dToggleSatellite, m3dTogglePitch, m3dResetNorth, m3dToggleFollow, m3dFollowVehicle,
 });
 
 })();
