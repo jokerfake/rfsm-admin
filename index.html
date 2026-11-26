@@ -1921,6 +1921,7 @@ html[data-theme="paper"] #adminApp:not(.skin-nordic):not(.skin-atlas):not(.skin-
 #adminApp .wh-eld-seg.d{background:#2563EB;}
 #adminApp .wh-eld-seg.r{background:#10B981;}
 #adminApp .wh-eld-seg.o{background:#EF4444;}
+#adminApp .wh-eld-seg.g{background:repeating-linear-gradient(45deg,#F59E0B,#F59E0B 4px,#FEF3C7 4px,#FEF3C7 8px);}
 #adminApp .wh-eld-axis{
   display:flex;justify-content:space-between;margin-top:6px;font-size:10.5px;
   color:var(--text-faint);font-family:var(--font-mono);
@@ -4301,7 +4302,7 @@ function themeSwatchesHtml(){
       <div class="section-hd" style="margin-bottom:10px;">
         <div>
           <h2>⏱️ ชั่วโมงการจอดพักจากการทำงาน</h2>
-          <p>นับเวลาขับจากล้อหมุน (ย้ายจุดจอดบวกรวม) · จอดสนิทครบ 35 นาทีรีเซ็ต · สะสม 24 ชม. ไม่เกิน 8–10 ชม.</p>
+          <p>นับเวลาขับจากล้อหมุน (ย้ายจุดจอดบวกรวม · กันสัญญาณ GPS ขาด) · จอดสนิทครบ 30 น. รีเซ็ต (แนะนำ 35 น.) · สะสม 24 ชม. ไม่เกิน 8–10 ชม.</p>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
           <button type="button" id="whAlertTicker" class="wh-alert-ticker ok" onclick="whSetFilter('violation')">✔ ไม่มีคันเกินกฎ</button>
@@ -4319,8 +4320,8 @@ function themeSwatchesHtml(){
           <button class="fchip active" data-whflt="all" onclick="whSetFilter('all')">ทั้งหมด <span class="wh-pill-cnt" id="whCntAll">0</span></button>
           <button class="fchip" data-whflt="violation" onclick="whSetFilter('violation')">🚨 วิกฤต <span class="wh-pill-cnt" id="whCntViol">0</span></button>
           <button class="fchip" data-whflt="warning" onclick="whSetFilter('warning')">⚠️ เตือน ≥8 ชม. <span class="wh-pill-cnt" id="whCntWarn">0</span></button>
-          <button class="fchip" data-whflt="short_stop" onclick="whSetFilter('short_stop')">⏸️ จอด &lt;35 น. <span class="wh-pill-cnt" id="whCntShort">0</span></button>
-          <button class="fchip" data-whflt="resting" onclick="whSetFilter('resting')">🅿️ พักครบ 35 น. <span class="wh-pill-cnt" id="whCntRest">0</span></button>
+          <button class="fchip" data-whflt="short_stop" onclick="whSetFilter('short_stop')">⏸️ จอด &lt;30 น. <span class="wh-pill-cnt" id="whCntShort">0</span></button>
+          <button class="fchip" data-whflt="resting" onclick="whSetFilter('resting')">🅿️ พักครบ 30 น. <span class="wh-pill-cnt" id="whCntRest">0</span></button>
           <button class="fchip" data-whflt="driving" onclick="whSetFilter('driving')">🚛 กำลังขับ <span class="wh-pill-cnt" id="whCntDrive">0</span></button>
         </div>
         <span id="whUpdatedMeta" style="margin-left:auto;font-size:11px;color:var(--text-faint);font-family:var(--font-mono);">กำลังโหลด...</span>
@@ -14760,7 +14761,7 @@ function loadNearStoreVisits(){ Promise.all([nsLoadVisits(), nsLoadStoreSettings
 let whData = null;
 let whFilter = 'all';
 let whLastFetchMs = 0;
-const WH_REST_MIN = 35;
+const WH_REST_MIN = 30;
 const WH_LS_FIRED = 'rfsm.workHours.fired';
 
 function whFmtMin(min){
@@ -14785,13 +14786,13 @@ function whStatusBadge(v){
   }
   if(v.level === 'short_stop'){
     const need = Math.max(1, Math.ceil(WH_REST_MIN - (v.current_rest_min || 0)));
-    return `<span class="badge high">⏸️ จอดสั้น (อีก ${need} น. ครบ 35 น.)</span>`;
+    return `<span class="badge high">⏸️ จอดสั้น (อีก ${need} น. ครบ 30 น.)</span>`;
   }
   if(v.level === 'driving'){
     return `<span class="badge low">🚛 ขับแล้ว ${whFmtMin(v.cont_drive_min)}</span>`;
   }
   if(v.level === 'resting'){
-    return `<span class="badge accentb">🅿️ จอดครบ 35 น. แล้ว</span>`;
+    return `<span class="badge accentb">🅿️ จอดครบ 30 น. แล้ว</span>`;
   }
   return `<span class="badge gray">จอดนิ่ง</span>`;
 }
@@ -14867,7 +14868,7 @@ function whCheckNotifications(){
       const key = 'wh_rest|' + normPlate(x.plate) + '|' + (x.current_rest_start || '');
       if(whShouldNotify(key, 6 * 3600000)){
         const range = (x.current_rest_start_hm || '-') + ' – ปัจจุบัน';
-        whShowAlertCard('rest', '🅿️ จอดพักครบ 35 นาทีแล้ว', `${x.plate} จอดสนิทครบ ${whFmtMin(x.current_rest_min)} (${range})${drv}`, 'ตำแหน่ง: ' + (x.current_rest_location || x.last_location || '-'), m.vehicleId);
+        whShowAlertCard('rest', '🅿️ จอดพักครบ 30 นาทีแล้ว', `${x.plate} จอดสนิทครบ ${whFmtMin(x.current_rest_min)} (${range})${drv}`, 'ตำแหน่ง: ' + (x.current_rest_location || x.last_location || '-'), m.vehicleId);
         shown++;
       }
     }
@@ -15150,8 +15151,8 @@ function renderWorkHoursView(){
     const dayCol = (x.drive_24h_min || 0) >= 600 ? '#EF4444' : ((x.drive_24h_min || 0) >= 480 ? '#F59E0B' : '#10B981');
     const restMini = (x.current_rest_min > 0 && !x.rest_reset_done)
       ? `<div style="margin-top:6px;">
-          <div class="wh-q-bar-lbl"><span style="color:#059669;">จอดพักรีเซ็ต 35 น.</span><b>${Math.round(x.current_rest_min)} / 35 น.</b></div>
-          <div class="wh-bar"><div class="wh-bar-fill" style="width:${Math.min(100,Math.round((x.current_rest_min/35)*100))}%;background:#10B981;"></div></div>
+          <div class="wh-q-bar-lbl"><span style="color:#059669;">จอดพักรีเซ็ต 30 น.</span><b>${Math.round(x.current_rest_min)} / 30 น.</b></div>
+          <div class="wh-bar"><div class="wh-bar-fill" style="width:${Math.min(100,Math.round((x.current_rest_min/30)*100))}%;background:#10B981;"></div></div>
          </div>` : '';
     return `<div class="wh-q-card lv-${nsEsc(x.level)}${isSel?' selected':''}" onclick="whSelectVehicle('${orbEsc(x._plateNorm)}', true)">
       <div class="wh-q-top">
@@ -15189,8 +15190,8 @@ function renderWorkHoursView(){
   const curRest = sel.current_rest_min || 0;
   const restPct = sel.rest_reset_done ? 100 : Math.min(100, Math.round((curRest / WH_REST_MIN) * 100));
   const restCol = sel.rest_reset_done ? '#10B981' : (curRest > 0 ? '#0EA5E9' : '#94A3B8');
-  const restRingTop = sel.rest_reset_done ? 'ครบ 35 น.' : (curRest > 0 ? `${Math.round(curRest)}/35 น.` : '0/35 น.');
-  const restRingSub = sel.rest_reset_done ? '✔ รีเซ็ตแล้ว' : (curRest > 0 ? `อีก ${Math.max(1, Math.ceil(WH_REST_MIN - curRest))} น.` : 'กำลังขับ');
+  const restRingTop = sel.rest_reset_done ? 'ครบ 30 น.' : (curRest > 0 ? `${Math.round(curRest)}/30 น.` : '0/30 น.');
+  const restRingSub = sel.rest_reset_done ? (curRest >= 35 ? '✔ ครบ 35 น.' : '✔ รีเซ็ตแล้ว') : (curRest > 0 ? `อีก ${Math.max(1, Math.ceil(WH_REST_MIN - curRest))} น.` : 'กำลังขับ');
 
   const dayMin = sel.drive_24h_min || 0;
   const dayPct = Math.min(100, Math.round((dayMin / 600) * 100));
@@ -15206,11 +15207,11 @@ function renderWorkHoursView(){
     const k = seg[2] || 'd';
     const leftPct = (s / 1440 * 100).toFixed(2);
     const widthPct = Math.max(0.4, (e - s) / 1440 * 100).toFixed(2);
-    const kLabel = k === 'r' ? 'พักสนิทครบ ≥35 น.' : (k === 'o' ? 'ขับเกินกฎ' : 'ขับล้อหมุน');
+    const kLabel = k === 'r' ? 'พักสนิทครบ ≥30 น.' : (k === 'o' ? 'ขับเกินกฎ' : (k === 'g' ? '📡 สัญญาณ GPS ขาด (ไม่บวกเวลาขับ)' : 'ขับล้อหมุน'));
     const tip = `${kLabel}: ${whClockLabel(winStartMs, s)}–${whClockLabel(winStartMs, e)} (${whFmtMin(e - s)})`;
     return `<div class="wh-eld-seg ${nsEsc(k)}" style="left:${leftPct}%;width:${widthPct}%;" title="${nsEsc(tip)}"></div>`;
   }).join('') : (sel.timeline_24h === undefined
-    ? '<div style="text-align:center;font-size:11px;color:#B45309;line-height:26px;">⚠️ กรุณารีสตาร์ต run_collector.bat 1 ครั้ง เพื่อให้ข้อมูลไทม์ไลน์ 24 ชม. และประวัติพัก 35 น. แสดงอัตโนมัติ</div>'
+    ? '<div style="text-align:center;font-size:11px;color:#B45309;line-height:26px;">⚠️ กรุณารีสตาร์ต run_collector.bat 1 ครั้ง เพื่อให้ข้อมูลไทม์ไลน์ 24 ชม. และประวัติพัก 30 น. แสดงอัตโนมัติ</div>'
     : '<div style="text-align:center;font-size:11px;color:var(--text-faint);line-height:26px;">ไม่มีกิจกรรมขับ-พักในช่วง 24 ชม. ล่าสุด</div>');
 
   /* เตรียมรายการประวัติพักครบ 35 นาที (โหมดคันนี้ หรือ ทุกคันในฟลีท) */
@@ -15257,6 +15258,7 @@ function renderWorkHoursView(){
           <span class="wh-insp-plate">${nsEsc(sel.plate)}</span>
           <span class="wh-fleet-tag">${nsEsc(sel._groupName)}</span>
           ${whStatusBadge(sel)}
+          ${(sel.gps_gap_min_24h || 0) > 0 ? `<span class="badge mid" title="ระบบตัดช่วงสัญญาณขาดออก ไม่นำไปบวกเป็นเวลาขับ">📡 สัญญาณ GPS ขาด ${whFmtMin(sel.gps_gap_min_24h)}</span>` : ''}
         </div>
         <div class="wh-insp-meta">
           👤 คนขับ: <b>${nsEsc(sel._driver)}</b> · ⚡ ความเร็วล่าสุด: <b class="mono">${sel.last_speed || 0} กม./ชม.</b> · 🕒 GPS: <span class="mono">${nsEsc(sel.last_gps || '-')}</span><br>
@@ -15282,14 +15284,14 @@ function renderWorkHoursView(){
       </div>
 
       <div class="wh-gauge-card">
-        <div class="wh-gauge-hd"><span>🅿️ จอดพักรีเซ็ตรอบ</span><span class="mono" style="color:var(--text-faint);">≥ 35 น.</span></div>
+        <div class="wh-gauge-hd"><span>🅿️ จอดพักรีเซ็ตรอบ</span><span class="mono" style="color:var(--text-faint);">≥ 30 น. (แนะนำ 35 น.)</span></div>
         <div class="wh-ring-wrap">
           ${whSvgRing(restPct, restCol, restRingTop, restRingSub)}
           <div class="wh-ring-info">
             <div class="wh-ring-big" style="color:${restCol}">${curRest > 0 ? whFmtMin(curRest) : (sel.last_rest_min != null ? whFmtMin(sel.last_rest_min) : '0 น.')}</div>
             <div class="wh-ring-sub">${curRest > 0
               ? `เริ่มจอด ${nsEsc(sel.current_rest_start_hm || '-')}–ปัจจุบัน`
-              : (sel.last_rest_range ? `พักครบครั้งล่าสุด ${nsEsc(sel.last_rest_range)}` : 'ยังไม่พบรอบพัก ≥ 35 น.')}</div>
+              : (sel.last_rest_range ? `พักครบครั้งล่าสุด ${nsEsc(sel.last_rest_range)}` : 'ยังไม่พบรอบพัก ≥ 30 น.')}</div>
           </div>
         </div>
       </div>
@@ -15316,8 +15318,9 @@ function renderWorkHoursView(){
         <strong style="font-size:13px;">📈 ไทม์ไลน์การทำงาน 24 ชม. ล่าสุด (ELD Duty Status)</strong>
         <div class="wh-eld-legend">
           <span><span class="wh-eld-dot" style="background:#2563EB;"></span>ขับล้อหมุน</span>
-          <span><span class="wh-eld-dot" style="background:#10B981;"></span>พักสนิทครบ ≥35 น.</span>
+          <span><span class="wh-eld-dot" style="background:#10B981;"></span>พักสนิทครบ ≥30 น.</span>
           <span><span class="wh-eld-dot" style="background:#EF4444;"></span>เกินกฎ</span>
+          <span><span class="wh-eld-dot" style="background:repeating-linear-gradient(45deg,#F59E0B,#F59E0B 3px,#FEF3C7 3px,#FEF3C7 6px);"></span>สัญญาณ GPS ขาด</span>
           <span><span class="wh-eld-dot" style="background:#E2E8F0;border:1px solid #CBD5E1;"></span>จอดสั้น / ว่าง</span>
         </div>
       </div>
@@ -15342,7 +15345,7 @@ function renderWorkHoursView(){
 
       <div class="wh-sub-card">
         <div class="wh-sub-hd">
-          <h4>🔔 บันทึกพักครบ 35 นาที (24 ชม.)</h4>
+          <h4>🔔 บันทึกพักครบ 30 นาที (24 ชม.)</h4>
           <div class="wh-seg-tabs">
             <button type="button" class="wh-seg-btn${whRestLogMode==='veh'?' active':''}" onclick="whSetRestLogMode('veh')">คันนี้ (${(sel.recent_rests||[]).length})</button>
             <button type="button" class="wh-seg-btn${whRestLogMode==='fleet'?' active':''}" onclick="whSetRestLogMode('fleet')">ทั้งฟลีท</button>
