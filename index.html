@@ -1815,11 +1815,20 @@ html[data-theme="paper"] #adminApp:not(.skin-nordic):not(.skin-atlas):not(.skin-
   background:var(--panel-2);border:1px solid var(--border-soft);
   font-size:12px;color:var(--text-dim);
 }
+#adminApp .wh-kpi-grid{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px;
+}
+@media(max-width:1024px){#adminApp .wh-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:640px){#adminApp .wh-kpi-grid{grid-template-columns:1fr;}}
 #adminApp .wh-bar{
   width:110px;height:7px;border-radius:999px;background:var(--border-soft);
   overflow:hidden;margin-top:4px;
 }
 #adminApp .wh-bar-fill{height:100%;border-radius:999px;transition:width .35s;}
+#adminApp .wh-fleet-tag{
+  display:inline-block;margin-top:3px;padding:1px 6px;border-radius:6px;
+  font-size:10.5px;background:var(--panel-2);border:1px solid var(--border-soft);color:var(--text-dim);
+}
 #adminApp.skin-atlas .rail-btn[data-view="maintview"]{order:21;}
 #adminApp.skin-atlas .rail-btn[data-view="reportview"]{order:22;}
 #adminApp.skin-atlas .rail-spacer{order:30;}
@@ -4152,12 +4161,12 @@ function themeSwatchesHtml(){
       </div>
     </div>
 
-    <!-- 4d. WORK HOURS & REST COMPLIANCE VIEW (DLT Mode A: 4h / 30m / 8-10h) -->
+    <!-- 4d. WORK HOURS & REST COMPLIANCE VIEW (Wheel-Turn + 35m Full-Stop Rest + Fleet Filter) -->
     <div class="view scroll" id="workhoursview">
       <div class="section-hd">
         <div>
           <h2>⏱️ ชั่วโมงการจอดพักจากการทำงาน</h2>
-          <p>ติดตามเวลาขับต่อเนื่องไม่เกิน 4 ชม. · พักขั้นต่ำ 30 นาที (รวมจอดที่ร้าน/คลัง) · สะสม 24 ชม. ไม่เกิน 8–10 ชม.</p>
+          <p>นับเวลาขับจากจำนวนล้อหมุน (ย้ายจุดจอดบวกรวม) · จอดสนิทครบ 35 นาทีรีเซ็ตพร้อมแจ้งตำแหน่งและช่วงเวลา · สะสม 24 ชม. ไม่เกิน 8–10 ชม.</p>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn sm" onclick="loadWorkHours(true)">↻ รีเฟรช</button>
@@ -4166,29 +4175,39 @@ function themeSwatchesHtml(){
       </div>
 
       <div class="wh-rule-bar">
-        <span>📋 <b>กติกา ขบ. (แบบ A):</b></span>
-        <span>ขับต่อเนื่อง <b>≤ 4 ชม.</b> (เตือนที่ 3:30 ชม.)</span>
-        <span>· จอดนิ่ง <b>≥ 30 นาที</b> รีเซ็ตรอบใหม่ (นับรวมจอดร้าน/คลัง)</span>
-        <span>· จอดสั้น &lt; 30 น. นับรวมต่อเนื่อง</span>
-        <span>· สะสม 24 ชม. <b>≤ 10 ชม.</b> (เตือนที่ 8 ชม.)</span>
+        <span>📋 <b>กติกาการนับ:</b></span>
+        <span>นับจาก<b>ล้อหมุน</b> (≥ 3 กม./ชม. หรือขยับ &gt; 50 ม.)</span>
+        <span>· ย้ายจุดจอดก่อนครบ 35 น. <b>บวกรวมเวลาขับ &amp; เริ่มนับพักใหม่</b></span>
+        <span>· จอดสนิทครบ <b>35 นาที</b> รีเซ็ต + แจ้งเตือนตำแหน่งและเวลา</span>
+        <span>· เตือนขับต่อเนื่อง <b>3:30 / 4 ชม.</b> · สะสม 24 ชม. <b>8 / 10 ชม.</b></span>
         <span id="whUpdatedMeta" style="margin-left:auto;color:var(--text-faint);font-family:var(--font-mono);">กำลังโหลด...</span>
       </div>
 
-      <div class="grid-4" id="whKpis" style="margin-bottom:14px;"></div>
+      <div class="wh-kpi-grid" id="whKpis"></div>
 
-      <div class="card">
-        <div class="toolbar-row" style="margin-bottom:10px;">
-          <input type="text" id="whSearch" placeholder="🔎 ค้นหาทะเบียน / คนขับ / ตำแหน่ง..." oninput="renderWorkHoursView()" style="flex:1;min-width:190px;max-width:300px;">
+      <div class="card" style="margin-bottom:14px;">
+        <div class="toolbar-row" style="margin-bottom:10px;gap:8px;flex-wrap:wrap;">
+          <input type="text" id="whSearch" placeholder="🔎 ค้นหาทะเบียน / คนขับ / ตำแหน่ง..." oninput="renderWorkHoursView()" style="flex:1;min-width:180px;max-width:270px;">
+          <select id="whFleetFilter" onchange="renderWorkHoursView()" style="min-width:170px;padding:6px 10px;border-radius:9px;font-size:12.5px;">
+            <option value="">ทุกฟลีท (ทั้งหมด)</option>
+          </select>
           <div class="filter-chips" id="whFilterChips">
             <button class="fchip active" data-whflt="all" onclick="whSetFilter('all')">ทั้งหมด</button>
             <button class="fchip" data-whflt="alert" onclick="whSetFilter('alert')">🚨 เกินกฎ / เตือน</button>
             <button class="fchip" data-whflt="driving" onclick="whSetFilter('driving')">🚛 กำลังขับ</button>
-            <button class="fchip" data-whflt="short_stop" onclick="whSetFilter('short_stop')">⏸️ จอดสั้น &lt; 30 น.</button>
-            <button class="fchip" data-whflt="resting" onclick="whSetFilter('resting')">🅿️ จอดพักครบ 30 น.</button>
+            <button class="fchip" data-whflt="short_stop" onclick="whSetFilter('short_stop')">⏸️ จอดสั้น &lt; 35 น.</button>
+            <button class="fchip" data-whflt="resting" onclick="whSetFilter('resting')">🅿️ จอดครบ 35 น.</button>
           </div>
         </div>
         <div class="tbl-wrap" id="whTableBox">
           <div class="empty">กำลังโหลดข้อมูลชั่วโมงการจอดพัก...</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:10px;">🔔 รายการแจ้งเตือนจอดพักครบ 35 นาทีแล้ว (24 ชม. ล่าสุด) <small id="whRestLogCount" style="color:var(--text-faint);font-weight:400;"></small></h3>
+        <div class="tbl-wrap" id="whRestLogBox">
+          <div class="empty">กำลังโหลดประวัติการจอดพัก...</div>
         </div>
       </div>
     </div>
@@ -8778,7 +8797,7 @@ const VIEW_SUBS = {
   mapview: 'ติดตามตำแหน่งขบวนรถและจุดเสี่ยงแบบเรียลไทม์',
   fleetview: 'สถานะรถ คนขับ และกลุ่มฟลีท',
   nearstoreview: 'ติดตามรถเข้าใกล้ร้าน & จัดการพิกัดร้าน',
-  workhoursview: 'ติดตามเวลาขับต่อเนื่อง (4 ชม.) · พักขั้นต่ำ 30 นาที · สะสม 24 ชม. (8–10 ชม.)',
+  workhoursview: 'นับเวลาขับจากล้อหมุน (ย้ายจุดจอดบวกรวม) · จอดสนิทครบ 35 น. รีเซ็ตพร้อมแจ้งตำแหน่งและเวลา',
   hazardview: 'จุดเสี่ยงบนเส้นทาง รายงานคนขับ และจุดจอด',
   riskview: 'ประเมินความเสี่ยงตามเส้นทาง สภาพอากาศ และเวลา',
   alertsview: 'บันทึกการผ่านจุดเสี่ยงย้อนหลัง',
@@ -14601,13 +14620,15 @@ function nsExportDailyCsv(){
 function loadNearStoreVisits(){ Promise.all([nsLoadVisits(), nsLoadStoreSettings()]).then(()=>toast("โหลดข้อมูลแล้ว")); }
 
 /* =====================================================================
-   ชั่วโมงการจอดพักจากการทำงาน (กฎ ขบ. แบบ A: 4 ชม. / พัก >= 30 น. / 8-10 ชม.)
+   ชั่วโมงการจอดพักจากการทำงาน (นับจากล้อหมุน + ย้ายจุดจอดบวกรวม + จอดสนิทครบ 35 นาที)
    อ่านผลสรุปที่ collector.py คำนวณจาก readings ย้อนหลัง 30 ชม.
    แล้วส่งขึ้น Supabase fleet_sync (store='workHours', id='fleet_work_hours')
    ===================================================================== */
 let whData = null;
 let whFilter = 'all';
 let whLastFetchMs = 0;
+const WH_REST_MIN = 35;
+const WH_LS_FIRED = 'rfsm.workHours.fired';
 
 function whFmtMin(min){
   if(min == null || !isFinite(Number(min))) return '-';
@@ -14621,34 +14642,103 @@ function whStatusBadge(v){
   const contOver = (v.cont_drive_min || 0) >= 240;
   const dayOver = (v.drive_24h_min || 0) >= 600;
   const contWarn = (v.cont_drive_min || 0) >= 210;
-  const dayWarn = (v.drive_24h_min || 0) >= 480;
   if(v.level === 'violation'){
-    const why = (contOver && dayOver) ? 'เกิน 4 ชม. & 10 ชม.' : (contOver ? 'ขับต่อเนื่องเกิน 4 ชม.' : 'สะสม 24 ชม. เกิน 10 ชม.');
+    const why = (contOver && dayOver) ? 'เกิน 4 ชม. & 10 ชม.' : (contOver ? `ขับแล้ว ${whFmtMin(v.cont_drive_min)} (เกิน 4 ชม.)` : 'สะสม 24 ชม. เกิน 10 ชม.');
     return `<span class="badge crit">🚨 ${why}</span>`;
   }
   if(v.level === 'warning'){
-    const why = contWarn ? 'ใกล้ครบ 4 ชม.' : 'สะสม 24 ชม. ≥ 8 ชม.';
+    const why = contWarn ? `ขับแล้ว ${whFmtMin(v.cont_drive_min)} (ใกล้ 4 ชม.)` : 'สะสม 24 ชม. ≥ 8 ชม.';
     return `<span class="badge mid">⚠️ ${why}</span>`;
   }
   if(v.level === 'short_stop'){
-    const need = Math.max(1, Math.ceil(30 - (v.current_rest_min || 0)));
-    return `<span class="badge high">⏸️ จอดสั้น (อีก ${need} น. รีเซ็ต)</span>`;
+    const need = Math.max(1, Math.ceil(WH_REST_MIN - (v.current_rest_min || 0)));
+    return `<span class="badge high">⏸️ จอดสั้น (อีก ${need} น. ครบ 35 น.)</span>`;
   }
   if(v.level === 'driving'){
-    return `<span class="badge low">🚛 กำลังขับปกติ</span>`;
+    return `<span class="badge low">🚛 ขับแล้ว ${whFmtMin(v.cont_drive_min)}</span>`;
   }
   if(v.level === 'resting'){
-    return `<span class="badge accentb">🅿️ จอดพักครบ 30 น.</span>`;
+    return `<span class="badge accentb">🅿️ จอดครบ 35 น. แล้ว</span>`;
   }
   return `<span class="badge gray">จอดนิ่ง</span>`;
 }
 
-function whDriverByPlate(plate){
+function whVehMetaByPlate(plate){
   const pk = normPlate(plate);
   const v = (STATE.vehicles || []).find(x=>normPlate(x.plate) === pk);
-  if(!v) return { vehicleId: null, driver: '-' };
+  if(!v) return { vehicleId: null, driver: '-', groupId: '__ungrouped__', groupName: 'ยังไม่ได้จัดกลุ่ม' };
   const drv = v.driver || nsDriverOf(v) || '-';
-  return { vehicleId: v.id, driver: drv };
+  const g = v.groupId ? (STATE.fleetGroups || []).find(x=>x.id === v.groupId) : null;
+  return {
+    vehicleId: v.id,
+    driver: drv,
+    groupId: g ? g.id : '__ungrouped__',
+    groupName: g ? g.name : 'ยังไม่ได้จัดกลุ่ม',
+  };
+}
+
+function whShouldNotify(key, cooldownMs){
+  let m = {};
+  try{ m = JSON.parse(localStorage.getItem(WH_LS_FIRED) || '{}') || {}; }catch(e){}
+  const now = Date.now();
+  if(m[key] && (now - m[key]) < cooldownMs) return false;
+  m[key] = now;
+  Object.keys(m).forEach(k=>{ if(now - m[k] > 24 * 3600000) delete m[k]; });
+  try{ localStorage.setItem(WH_LS_FIRED, JSON.stringify(m)); }catch(e){}
+  return true;
+}
+
+function whShowAlertCard(kind, title, body, sub, vehicleId){
+  const cfg = nsCfg();
+  if(cfg.sound){ try{ nsBeep(kind === 'rest' ? 'arrive' : 'approach'); }catch(e){} }
+  if(!cfg.popup) return;
+  const id = 'whp_' + Math.random().toString(36).slice(2,8);
+  const borderCol = kind === 'violation' ? 'var(--risk-crit)' : (kind === 'rest' ? 'var(--risk-low)' : 'var(--risk-mid)');
+  const el = document.createElement('div');
+  el.id = id;
+  el.style.cssText = `background:var(--panel);border:1px solid var(--border);border-left:3px solid ${borderCol};border-radius:12px;padding:12px 14px;box-shadow:var(--shadow-float);animation:slidein .2s;`;
+  el.innerHTML = `<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
+      <strong style="font-size:13.5px;">${nsEsc(title)}</strong>
+      <button class="btn sm" onclick="nsClosePopup('${id}')" style="padding:2px 8px;">✕</button></div>
+    <div style="margin:6px 0 4px;font-size:12.5px;line-height:1.45;">${nsEsc(body)}</div>
+    ${sub ? `<div style="font-size:11.5px;color:var(--text-faint);">${nsEsc(sub)}</div>` : ''}
+    ${vehicleId ? `<div style="margin-top:8px;"><button class="btn sm" onclick="whShowOnMap('${orbEsc(vehicleId)}');nsClosePopup('${id}')">ดูบนแผนที่</button></div>` : ''}`;
+  try{
+    nsPopupStack().appendChild(el);
+    nsPopups.push(id);
+    while(nsPopups.length > 5) nsClosePopup(nsPopups[0]);
+    setTimeout(()=>nsClosePopup(id), 90000);
+  }catch(e){}
+}
+
+function whCheckNotifications(){
+  if(!whData || !Array.isArray(whData.vehicles)) return;
+  let shown = 0;
+  whData.vehicles.forEach(x=>{
+    if(shown >= 3) return; // กันป็อปอัพเด้งทีเดียวหลายใบเกินไป
+    const m = whVehMetaByPlate(x.plate);
+    const drv = m.driver && m.driver !== '-' ? (' · คนขับ ' + m.driver) : '';
+    if((x.cont_drive_min || 0) >= 240){
+      const key = 'wh_viol|' + normPlate(x.plate) + '|' + (x.cont_drive_start || '');
+      if(whShouldNotify(key, 60 * 60000)){
+        whShowAlertCard('violation', '🚨 ขับรถ (ล้อหมุน) เกิน 4 ชม.', `${x.plate} ขับล้อหมุนมาแล้ว ${whFmtMin(x.cont_drive_min)}${drv}`, x.last_location || '', m.vehicleId);
+        shown++;
+      }
+    } else if((x.cont_drive_min || 0) >= 210){
+      const key = 'wh_warn|' + normPlate(x.plate) + '|' + (x.cont_drive_start || '');
+      if(whShouldNotify(key, 45 * 60000)){
+        whShowAlertCard('warning', '⚠️ ขับรถ (ล้อหมุน) ใกล้ครบ 4 ชม.', `${x.plate} ขับล้อหมุนมาแล้ว ${whFmtMin(x.cont_drive_min)} (เหลือ ${whFmtMin(x.remaining_cont_min)})${drv}`, x.last_location || '', m.vehicleId);
+        shown++;
+      }
+    } else if(x.rest_reset_done && x.current_rest_min >= WH_REST_MIN && x.current_rest_min <= 90){
+      const key = 'wh_rest|' + normPlate(x.plate) + '|' + (x.current_rest_start || '');
+      if(whShouldNotify(key, 6 * 3600000)){
+        const range = (x.current_rest_start_hm || '-') + ' – ปัจจุบัน';
+        whShowAlertCard('rest', '🅿️ จอดพักครบ 35 นาทีแล้ว', `${x.plate} จอดสนิทครบ ${whFmtMin(x.current_rest_min)} (${range})${drv}`, 'ตำแหน่ง: ' + (x.current_rest_location || x.last_location || '-'), m.vehicleId);
+        shown++;
+      }
+    }
+  });
 }
 
 async function loadWorkHours(showToast){
@@ -14664,6 +14754,7 @@ async function loadWorkHours(showToast){
     if(data && data[0] && data[0].data){
       whData = data[0].data;
       whLastFetchMs = Date.now();
+      whCheckNotifications();
     }
   }catch(e){
     console.warn('โหลดข้อมูลชั่วโมงการจอดพักไม่สำเร็จ:', e);
@@ -14697,13 +14788,39 @@ function whShowOnMap(vehicleId){
 function renderWorkHoursView(){
   const kpiEl = document.getElementById('whKpis');
   const boxEl = document.getElementById('whTableBox');
+  const restBoxEl = document.getElementById('whRestLogBox');
+  const restCntEl = document.getElementById('whRestLogCount');
   const metaEl = document.getElementById('whUpdatedMeta');
   const badgeEl = document.getElementById('nBadgeWorkHours');
+  const fleetSel = document.getElementById('whFleetFilter');
 
-  const list = (whData && Array.isArray(whData.vehicles)) ? whData.vehicles : [];
-  const counts = (whData && whData.counts) ? whData.counts : { violation:0, warning:0, driving:0, short_stop:0, resting:0, idle:0 };
-  const alertN = (counts.violation || 0) + (counts.warning || 0);
-  if(badgeEl) badgeEl.textContent = alertN ? String(alertN) : '';
+  /* อัปเดตตัวเลือกฟลีทตาม STATE.fleetGroups */
+  if(fleetSel){
+    const curVal = fleetSel.value;
+    const grpOpts = (STATE.fleetGroups || []).map(g=>`<option value="${nsEsc(g.id)}">🚛 ${nsEsc(g.name)}</option>`).join('');
+    fleetSel.innerHTML = `<option value="">ทุกฟลีท (ทั้งหมด)</option>${grpOpts}<option value="__ungrouped__">ยังไม่ได้จัดกลุ่ม</option>`;
+    fleetSel.value = curVal;
+  }
+
+  const rawList = (whData && Array.isArray(whData.vehicles)) ? whData.vehicles : [];
+  const enriched = rawList.map(item=>{
+    const m = whVehMetaByPlate(item.plate);
+    return Object.assign({}, item, {
+      _driver: m.driver,
+      _vehicleId: m.vehicleId,
+      _groupId: m.groupId,
+      _groupName: m.groupName,
+    });
+  });
+
+  const selFleet = fleetSel ? fleetSel.value : '';
+  const fleetScoped = selFleet ? enriched.filter(x=>x._groupId === selFleet) : enriched;
+
+  const counts = { violation:0, warning:0, driving:0, short_stop:0, resting:0, idle:0 };
+  fleetScoped.forEach(x=>{ counts[x.level] = (counts[x.level] || 0) + 1; });
+
+  const totalAlertAll = enriched.filter(x=>x.level==='violation' || x.level==='warning').length;
+  if(badgeEl) badgeEl.textContent = totalAlertAll ? String(totalAlertAll) : '';
 
   if(metaEl){
     metaEl.textContent = (whData && whData.updated_at_th) ? ('อัปเดตล่าสุด ' + whData.updated_at_th) : 'รอข้อมูลจากเครื่องออฟฟิศ (collector.py)';
@@ -14711,82 +14828,143 @@ function renderWorkHoursView(){
   if(!kpiEl || !boxEl) return;
 
   kpiEl.innerHTML = `
-    <div class="kpi-card"><div class="lbl">เกินกฎ (≥ 4 ชม. / 10 ชม.)</div><div class="val" style="color:var(--risk-crit)">${counts.violation || 0}</div><div class="delta">ต้องหยุดพักทันที</div></div>
-    <div class="kpi-card"><div class="lbl">ใกล้ครบเกณฑ์ (≥ 3:30 / 8 ชม.)</div><div class="val" style="color:var(--risk-mid)">${counts.warning || 0}</div><div class="delta">เตรียมเข้าจุดพัก</div></div>
-    <div class="kpi-card"><div class="lbl">กำลังขับ / จอดสั้น &lt; 30 น.</div><div class="val" style="color:var(--risk-low)">${(counts.driving || 0) + (counts.short_stop || 0)}</div><div class="delta">กำลังวิ่ง ${counts.driving || 0} · จอดสั้น ${counts.short_stop || 0}</div></div>
-    <div class="kpi-card"><div class="lbl">จอดพักครบ 30 นาทีแล้ว</div><div class="val" style="color:var(--accent)">${(counts.resting || 0) + (counts.idle || 0)}</div><div class="delta">รีเซ็ตรอบ 4 ชม. แล้ว</div></div>`;
+    <div class="kpi-card"><div class="lbl">เกินกฎ (≥ 4 ชม. / 10 ชม.)</div><div class="val" style="color:var(--risk-crit)">${counts.violation}</div><div class="delta">ต้องหยุดพักทันที</div></div>
+    <div class="kpi-card"><div class="lbl">ใกล้ครบเกณฑ์ (≥ 3:30 / 8 ชม.)</div><div class="val" style="color:var(--risk-mid)">${counts.warning}</div><div class="delta">เตรียมเข้าจุดพัก</div></div>
+    <div class="kpi-card"><div class="lbl">กำลังขับ / จอดสั้น &lt; 35 น.</div><div class="val" style="color:var(--risk-low)">${counts.driving + counts.short_stop}</div><div class="delta">ล้อหมุน ${counts.driving} · จอดสั้น ${counts.short_stop}</div></div>
+    <div class="kpi-card"><div class="lbl">จอดพักครบ 35 นาทีแล้ว</div><div class="val" style="color:var(--accent)">${counts.resting + counts.idle}</div><div class="delta">รีเซ็ตรอบ 4 ชม. แล้ว</div></div>`;
 
-  if(!list.length){
+  if(!rawList.length){
     boxEl.innerHTML = '<div class="empty">ยังไม่มีข้อมูลชั่วโมงการจอดพัก — ตรวจสอบว่า collector.py ทำงานอยู่ หรือกดปุ่ม <b>↻ รีเฟรช</b></div>';
+    if(restBoxEl) restBoxEl.innerHTML = '<div class="empty">ยังไม่มีประวัติการจอดพัก</div>';
     return;
   }
 
   const q = (document.getElementById('whSearch')?.value || '').trim().toLowerCase();
-  let rows = list.map(item=>{
-    const m = whDriverByPlate(item.plate);
-    return Object.assign({}, item, { _driver: m.driver, _vehicleId: m.vehicleId });
-  });
-
+  let rows = fleetScoped;
   if(whFilter === 'alert') rows = rows.filter(x=>x.level==='violation' || x.level==='warning');
   else if(whFilter === 'driving') rows = rows.filter(x=>x.state==='driving');
   else if(whFilter === 'short_stop') rows = rows.filter(x=>x.state==='short_stop');
   else if(whFilter === 'resting') rows = rows.filter(x=>x.rest_reset_done);
 
   if(q){
-    rows = rows.filter(x=>((x.plate||'') + ' ' + (x._driver||'') + ' ' + (x.last_location||'')).toLowerCase().includes(q));
+    rows = rows.filter(x=>((x.plate||'') + ' ' + (x._driver||'') + ' ' + (x._groupName||'') + ' ' + (x.last_location||'')).toLowerCase().includes(q));
   }
 
   if(!rows.length){
     boxEl.innerHTML = '<div class="empty">ไม่พบรถที่ตรงกับเงื่อนไขที่เลือก</div>';
-    return;
+  } else {
+    boxEl.innerHTML = `<table><thead><tr>
+      <th>สถานะ</th>
+      <th>ทะเบียนรถ / ฟลีท</th>
+      <th>คนขับ</th>
+      <th>ขับรถ (ล้อหมุน) รอบนี้</th>
+      <th>จอดสนิทปัจจุบัน / พักครบ 35 น. ล่าสุด</th>
+      <th>สะสม 24 ชม. (≤ 10 ชม.)</th>
+      <th>สะสมวันนี้</th>
+      <th>ตำแหน่งล่าสุด</th>
+      <th class="col-act"></th>
+    </tr></thead><tbody>${rows.map(x=>{
+      const contPct = Math.min(100, Math.round(((x.cont_drive_min || 0) / 240) * 100));
+      const contCol = (x.cont_drive_min || 0) >= 240 ? '#F0475A' : ((x.cont_drive_min || 0) >= 210 ? '#FBBF24' : '#34D399');
+      const dayPct = Math.min(100, Math.round(((x.drive_24h_min || 0) / 600) * 100));
+      const dayCol = (x.drive_24h_min || 0) >= 600 ? '#F0475A' : ((x.drive_24h_min || 0) >= 480 ? '#FBBF24' : '#22D3C7');
+      const repNote = (x.reposition_count > 0 && x.cont_drive_min > 0)
+        ? `<div style="font-size:10.5px;color:var(--risk-mid);margin-top:2px;">ย้ายจุดจอด/ขยับ ${x.reposition_count} ครั้ง (รวมเวลาแล้ว)</div>` : '';
+      let restTxt = '<span style="color:var(--text-faint);">ยังไม่พบรอบพัก ≥ 35 น.</span>';
+      if(x.current_rest_min > 0){
+        const stHm = x.current_rest_start_hm || '-';
+        restTxt = `<b>จอดมาแล้ว ${whFmtMin(x.current_rest_min)}</b> <span style="font-size:11px;color:var(--text-faint);">(${nsEsc(stHm)}–ปัจจุบัน)</span>`
+          + (x.rest_reset_done
+              ? `<br><span style="font-size:11px;color:var(--risk-low);">✔ จอดครบ 35 น. แล้ว</span>`
+              : `<br><span style="font-size:11px;color:var(--risk-mid);">รออีก ${Math.max(1, Math.ceil(WH_REST_MIN - x.current_rest_min))} น. เพื่อครบ 35 น.</span>`);
+      } else if(x.last_rest_min != null){
+        restTxt = `<b>พักล่าสุด ${whFmtMin(x.last_rest_min)}</b>`
+          + (x.last_rest_range ? ` <span style="font-size:11px;color:var(--text-faint);">(${nsEsc(x.last_rest_range)})</span>` : '')
+          + (x.last_rest_location ? `<br><span style="font-size:11px;color:var(--text-faint);">📍 ${nsEsc(x.last_rest_location)}</span>` : '');
+      }
+      return `<tr>
+        <td>${whStatusBadge(x)}</td>
+        <td class="strong"><span class="ns-plate-chip">${nsEsc(x.plate)}</span><br><span class="wh-fleet-tag">${nsEsc(x._groupName)}</span></td>
+        <td>${nsEsc(x._driver)}</td>
+        <td class="mono">
+          <b style="color:${contCol}">${whFmtMin(x.cont_drive_min)}</b> <span style="font-size:11px;color:var(--text-faint);">/ 4 ชม.</span>
+          <div class="wh-bar"><div class="wh-bar-fill" style="width:${contPct}%;background:${contCol};"></div></div>
+          ${repNote}
+        </td>
+        <td class="mono" style="font-size:12px;max-width:230px;">${restTxt}</td>
+        <td class="mono">
+          <b style="color:${dayCol}">${whFmtMin(x.drive_24h_min)}</b> <span style="font-size:11px;color:var(--text-faint);">/ 10 ชม.</span>
+          <div class="wh-bar"><div class="wh-bar-fill" style="width:${dayPct}%;background:${dayCol};"></div></div>
+        </td>
+        <td class="mono">${whFmtMin(x.drive_today_min)}</td>
+        <td style="font-size:12px;color:var(--text-dim);max-width:200px;">${nsEsc(x.last_location || '-')}<div style="font-size:10.5px;color:var(--text-faint);">${nsEsc(x.last_gps || '')}</div></td>
+        <td class="col-act">${x._vehicleId ? `<button class="btn sm" onclick="whShowOnMap('${orbEsc(x._vehicleId)}')">แผนที่</button>` : ''}</td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
   }
 
-  boxEl.innerHTML = `<table><thead><tr>
-    <th>สถานะ</th>
-    <th>ทะเบียนรถ</th>
-    <th>คนขับ</th>
-    <th>ขับต่อเนื่องรอบนี้ (≤ 4 ชม.)</th>
-    <th>จอดพักปัจจุบัน / ล่าสุด</th>
-    <th>ขับสะสม 24 ชม. (≤ 10 ชม.)</th>
-    <th>สะสมวันนี้</th>
-    <th>ตำแหน่งล่าสุด</th>
-    <th class="col-act"></th>
-  </tr></thead><tbody>${rows.map(x=>{
-    const contPct = Math.min(100, Math.round(((x.cont_drive_min || 0) / 240) * 100));
-    const contCol = (x.cont_drive_min || 0) >= 240 ? '#F0475A' : ((x.cont_drive_min || 0) >= 210 ? '#FBBF24' : '#34D399');
-    const dayPct = Math.min(100, Math.round(((x.drive_24h_min || 0) / 600) * 100));
-    const dayCol = (x.drive_24h_min || 0) >= 600 ? '#F0475A' : ((x.drive_24h_min || 0) >= 480 ? '#FBBF24' : '#22D3C7');
-    const restTxt = x.current_rest_min > 0
-      ? (`<b>จอดมาแล้ว ${whFmtMin(x.current_rest_min)}</b>` + (x.rest_reset_done ? '<br><span style="font-size:11px;color:var(--risk-low);">✔ ครบ 30 น. รีเซ็ตแล้ว</span>' : `<br><span style="font-size:11px;color:var(--risk-mid);">รออีก ${Math.max(1, Math.ceil(30 - x.current_rest_min))} น. เพื่อรีเซ็ต</span>`))
-      : (x.last_rest_min != null ? (`พักล่าสุด ${whFmtMin(x.last_rest_min)}<br><span style="font-size:11px;color:var(--text-faint);">พักครบ 30 น. แล้ว ${x.rest_count_24h||0} รอบ</span>`) : '<span style="color:var(--text-faint);">ยังไม่พบรอบพัก ≥ 30 น.</span>');
-    return `<tr>
-      <td>${whStatusBadge(x)}</td>
-      <td class="strong"><span class="ns-plate-chip">${nsEsc(x.plate)}</span></td>
-      <td>${nsEsc(x._driver)}</td>
-      <td class="mono">
-        <b style="color:${contCol}">${whFmtMin(x.cont_drive_min)}</b> <span style="font-size:11px;color:var(--text-faint);">/ 4 ชม.</span>
-        <div class="wh-bar"><div class="wh-bar-fill" style="width:${contPct}%;background:${contCol};"></div></div>
-      </td>
-      <td class="mono" style="font-size:12px;">${restTxt}</td>
-      <td class="mono">
-        <b style="color:${dayCol}">${whFmtMin(x.drive_24h_min)}</b> <span style="font-size:11px;color:var(--text-faint);">/ 10 ชม.</span>
-        <div class="wh-bar"><div class="wh-bar-fill" style="width:${dayPct}%;background:${dayCol};"></div></div>
-      </td>
-      <td class="mono">${whFmtMin(x.drive_today_min)}</td>
-      <td style="font-size:12px;color:var(--text-dim);max-width:200px;">${nsEsc(x.last_location || '-')}<div style="font-size:10.5px;color:var(--text-faint);">${nsEsc(x.last_gps || '')}</div></td>
-      <td class="col-act">${x._vehicleId ? `<button class="btn sm" onclick="whShowOnMap('${orbEsc(x._vehicleId)}')">แผนที่</button>` : ''}</td>
-    </tr>`;
-  }).join('')}</tbody></table>`;
+  /* การ์ดรายการจอดพักครบ 35 นาทีแล้ว พร้อมตำแหน่งและช่วงเวลา (กี่โมงถึงกี่โมง) */
+  if(restBoxEl){
+    const restEvents = [];
+    fleetScoped.forEach(x=>{
+      (x.recent_rests || []).forEach(r=>{
+        restEvents.push({
+          plate: x.plate,
+          driver: x._driver,
+          groupName: x._groupName,
+          vehicleId: x._vehicleId,
+          start: r.start || '',
+          start_hm: r.start_hm || '-',
+          end_hm: r.end_hm || '-',
+          duration_min: r.duration_min,
+          location: r.location || x.last_location || '-',
+          drive_before_min: r.drive_before_min,
+          ongoing: !!r.ongoing,
+        });
+      });
+    });
+    const filteredRests = q
+      ? restEvents.filter(r=>((r.plate||'')+' '+(r.driver||'')+' '+(r.groupName||'')+' '+(r.location||'')).toLowerCase().includes(q))
+      : restEvents;
+    filteredRests.sort((a,b)=>(b.start||'').localeCompare(a.start||''));
+    if(restCntEl) restCntEl.textContent = `(${filteredRests.length} รอบ)`;
+    if(!filteredRests.length){
+      restBoxEl.innerHTML = '<div class="empty">ยังไม่มีรายการจอดพักครบ 35 นาทีในช่วง 24 ชม. ล่าสุด</div>';
+    } else {
+      restBoxEl.innerHTML = `<table><thead><tr>
+        <th>สถานะการพัก</th>
+        <th>ทะเบียน / ฟลีท</th>
+        <th>คนขับ</th>
+        <th>เวลาจอดพัก (กี่โมงถึงกี่โมง)</th>
+        <th>ระยะเวลาพัก</th>
+        <th>ขับล้อหมุนก่อนพัก</th>
+        <th>ตำแหน่งที่จอดพัก</th>
+        <th class="col-act"></th>
+      </tr></thead><tbody>${filteredRests.slice(0, 60).map(r=>`<tr>
+        <td><span class="badge low">✔ จอดครบ 35 น. แล้ว</span>${r.ongoing?'<div style="font-size:10.5px;color:var(--accent);margin-top:2px;">กำลังจอดอยู่ตอนนี้</div>':''}</td>
+        <td class="strong"><span class="ns-plate-chip">${nsEsc(r.plate)}</span><br><span class="wh-fleet-tag">${nsEsc(r.groupName)}</span></td>
+        <td>${nsEsc(r.driver)}</td>
+        <td class="mono"><b>${nsEsc(r.start_hm)} – ${nsEsc(r.end_hm)}</b><div style="font-size:10.5px;color:var(--text-faint);">${nsEsc((r.start||'').slice(0,10))}</div></td>
+        <td class="mono"><b>${whFmtMin(r.duration_min)}</b></td>
+        <td class="mono">${r.drive_before_min != null ? whFmtMin(r.drive_before_min) : '-'}</td>
+        <td style="font-size:12px;color:var(--text-dim);max-width:260px;">📍 ${nsEsc(r.location)}</td>
+        <td class="col-act">${r.vehicleId ? `<button class="btn sm" onclick="whShowOnMap('${orbEsc(r.vehicleId)}')">แผนที่</button>` : ''}</td>
+      </tr>`).join('')}</tbody></table>`;
+    }
+  }
 }
 
 function whExportCsv(){
-  const list = (whData && Array.isArray(whData.vehicles)) ? whData.vehicles : [];
-  if(!list.length){ toast('ยังไม่มีข้อมูลสำหรับส่งออก'); return; }
+  const rawList = (whData && Array.isArray(whData.vehicles)) ? whData.vehicles : [];
+  if(!rawList.length){ toast('ยังไม่มีข้อมูลสำหรับส่งออก'); return; }
+  const selFleet = document.getElementById('whFleetFilter')?.value || '';
   const esc = s=>'"'+String(s==null?'':s).replace(/"/g,'""')+'"';
-  const head = ['ทะเบียน','คนขับ','ระดับสถานะ','ขับต่อเนื่อง(นาที)','จอดปัจจุบัน(นาที)','รีเซ็ต30น.แล้ว','ขับสะสม24ชม.(นาที)','ขับวันนี้(นาที)','พักล่าสุด(นาที)','รอบพัก24ชม.','ตำแหน่งล่าสุด','เวลาGPSล่าสุด'];
-  const rows = list.map(x=>{
-    const m = whDriverByPlate(x.plate);
-    return [x.plate, m.driver, x.level, x.cont_drive_min, x.current_rest_min, x.rest_reset_done?'ใช่':'ไม่', x.drive_24h_min, x.drive_today_min, x.last_rest_min??'', x.rest_count_24h, x.last_location, x.last_gps];
+  const head = ['ทะเบียน','ฟลีท','คนขับ','ระดับสถานะ','ขับล้อหมุนรอบนี้(นาที)','ย้ายจุดจอด(ครั้ง)','จอดปัจจุบัน(นาที)','จอดครบ35น.แล้ว','ช่วงเวลาพักล่าสุด','ตำแหน่งจอดพักล่าสุด','ขับสะสม24ชม.(นาที)','ขับวันนี้(นาที)','ตำแหน่งล่าสุด','เวลาGPSล่าสุด'];
+  const rows = [];
+  rawList.forEach(x=>{
+    const m = whVehMetaByPlate(x.plate);
+    if(selFleet && m.groupId !== selFleet) return;
+    rows.push([x.plate, m.groupName, m.driver, x.level, x.cont_drive_min, x.reposition_count||0, x.current_rest_min, x.rest_reset_done?'ใช่':'ไม่', x.last_rest_range||'', x.last_rest_location||'', x.drive_24h_min, x.drive_today_min, x.last_location, x.last_gps]);
   });
   const csv = '\uFEFF' + [head].concat(rows).map(r=>r.map(esc).join(',')).join('\n');
   const a = document.createElement('a');
