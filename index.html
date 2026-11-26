@@ -14988,9 +14988,18 @@ function whInitMiniMap(x){
     el.innerHTML = '<div class="empty" style="padding:70px 12px;">ยังไม่มีพิกัด GPS ล่าสุดของคันนี้</div>';
     return;
   }
-  const map = L.map(el, { zoomControl:true, attributionControl:false }).setView([lat, lng], 12);
+  const map = L.map(el, { zoomControl:true, attributionControl:false }).setView([lat, lng], 13);
   whMiniMapObj = map;
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom:18 }).addTo(map);
+  const miniTile = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(map);
+  let tileOk = 0, tileErr = 0, switched = false;
+  miniTile.on('tileload', ()=>{ tileOk++; });
+  miniTile.on('tileerror', ()=>{
+    tileErr++;
+    if(!switched && tileOk === 0 && tileErr >= 3){
+      switched = true;
+      miniTile.setUrl('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}');
+    }
+  });
 
   const truckIcon = L.divIcon({
     className:'',
