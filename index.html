@@ -14978,10 +14978,13 @@ function whInitMiniMap(x){
   }
   const el = document.getElementById('whMiniMap');
   if(!el || typeof L === 'undefined') return;
-  const live = x._vehicleId && STATE.live ? STATE.live[x._vehicleId] : null;
-  const lat = (live && live.lat != null) ? Number(live.lat) : (x.last_lat != null ? Number(x.last_lat) : null);
-  const lng = (live && live.lng != null) ? Number(live.lng) : (x.last_lng != null ? Number(x.last_lng) : null);
-  if(lat == null || lng == null || isNaN(lat) || isNaN(lng)){
+  const liveRec = (typeof LIVE !== 'undefined' && LIVE && x._plateNorm) ? LIVE.get(x._plateNorm) : null;
+  const vehRec = (STATE.vehicles || []).find(v => (x._vehicleId && v.id === x._vehicleId) || normPlate(v.plate) === x._plateNorm);
+  const rawLat = (liveRec && liveRec.lat != null) ? liveRec.lat : ((vehRec && vehRec.lat != null) ? vehRec.lat : x.last_lat);
+  const rawLng = (liveRec && liveRec.lng != null) ? liveRec.lng : ((vehRec && vehRec.lng != null) ? vehRec.lng : x.last_lng);
+  const lat = rawLat != null ? Number(rawLat) : null;
+  const lng = rawLng != null ? Number(rawLng) : null;
+  if(lat == null || lng == null || isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)){
     el.innerHTML = '<div class="empty" style="padding:70px 12px;">ยังไม่มีพิกัด GPS ล่าสุดของคันนี้</div>';
     return;
   }
@@ -15197,7 +15200,9 @@ function renderWorkHoursView(){
     const kLabel = k === 'r' ? 'พักสนิทครบ ≥35 น.' : (k === 'o' ? 'ขับเกินกฎ' : 'ขับล้อหมุน');
     const tip = `${kLabel}: ${whClockLabel(winStartMs, s)}–${whClockLabel(winStartMs, e)} (${whFmtMin(e - s)})`;
     return `<div class="wh-eld-seg ${nsEsc(k)}" style="left:${leftPct}%;width:${widthPct}%;" title="${nsEsc(tip)}"></div>`;
-  }).join('') : '<div style="text-align:center;font-size:11px;color:var(--text-faint);line-height:26px;">ไม่มีกิจกรรมขับ-พักในช่วง 24 ชม. ล่าสุด</div>';
+  }).join('') : (sel.timeline_24h === undefined
+    ? '<div style="text-align:center;font-size:11px;color:#B45309;line-height:26px;">⚠️ กรุณารีสตาร์ต run_collector.bat 1 ครั้ง เพื่อให้ข้อมูลไทม์ไลน์ 24 ชม. และประวัติพัก 35 น. แสดงอัตโนมัติ</div>'
+    : '<div style="text-align:center;font-size:11px;color:var(--text-faint);line-height:26px;">ไม่มีกิจกรรมขับ-พักในช่วง 24 ชม. ล่าสุด</div>');
 
   /* เตรียมรายการประวัติพักครบ 35 นาที (โหมดคันนี้ หรือ ทุกคันในฟลีท) */
   const restEvents = [];
@@ -18196,6 +18201,7 @@ Object.assign(window, {
   openOrbitalCmdModal, orbitalCmdFilter, orbitalCmdGo, orbitalRenderHud,
   m3dToggleSatellite, m3dTogglePitch, m3dResetNorth, m3dToggleFollow, m3dFollowVehicle,
   loadWorkHours, openWorkHoursView, whSetFilter, renderWorkHoursView, whExportCsv, whShowOnMap,
+  whSelectVehicle, whSetRestLogMode, whSendRestAlert,
 });
 
 })();
