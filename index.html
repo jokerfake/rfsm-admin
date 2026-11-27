@@ -13821,12 +13821,34 @@ function nsTestAlert(){
 }
 
 /* ---------- ตรวจจับ ---------- */
-function nsFindVisit(plate, poiId, now){
+const NS_MAX_ARRIVE_REUSE_MS = 18 * 3600000; // รอบ arrived เก่าเกิน 18 ชม. (แต่มีสัญญาณ GPS ใหม่วันนี้) ถือว่ารอบเดิมค้าง -> ปิดและเปิดรอบใหม่
+function nsFindVisit(plate, poiId, now, effectiveTs, online){
   const pk = normPlate(plate);
-  return (nsVisits||[]).filter(x=>x.poiId===poiId && normPlate(x.plate)===pk
-      && ((x.status==='approaching' && now - (x.lastTs||x.approachTs||0) < NS_REUSE_MS)
-       || (x.status==='arrived'     && now - (x.lastTs||x.arriveTs||x.approachTs||0) < NS_OFFLINE_MAX_MS)))
-    .sort((a,b)=>(b.lastTs||0)-(a.lastTs||0))[0] || null;
+  const eff = effectiveTs || now;
+  const cands = (nsVisits||[]).filter(x=>x.poiId===poiId && normPlate(x.plate)===pk
+      && (x.status==='approaching' || x.status==='arrived'))
+    .sort((a,b)=>(b.lastTs||b.arriveTs||0)-(a.lastTs||a.arriveTs||0));
+  for(const x of cands){
+    const last = x.lastTs || x.arriveTs || x.approachTs || 0;
+    if(x.status === 'approaching'){
+      if(now - last < NS_REUSE_MS) return x;
+      continue;
+    }
+    /* status === 'arrived':
+       1) ถ้ารถออฟไลน์ต่อเนื่องตั้งแต่รอบเดิม (สัญญาณ GPS ล่าสุดไม่ได้ขยับห่างจากรอบเดิมเกิน 2 ชม.) -> ใช้รอบเดิมต่อได้ภายใน 7 วัน
+       2) ถ้ารถมีสัญญาณใหม่วันนี้ (eff ขยับห่างจากรอบเดิม) -> ใช้รอบเดิมต่อได้เฉพาะกรณีที่ยังไม่เกิน 18 ชม. และไม่ได้ขาดการติดตามเกิน NS_REUSE_MS
+          ถ้าเก่าเกิน -> ปิดรอบเดิมเป็น departed เพื่อไม่ให้ดึงวันที่เก่า (เช่น 24/11, 25/11) มาแสดงแทนวันนี้! */
+    const arrTs = x.arriveTs || last;
+    const sameOfflineStay = !online && Math.abs(eff - arrTs) <= 2 * 3600000 && (now - last < NS_OFFLINE_MAX_MS);
+    const activeRecentStay = (now - last < NS_REUSE_MS) && (eff - arrTs < NS_MAX_ARRIVE_REUSE_MS);
+    if(sameOfflineStay || activeRecentStay) return x;
+    /* ปิดรอบค้างเก่าอัตโนมัติ */
+    x.status = 'departed';
+    x.departTs = x.departTs || last || arrTs;
+    x.dwellMin = x.arriveTs ? Math.max(0, Math.round((x.departTs - x.arriveTs)/60000)) : 0;
+    try{ nsPush(x); }catch(e){}
+  }
+  return null;
 }
 function nsNewVisit(v, s, now, distKm, etaMin){
   const rec = { id:'nv_'+now.toString(36)+Math.random().toString(36).slice(2,6),
@@ -13881,7 +13903,7 @@ function nsTick(){
         const closing = t.prevD!=null && d < t.prevD - 0.03;
         if(d<=arriveKm && (fresh || t.prevD==null || !moving)){
           /* เปิดหน้ามาตอนรถถึงร้านพอดี หรือไม่เคยเห็นช่วงเข้าใกล้ หรือรถจอดออฟไลน์ในรัศมี — นับเป็นถึงร้านเลย */
-          const ex = nsFindVisit(v.plate, s.id, now);
+          const ex = nsFindVisit(v.plate, s.id, now, effectiveTs, online);
           const initTs = online ? now : effectiveTs;
           t.visit = ex || nsNewVisit(v, s, initTs, d, 0);
           if(!ex){ t.visit.approachEtaMin = 0; }
@@ -13894,7 +13916,7 @@ function nsTick(){
           }
         } else if(online && fresh && moving && closing && d<=sc.nearKm){
           const eta = nsEtaMin(d, t.speeds, cfg);
-          const ex = nsFindVisit(v.plate, s.id, now);
+          const ex = nsFindVisit(v.plate, s.id, now, effectiveTs, online);
           t.visit = ex || nsNewVisit(v, s, now, d, eta);
           t.state = t.visit.status==='arrived' ? 'arrived' : 'approaching';
           t.minD = d;
